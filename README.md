@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/lucide-icons/lucide/main/icons/sparkles.svg" width="64" height="64" alt="Job Tracker Pro Logo">
+  <img src="assets/logo.svg" width="96" height="96" alt="Job Tracker Pro Logo">
   <h1 align="center">Job Tracker Pro</h1>
   <p align="center">
     <strong>A self-hosted, full-stack Personal Applicant Tracking System (ATS).</strong>
