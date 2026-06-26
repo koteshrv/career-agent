@@ -1,33 +1,65 @@
 import { useState, useEffect } from "react"
-import axios from "axios"
+import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
+import { ScrapeConfig } from "./ScrapeConfig"
+import { useToast } from "./Toast"
+import { FileText, Trash2 } from "lucide-react"
 
 export function SettingsPage() {
+  const { toast } = useToast()
   const [settings, setSettings] = useState<any>({
     telegram_chat_id: "",
     telegram_bot_token: "",
+    gemini_api_key: "",
+    gemini_model: "gemini-2.5-flash",
     cron_schedule: "0 */4 * * *",
     active_companies: ""
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [resumeFile, setResumeFile] = useState<File | null>(null)
+  const [resumeName, setResumeName] = useState("")
   const [uploading, setUploading] = useState(false)
+  const [resumes, setResumes] = useState<string[]>([])
 
   useEffect(() => {
-    axios.get("http://localhost:8000/api/settings").then(res => {
+    api.get("/api/settings").then(res => {
       setSettings(res.data)
       setLoading(false)
     })
+    refreshResumes()
   }, [])
+
+  const refreshResumes = () => {
+    api.get("/api/resumes").then(res => setResumes(res.data.resumes || []))
+  }
+
+  const handleDeleteResume = async (name: string) => {
+    try {
+      const res = await api.delete(`/api/resumes/${encodeURIComponent(name)}`)
+      setResumes(res.data.resumes || [])
+      toast(`Deleted ${name}`, "success")
+    } catch {
+      toast("Failed to delete resume", "error")
+    }
+  }
 
   const handleSave = async () => {
     setSaving(true)
     try {
-      await axios.put("http://localhost:8000/api/settings", settings)
-      alert("Settings saved successfully!")
+      // Only send the fields this card owns, so it doesn't clobber the
+      // keywords/companies managed by the Scrape Configuration card.
+      await api.put("/api/settings", {
+        telegram_chat_id: settings.telegram_chat_id,
+        telegram_bot_token: settings.telegram_bot_token,
+        gemini_api_key: settings.gemini_api_key,
+        gemini_model: settings.gemini_model,
+        cron_schedule: settings.cron_schedule,
+      })
+      toast("Settings saved successfully!", "success")
     } catch (e) {
-      alert("Error saving settings")
+      toast("Error saving settings", "error")
     }
     setSaving(false)
   }
@@ -37,40 +69,114 @@ export function SettingsPage() {
     setUploading(true)
     const formData = new FormData()
     formData.append("file", resumeFile)
+    if (resumeName.trim()) formData.append("name", resumeName.trim())
     try {
-      await axios.post("http://localhost:8000/api/upload-resume", formData, {
+      await api.post("/api/upload-resume", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       })
-      alert("Resume uploaded successfully! AI Cover Letters are now enabled.")
+      toast("Resume uploaded! AI cover letters & tailored resumes are now enabled.", "success")
       setResumeFile(null)
+      setResumeName("")
+      refreshResumes()
     } catch (e) {
-      alert("Error uploading resume. Make sure it's a PDF.")
+      toast("Error uploading resume. Use a .pdf or .tex file.", "error")
     }
     setUploading(false)
   }
 
-  if (loading) return <div className="p-8 text-zinc-400">Loading settings...</div>
+  if (loading) return (
+    <div className="max-w-2xl mx-auto p-8 space-y-8">
+      <Skeleton className="h-48 rounded-2xl" />
+      <Skeleton className="h-64 rounded-2xl" />
+    </div>
+  )
 
   return (
     <div className="max-w-2xl mx-auto p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
+
+      <ScrapeConfig />
+
       <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl">
         <h3 className="text-lg font-bold text-white mb-4">Resume & AI Configuration</h3>
-        <p className="text-sm text-zinc-400 mb-4">Upload your PDF resume to allow Gemini to automatically generate highly tailored cover letters for your jobs.</p>
-        <div className="flex items-center gap-4">
-          <input 
-            type="file" 
-            accept=".pdf" 
+        <p className="text-sm text-zinc-400 mb-4">Upload one or more resumes (.pdf or .tex). You can pick which one to use when generating a tailored resume or cover letter for a job.</p>
+
+        {resumes.length > 0 && (
+          <div className="mb-4 space-y-2">
+            {resumes.map(name => (
+              <div key={name} className="flex items-center justify-between bg-black/30 border border-white/5 rounded-lg px-3 py-2">
+                <span className="flex items-center gap-2 text-sm text-zinc-300 truncate">
+                  <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span className="truncate">{name}</span>
+                </span>
+                <button
+                  onClick={() => handleDeleteResume(name)}
+                  className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors shrink-0"
+                  title="Delete resume"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="space-y-3 mb-6">
+          <input
+            type="file"
+            accept=".pdf,.tex"
             onChange={e => setResumeFile(e.target.files?.[0] || null)}
             className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer"
           />
-          <Button 
-            onClick={handleResumeUpload} 
-            disabled={!resumeFile || uploading}
-            className="bg-blue-600 hover:bg-blue-500 text-white"
-          >
-            {uploading ? "Uploading..." : "Upload PDF"}
-          </Button>
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              value={resumeName}
+              onChange={e => setResumeName(e.target.value)}
+              placeholder="Optional custom name (e.g. backend-resume)"
+              className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+            />
+            <Button
+              onClick={handleResumeUpload}
+              disabled={!resumeFile || uploading}
+              className="bg-blue-600 hover:bg-blue-500 text-white shrink-0"
+            >
+              {uploading ? "Uploading..." : "Upload"}
+            </Button>
+          </div>
+          <p className="text-xs text-zinc-500">Leave the name blank to keep the original filename. The extension is added automatically.</p>
+        </div>
+
+        <div className="space-y-4 pt-4 border-t border-white/5">
+          <div>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">Gemini API Key (Stored Encrypted)</label>
+            <input
+              type="password"
+              value={settings.gemini_api_key || ""}
+              onChange={e => setSettings({...settings, gemini_api_key: e.target.value})}
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+              placeholder="e.g. AIza..."
+            />
+            <p className="text-xs text-zinc-500 mt-1">Get a key from Google AI Studio. Falls back to the backend's GEMINI_API_KEY env var if left blank.</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">Gemini Model</label>
+            <input
+              type="text"
+              list="gemini-models"
+              value={settings.gemini_model || ""}
+              onChange={e => setSettings({...settings, gemini_model: e.target.value})}
+              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 font-mono"
+              placeholder="gemini-2.5-flash"
+            />
+            <datalist id="gemini-models">
+              <option value="gemini-2.5-flash" />
+              <option value="gemini-flash-latest" />
+              <option value="gemini-2.5-flash-lite" />
+              <option value="gemini-2.0-flash" />
+            </datalist>
+            <p className="text-xs text-zinc-500 mt-1">Pick a suggestion or type any Gemini model name your key has access to.</p>
+          </div>
         </div>
       </div>
 

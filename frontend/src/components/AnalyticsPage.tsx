@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
-import axios from "axios"
+import { api } from "@/lib/api"
+import { Skeleton } from "@/components/ui/skeleton"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts"
 
 export function AnalyticsPage() {
@@ -7,7 +8,7 @@ export function AnalyticsPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    axios.get("http://localhost:8000/api/jobs?limit=5000").then(res => {
+    api.get("/api/jobs?limit=5000").then(res => {
       setJobs(res.data)
       setLoading(false)
     }).catch(e => {
@@ -16,7 +17,17 @@ export function AnalyticsPage() {
     })
   }, [])
 
-  if (loading) return <div className="p-8 text-zinc-400">Loading analytics...</div>
+  if (loading) return (
+    <div className="max-w-5xl mx-auto p-8 space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {[0, 1, 2].map(i => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Skeleton className="h-[400px] rounded-2xl" />
+        <Skeleton className="h-[400px] rounded-2xl" />
+      </div>
+    </div>
+  )
 
   // Calculate stats
   const statusCounts = jobs.reduce((acc: any, job: any) => {

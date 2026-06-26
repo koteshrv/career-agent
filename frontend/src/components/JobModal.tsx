@@ -1,41 +1,124 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import type { Job } from "./KanbanBoard"
 import { Button } from "@/components/ui/button"
-import { Sparkles, MapPin, Calendar, ExternalLink, X } from "lucide-react"
-import { format } from "date-fns"
-import axios from "axios"
+import { Sparkles, MapPin, Calendar, ExternalLink, X, FileText, Trash2, Download } from "lucide-react"
+import { formatISTDate } from "@/lib/datetime"
+import { api } from "@/lib/api"
+import { useToast } from "./Toast"
+import { ConfirmDialog } from "./ConfirmDialog"
 
 interface JobModalProps {
   job: Job
   onClose: () => void
   onUpdate: (updatedJob: Job) => void
+  onDelete: (jobId: number) => void
 }
 
-export function JobModal({ job, onClose, onUpdate }: JobModalProps) {
+export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
+  const { toast } = useToast()
   const [notes, setNotes] = useState(job.notes || "")
   const [savingNotes, setSavingNotes] = useState(false)
   const [generatingCL, setGeneratingCL] = useState(false)
+  const [clError, setClError] = useState<string | null>(null)
+  const [tailoredResume, setTailoredResume] = useState<string | null>(job.tailored_resume || null)
+  const [generatingResume, setGeneratingResume] = useState(false)
+  const [resumeError, setResumeError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [resumes, setResumes] = useState<string[]>([])
+  const [selectedResume, setSelectedResume] = useState<string>("")
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+
+  useEffect(() => {
+    api.get("/api/resumes").then(res => {
+      const list = res.data.resumes || []
+      setResumes(list)
+      if (list.length) setSelectedResume(list[0])
+    })
+  }, [])
+
+  const resumeParam = selectedResume ? `?resume=${encodeURIComponent(selectedResume)}` : ""
 
   const handleSaveNotes = async () => {
     setSavingNotes(true)
     try {
-      const res = await axios.put(`http://localhost:8000/api/jobs/${job.id}`, { notes })
+      const res = await api.put(`/api/jobs/${job.id}`, { notes })
       onUpdate(res.data)
+      toast("Notes saved", "success")
     } catch (e) {
-      alert("Error saving notes")
+      toast("Error saving notes", "error")
     }
     setSavingNotes(false)
   }
 
   const handleGenerateCL = async () => {
     setGeneratingCL(true)
+    setClError(null)
     try {
-      const res = await axios.post(`http://localhost:8000/api/jobs/${job.id}/cover-letter`)
+      const res = await api.post(`/api/jobs/${job.id}/cover-letter${resumeParam}`)
       onUpdate({...job, cover_letter: res.data.cover_letter})
     } catch (e: any) {
-      alert(e.response?.data?.detail || "Error generating cover letter. Make sure you uploaded a resume.")
+      setClError(e.response?.data?.detail || "Error generating cover letter. Make sure you uploaded a resume and configured a Gemini API key in Settings.")
     }
     setGeneratingCL(false)
+  }
+
+  const handleGenerateResume = async () => {
+    setGeneratingResume(true)
+    setResumeError(null)
+    try {
+      const res = await api.post(`/api/jobs/${job.id}/tailored-resume${resumeParam}`)
+      setTailoredResume(res.data.tailored_resume)
+      onUpdate({...job, tailored_resume: res.data.tailored_resume})
+    } catch (e: any) {
+      setResumeError(e.response?.data?.detail || "Error generating tailored resume. Make sure you uploaded a resume and configured a Gemini API key in Settings.")
+    }
+    setGeneratingResume(false)
+  }
+
+  const handleCopyResume = () => {
+    if (!tailoredResume) return
+    navigator.clipboard.writeText(tailoredResume)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+
+  const slug = `${job.company}-${job.title}`.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
+
+  const downloadFile = (content: string, filename: string, mime: string) => {
+    const blob = new Blob([content], { type: mime })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleDownloadTex = () => {
+    if (!tailoredResume) return
+    downloadFile(tailoredResume, `${slug}.tex`, "application/x-tex")
+  }
+
+  const handleDownloadPdf = async () => {
+    if (!tailoredResume) return
+    const { jsPDF } = await import("jspdf")
+    const doc = new jsPDF({ unit: "pt", format: "a4" })
+    doc.setFont("courier", "normal")
+    doc.setFontSize(9)
+    const margin = 40
+    const maxWidth = doc.internal.pageSize.getWidth() - margin * 2
+    const lines = doc.splitTextToSize(tailoredResume, maxWidth)
+    const lineHeight = 12
+    let y = margin
+    for (const line of lines) {
+      if (y > doc.internal.pageSize.getHeight() - margin) {
+        doc.addPage()
+        y = margin
+      }
+      doc.text(line, margin, y)
+      y += lineHeight
+    }
+    doc.save(`${slug}.pdf`)
   }
 
   return (
@@ -58,13 +141,20 @@ export function JobModal({ job, onClose, onUpdate }: JobModalProps) {
               {job.location && (
                 <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{job.location}</span>
               )}
-              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{format(new Date(job.created_at), 'MMM d, yyyy')}</span>
+              <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatISTDate(job.created_at, true)}</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <a href={job.url} target="_blank" rel="noopener noreferrer" className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
               <ExternalLink className="w-5 h-5" />
             </a>
+            <button
+              onClick={() => setConfirmDeleteOpen(true)}
+              className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+              title="Delete job"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
             <button onClick={onClose} className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
               <X className="w-5 h-5" />
             </button>
@@ -94,6 +184,22 @@ export function JobModal({ job, onClose, onUpdate }: JobModalProps) {
             </div>
           </div>
 
+          {/* Shared Resume Selector for AI generation */}
+          <div className="flex items-center justify-between gap-3 bg-black/20 border border-white/5 rounded-xl px-4 py-3">
+            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Source Resume</span>
+            {resumes.length ? (
+              <select
+                value={selectedResume}
+                onChange={(e) => setSelectedResume(e.target.value)}
+                className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 max-w-[60%]"
+              >
+                {resumes.map(r => <option key={r} value={r}>{r}</option>)}
+              </select>
+            ) : (
+              <span className="text-xs text-zinc-500">No resumes uploaded — add one in Settings.</span>
+            )}
+          </div>
+
           {/* AI Cover Letter Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -109,6 +215,13 @@ export function JobModal({ job, onClose, onUpdate }: JobModalProps) {
               </Button>
             </div>
             
+            {clError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-sm text-red-300 flex items-start gap-2">
+                <span className="font-semibold shrink-0">Error:</span>
+                <span className="break-words">{clError}</span>
+              </div>
+            )}
+
             {job.cover_letter ? (
               <div className="bg-zinc-900/50 border border-purple-500/20 rounded-xl p-6 text-sm text-zinc-300 whitespace-pre-wrap font-serif leading-relaxed">
                 {job.cover_letter}
@@ -120,8 +233,66 @@ export function JobModal({ job, onClose, onUpdate }: JobModalProps) {
             )}
           </div>
 
+          {/* AI Tailored Resume Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <FileText className="w-4 h-4 text-emerald-400" /> AI Tailored Resume
+              </h3>
+              <div className="flex items-center gap-2 flex-wrap justify-end">
+                {tailoredResume && (
+                  <>
+                    <Button onClick={handleCopyResume} className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 text-xs">
+                      {copied ? "Copied!" : "Copy"}
+                    </Button>
+                    <Button onClick={handleDownloadTex} className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 text-xs">
+                      <Download className="w-3.5 h-3.5 mr-1" /> .tex
+                    </Button>
+                    <Button onClick={handleDownloadPdf} className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 text-xs">
+                      <Download className="w-3.5 h-3.5 mr-1" /> .pdf
+                    </Button>
+                  </>
+                )}
+                <Button
+                  onClick={handleGenerateResume}
+                  disabled={generatingResume}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white h-8 text-xs shadow-lg shadow-emerald-500/20"
+                >
+                  {generatingResume ? "Tailoring..." : "Tailor with Gemini"}
+                </Button>
+              </div>
+            </div>
+
+            {resumeError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-sm text-red-300 flex items-start gap-2">
+                <span className="font-semibold shrink-0">Error:</span>
+                <span className="break-words">{resumeError}</span>
+              </div>
+            )}
+
+            {tailoredResume ? (
+              <div className="bg-zinc-900/50 border border-emerald-500/20 rounded-xl p-6 text-sm text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed">
+                {tailoredResume}
+              </div>
+            ) : (
+              <div className="bg-black/20 border border-white/5 border-dashed rounded-xl p-8 text-center text-zinc-500 text-sm">
+                Generate a version of your resume re-tailored for this role.
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        danger
+        title="Delete this job?"
+        message={`"${job.title}" at ${job.company} will be permanently removed.`}
+        confirmLabel="Delete"
+        onConfirm={() => { setConfirmDeleteOpen(false); onDelete(job.id) }}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </div>
   )
 }

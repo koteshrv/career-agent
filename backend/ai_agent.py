@@ -1,26 +1,67 @@
 import os
-import google.generativeai as genai
+import logging
+from google import genai
 import PyPDF2
 from pathlib import Path
 from dotenv import load_dotenv
 
 load_dotenv()
 
-# Configure Gemini
-api_key = os.getenv("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
+logger = logging.getLogger(__name__)
+
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+ENV_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Ordered fallback chain tried when the chosen model errors (rate limit, overload, etc.).
+FALLBACK_MODELS = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+
+# Substrings that indicate retrying a different model won't help (auth/config issues).
+_FATAL_ERROR_HINTS = ("api key not valid", "api_key_invalid", "permission denied", "unauthenticated")
 
 UPLOAD_DIR = Path(__file__).parent / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
-RESUME_PATH = UPLOAD_DIR / "resume.pdf"
+RESUMES_DIR = UPLOAD_DIR / "resumes"
+RESUMES_DIR.mkdir(parents=True, exist_ok=True)
+ALLOWED_RESUME_EXT = (".pdf", ".tex")
 
-def extract_resume_text() -> str:
-    if not RESUME_PATH.exists():
+# Migrate a legacy single resume.pdf into the resumes/ directory.
+_legacy_resume = UPLOAD_DIR / "resume.pdf"
+if _legacy_resume.exists() and not any(RESUMES_DIR.iterdir()):
+    _legacy_resume.rename(RESUMES_DIR / "resume.pdf")
+
+def safe_resume_name(name: str) -> str:
+    """Strip any directory components from an uploaded filename."""
+    return Path(name).name
+
+def list_resumes() -> list:
+    return sorted(p.name for p in RESUMES_DIR.glob("*") if p.suffix.lower() in ALLOWED_RESUME_EXT)
+
+def _resume_path(name: str = None):
+    files = list_resumes()
+    if not files:
+        return None
+    if name:
+        n = safe_resume_name(name)
+        return RESUMES_DIR / n if n in files else None
+    return RESUMES_DIR / files[0]
+
+def delete_resume(name: str) -> bool:
+    path = _resume_path(name)
+    if path and path.exists():
+        path.unlink()
+        return True
+    return False
+
+def extract_resume_text(name: str = None) -> str:
+    path = _resume_path(name)
+    if not path or not path.exists():
         return ""
     try:
+        # .tex resumes are read as plain text (cleaner source than a parsed PDF).
+        if path.suffix.lower() == ".tex":
+            return path.read_text(encoding="utf-8", errors="ignore")
         text = ""
-        with open(RESUME_PATH, "rb") as f:
+        with open(path, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             for page in reader.pages:
                 extracted = page.extract_text()
@@ -28,19 +69,41 @@ def extract_resume_text() -> str:
                     text += extracted + "\n"
         return text
     except Exception as e:
-        print(f"Failed to read resume: {e}")
+        logger.error(f"Failed to read resume '{path.name}': {e}")
         return ""
 
-def generate_cover_letter(job_title: str, company: str, location: str = "") -> str:
-    if not api_key:
-        return "Error: GEMINI_API_KEY is not configured in the backend environment."
-    
-    resume_text = extract_resume_text()
+def _generate(prompt: str, api_key: str = None, model_name: str = None) -> str:
+    """Run a prompt through Gemini, falling back to lower models on error."""
+    resolved_key = api_key or ENV_API_KEY
+    if not resolved_key:
+        return "Error: Gemini API key is not configured. Add it in Settings or set GEMINI_API_KEY in the backend environment."
+
+    # Build an ordered, de-duplicated chain: chosen model first, then fallbacks.
+    chain = []
+    for m in [model_name, DEFAULT_GEMINI_MODEL, *FALLBACK_MODELS]:
+        if m and m not in chain:
+            chain.append(m)
+
+    client = genai.Client(api_key=resolved_key)
+    last_err = ""
+    for model in chain:
+        try:
+            response = client.models.generate_content(model=model, contents=prompt)
+            return response.text
+        except Exception as e:
+            last_err = str(e)
+            logger.warning(f"Gemini model '{model}' failed: {last_err}")
+            if any(h in last_err.lower() for h in _FATAL_ERROR_HINTS):
+                break  # auth/config issue — fallback won't help
+    return f"Error generating content (all models failed). Last error: {last_err}"
+
+def generate_cover_letter(job_title: str, company: str, location: str = "", api_key: str = None, model_name: str = None, resume_name: str = None) -> str:
+    resume_text = extract_resume_text(resume_name)
     if not resume_text:
         return "Error: Could not read resume. Please upload your resume first."
 
     prompt = f"""
-You are an expert career coach and professional writer. 
+You are an expert career coach and professional writer.
 Write a concise, modern, and highly persuasive cover letter for the role of {job_title} at {company} {f'located in {location}' if location else ''}.
 
 Use the following resume to highlight my most relevant skills and experience:
@@ -54,10 +117,37 @@ Requirements:
 - Be highly confident and direct.
 - Focus strictly on matching the resume skills to the likely requirements of {job_title}.
 """
+    return _generate(prompt, api_key, model_name)
 
-    try:
-        model = genai.GenerativeModel("gemini-pro")
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        return f"Error generating cover letter: {str(e)}"
+def generate_tailored_resume(job_title: str, company: str, location: str = "", api_key: str = None, model_name: str = None, resume_name: str = None) -> str:
+    resume_text = extract_resume_text(resume_name)
+    if not resume_text:
+        return "Error: Could not read resume. Please upload your resume first."
+
+    path = _resume_path(resume_name)
+    is_tex = bool(path) and path.suffix.lower() == ".tex"
+
+    shared = f"""You are an expert technical recruiter and professional resume writer.
+Rewrite and tailor the resume below for the role of {job_title} at {company} {f'located in {location}' if location else ''}.
+
+Original resume:
+---
+{resume_text}
+---
+
+Rules:
+- Keep ONLY truthful information from the original resume. Do NOT invent experience, employers, or dates.
+- Reorder, reword, and emphasize the bullet points and skills most relevant to a {job_title} role.
+- Rewrite the professional summary to target this specific role.
+- Surface keywords a {job_title} job description and ATS would look for, but only where the resume genuinely supports them."""
+
+    if is_tex:
+        prompt = shared + """
+- The original is a LaTeX document. Return a COMPLETE, COMPILABLE LaTeX document.
+- Preserve the original preamble, document class, packages, commands, and overall formatting/structure exactly. Only change the textual content to tailor it.
+- Output raw LaTeX only. Do NOT wrap it in markdown code fences or add commentary."""
+    else:
+        prompt = shared + """
+- Return clean, plain-text resume content with clear section headers (Summary, Skills, Experience, Education). No markdown code fences."""
+
+    return _generate(prompt, api_key, model_name)

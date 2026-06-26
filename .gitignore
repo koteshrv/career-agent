@@ -1,5 +1,33 @@
+# Secrets & local config
 .env
+.env.local
+.encryption_key
+
+# Database & scraper data
 *.db
 targets.json
-__pycache__
-.encryption_key
+
+# Uploaded resumes
+/backend/uploads/*
+
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# Node / build output
+node_modules/
+frontend/dist/
+dist/
+
+# Logs & OS cruft
+*.log
+.DS_Store
+Thumbs.db
+
+# Editor / tooling
+.claude
+.vscode/
+.idea/

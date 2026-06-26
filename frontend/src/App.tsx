@@ -1,40 +1,38 @@
+import { Routes, Route, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom"
 import { KanbanBoard } from "./components/KanbanBoard"
 import { SettingsPage } from "./components/SettingsPage"
 import { HistoryPage } from "./components/HistoryPage"
 import { AnalyticsPage } from "./components/AnalyticsPage"
-import { Button } from "@/components/ui/button"
-import { Play, Sparkles, LayoutDashboard, Settings, History, LineChart } from "lucide-react"
-import axios from "axios"
-import { useState } from "react"
+import { Login } from "./components/Login"
+import { getToken, clearToken } from "@/lib/api"
+import { Sparkles, LayoutDashboard, Settings, History, LineChart, LogOut } from "lucide-react"
+import type { ReactNode } from "react"
 
-function App() {
-  const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState("pipeline")
+const NAV = [
+  { to: "/pipeline", label: "Job Pipeline", title: "Pipeline Dashboard", icon: LayoutDashboard },
+  { to: "/analytics", label: "Analytics", title: "Analytics", icon: LineChart },
+  { to: "/history", label: "Run History", title: "Run History", icon: History },
+  { to: "/settings", label: "Settings", title: "Settings", icon: Settings },
+]
 
-  const handleRunScraper = async () => {
-    setLoading(true)
-    try {
-      await axios.post("http://localhost:8000/api/run-scraper")
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setTimeout(() => setLoading(false), 2000)
-    }
-  }
+function RequireAuth({ children }: { children: ReactNode }) {
+  return getToken() ? <>{children}</> : <Navigate to="/login" replace />
+}
 
-  const renderContent = () => {
-    switch(activeTab) {
-      case "pipeline": return <div className="flex-1 overflow-x-auto overflow-y-hidden p-8 custom-scrollbar"><KanbanBoard /></div>
-      case "analytics": return <div className="flex-1 overflow-y-auto custom-scrollbar"><AnalyticsPage /></div>
-      case "history": return <div className="flex-1 overflow-y-auto custom-scrollbar"><HistoryPage /></div>
-      case "settings": return <div className="flex-1 overflow-y-auto custom-scrollbar"><SettingsPage /></div>
-      default: return <div className="flex-1 overflow-x-auto overflow-y-hidden p-8 custom-scrollbar"><KanbanBoard /></div>
-    }
+function Layout() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const current = NAV.find(n => location.pathname.startsWith(n.to))
+  const title = current?.title || "Dashboard"
+
+  const handleLogout = () => {
+    clearToken()
+    navigate("/login", { replace: true })
   }
 
   return (
     <div className="min-h-screen text-zinc-100 selection:bg-blue-500/30 font-sans flex overflow-hidden">
-      
+
       {/* Sidebar Navigation */}
       <aside className="w-64 border-r border-white/5 bg-black/40 hidden md:flex flex-col z-40">
         <div className="h-20 flex items-center px-6 border-b border-white/5">
@@ -46,41 +44,39 @@ function App() {
               <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400 tracking-tight">
                 Job Tracker Pro
               </h1>
-              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">AutoApply Engine</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">Application Tracker</p>
             </div>
           </div>
         </div>
-        
+
         <nav className="flex-1 px-4 py-8 space-y-2">
-          <div 
-            onClick={() => setActiveTab("pipeline")}
-            className={`px-3 py-2.5 rounded-lg flex items-center gap-3 font-medium cursor-pointer transition-colors ${activeTab === "pipeline" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            Job Pipeline
-          </div>
-          <div 
-            onClick={() => setActiveTab("analytics")}
-            className={`px-3 py-2.5 rounded-lg flex items-center gap-3 font-medium cursor-pointer transition-colors ${activeTab === "analytics" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
-          >
-            <LineChart className="w-4 h-4" />
-            Analytics
-          </div>
-          <div 
-            onClick={() => setActiveTab("history")}
-            className={`px-3 py-2.5 rounded-lg flex items-center gap-3 font-medium cursor-pointer transition-colors ${activeTab === "history" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
-          >
-            <History className="w-4 h-4" />
-            Run History
-          </div>
-          <div 
-            onClick={() => setActiveTab("settings")}
-            className={`px-3 py-2.5 rounded-lg flex items-center gap-3 font-medium cursor-pointer transition-colors ${activeTab === "settings" ? "bg-blue-500/10 text-blue-400 border border-blue-500/20" : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"}`}
-          >
-            <Settings className="w-4 h-4" />
-            Settings
-          </div>
+          {NAV.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `px-3 py-2.5 rounded-lg flex items-center gap-3 font-medium cursor-pointer transition-colors ${
+                  isActive
+                    ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                    : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
+                }`
+              }
+            >
+              <Icon className="w-4 h-4" />
+              {label}
+            </NavLink>
+          ))}
         </nav>
+
+        <div className="px-4 pb-6">
+          <button
+            onClick={handleLogout}
+            className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent transition-colors"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
+        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -88,30 +84,31 @@ function App() {
         {/* Top Header */}
         <header className="h-20 border-b border-white/5 bg-black/20 flex items-center justify-between px-8 z-30 sticky top-0">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-white capitalize">{activeTab === "pipeline" ? "Pipeline Dashboard" : activeTab}</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-white">{title}</h2>
             <p className="text-sm text-zinc-400 mt-1">Track and manage your automated job matches.</p>
-          </div>
-          
-          <div className="flex items-center gap-4">
-              <Button 
-                onClick={handleRunScraper} 
-                disabled={loading}
-                className={`h-11 px-6 rounded-full font-medium transition-all duration-300 shadow-lg ${
-                  loading 
-                  ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-white/5' 
-                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/25 hover:shadow-blue-500/40 border border-blue-400/20'
-                }`}
-              >
-                <Play className={`w-4 h-4 mr-2 ${loading ? 'animate-pulse' : ''}`} />
-                {loading ? "Engines Running..." : "Trigger Scraper"}
-              </Button>
           </div>
         </header>
 
-        {/* Content Container */}
-        {renderContent()}
+        {/* Routed Content */}
+        <Outlet />
       </main>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route element={<RequireAuth><Layout /></RequireAuth>}>
+        <Route index element={<Navigate to="/pipeline" replace />} />
+        <Route path="/pipeline" element={<div className="flex-1 overflow-x-auto overflow-y-hidden p-8 custom-scrollbar"><KanbanBoard /></div>} />
+        <Route path="/analytics" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><AnalyticsPage /></div>} />
+        <Route path="/history" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><HistoryPage /></div>} />
+        <Route path="/settings" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><SettingsPage /></div>} />
+        <Route path="*" element={<Navigate to="/pipeline" replace />} />
+      </Route>
+    </Routes>
   )
 }
 

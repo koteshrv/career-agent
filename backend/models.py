@@ -15,6 +15,7 @@ class Job(Base):
     status = Column(String, default="NEW") # NEW, APPLIED, INTERVIEWING, REJECTED, IGNORED
     notes = Column(Text, nullable=True)
     cover_letter = Column(Text, nullable=True)
+    tailored_resume = Column(Text, nullable=True)
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     applied_at = Column(DateTime(timezone=True), nullable=True)
@@ -25,8 +26,11 @@ class Settings(Base):
     id = Column(Integer, primary_key=True, index=True)
     telegram_chat_id = Column(String, nullable=True)
     telegram_bot_token = Column(String, nullable=True) # Encrypted
+    gemini_api_key = Column(String, nullable=True) # Encrypted
+    gemini_model = Column(String, default="gemini-2.5-flash")
     cron_schedule = Column(String, default="0 */4 * * *")
     active_companies = Column(String, nullable=True) # JSON array of active companies
+    search_keywords = Column(String, nullable=True) # JSON array of search keywords
 
 class ScraperLog(Base):
     __tablename__ = "scraper_logs"
@@ -36,3 +40,4 @@ class ScraperLog(Base):
     jobs_found = Column(Integer, default=0)
     status = Column(String) # "SUCCESS", "FAILED"
     error_message = Column(Text, nullable=True)
+    trigger_source = Column(String, default="MANUAL") # "MANUAL", "CRON"

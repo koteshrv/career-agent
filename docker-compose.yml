@@ -14,6 +14,12 @@ services:
       - ./keywords.json:/app/keywords.json
     environment:
       - PYTHONUNBUFFERED=1
+      # Auth credentials — change these before exposing the app.
+      - APP_USERNAME=${APP_USERNAME:-admin}
+      - APP_PASSWORD=${APP_PASSWORD:-admin}
+      # Optional: explicit token-signing secret (defaults to the encryption key).
+      - AUTH_SECRET=${AUTH_SECRET:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
     restart: unless-stopped
 
   frontend:

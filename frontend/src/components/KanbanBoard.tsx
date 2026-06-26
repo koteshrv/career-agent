@@ -2,10 +2,12 @@ import { useState, useEffect } from "react"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { format } from "date-fns"
-import axios from "axios"
-import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search } from "lucide-react"
+import { formatISTDate } from "@/lib/datetime"
+import { api } from "@/lib/api"
+import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X } from "lucide-react"
 import { JobModal } from "./JobModal"
+import { useToast } from "./Toast"
+import { ConfirmDialog } from "./ConfirmDialog"
 
 export type Job = {
   id: number
@@ -16,6 +18,7 @@ export type Job = {
   status: string
   notes?: string
   cover_letter?: string
+  tailored_resume?: string
   created_at: string
   applied_at?: string
 }
@@ -24,23 +27,84 @@ const COLUMNS = [
   { id: "NEW", title: "New Matches", color: "from-blue-500/20 to-cyan-500/10", border: "border-blue-500/20", badge: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
   { id: "APPLIED", title: "Applied", color: "from-indigo-500/20 to-purple-500/10", border: "border-indigo-500/20", badge: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30" },
   { id: "INTERVIEWING", title: "Interviewing", color: "from-amber-500/20 to-orange-500/10", border: "border-amber-500/20", badge: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-  { id: "REJECTED", title: "Archived", color: "from-zinc-500/20 to-zinc-600/10", border: "border-zinc-500/20", badge: "bg-zinc-800 text-zinc-400 border-zinc-700" }
+  { id: "REJECTED", title: "Rejected", color: "from-red-500/20 to-rose-600/10", border: "border-red-500/20", badge: "bg-red-500/20 text-red-300 border-red-500/30" },
+  { id: "IGNORED", title: "Ignored", color: "from-zinc-500/20 to-zinc-600/10", border: "border-zinc-500/20", badge: "bg-zinc-800 text-zinc-400 border-zinc-700" }
 ]
 
+const ARCHIVED_STATUSES = ["REJECTED", "IGNORED"]
+
 export function KanbanBoard() {
+  const { toast } = useToast()
   const [jobs, setJobs] = useState<Job[]>([])
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({})
   const [showArchived, setShowArchived] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
-  
+  const [clearing, setClearing] = useState(false)
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+
   useEffect(() => {
     fetchJobs()
   }, [])
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const bulkSetStatus = async (status: string) => {
+    const ids = selectedIds
+    try {
+      await api.post("/api/jobs/bulk-status", { ids, status })
+      setJobs(prev => prev.map(j => ids.includes(j.id) ? { ...j, status } : j))
+      setSelectedIds([])
+      toast(`Moved ${ids.length} job${ids.length > 1 ? "s" : ""} to ${status}`, "success")
+    } catch (e) {
+      toast("Bulk update failed", "error")
+    }
+  }
+
+  const bulkDelete = async () => {
+    const ids = selectedIds
+    setConfirmBulkDelete(false)
+    try {
+      await api.post("/api/jobs/bulk-delete", { ids })
+      setJobs(prev => prev.filter(j => !ids.includes(j.id)))
+      setSelectedIds([])
+      toast(`Deleted ${ids.length} job${ids.length > 1 ? "s" : ""}`, "success")
+    } catch (e) {
+      toast("Bulk delete failed", "error")
+    }
+  }
+
+  const handleClearAll = async () => {
+    setConfirmClearOpen(false)
+    setClearing(true)
+    try {
+      const { data } = await api.delete("/api/jobs")
+      setJobs([])
+      toast(`Cleared ${data.deleted} jobs`, "success")
+    } catch (e) {
+      toast("Failed to clear jobs", "error")
+    }
+    setClearing(false)
+  }
+
+  const handleDeleteJob = async (jobId: number) => {
+    try {
+      await api.delete(`/api/jobs/${jobId}`)
+      setJobs(prev => prev.filter(j => j.id !== jobId))
+      setSelectedJob(null)
+      toast("Job deleted", "success")
+    } catch (e) {
+      toast("Failed to delete job", "error")
+    }
+  }
   
   const fetchJobs = async () => {
     try {
-      const { data } = await axios.get("http://localhost:8000/api/jobs?limit=500")
+      const { data } = await api.get("/api/jobs?limit=500")
       const mapped = data.map((j: Job) => ({...j, status: j.status || 'NEW'}))
       setJobs(mapped)
     } catch (e) {
@@ -64,7 +128,7 @@ export function KanbanBoard() {
     setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j))
     
     try {
-      await axios.put(`http://localhost:8000/api/jobs/${jobId}`, { status: newStatus })
+      await api.put(`/api/jobs/${jobId}`, { status: newStatus })
     } catch (e) {
       console.error("Failed to update status", e)
       fetchJobs() // revert on fail
@@ -73,6 +137,7 @@ export function KanbanBoard() {
 
   const renderJobCard = (job: Job, snapshot: any, provided: any) => {
     const loc = job.location && job.location.trim() !== "" ? job.location : null;
+    const isSelected = selectedIds.includes(job.id)
     return (
     <div
       ref={provided.innerRef}
@@ -81,16 +146,24 @@ export function KanbanBoard() {
       style={provided.draggableProps.style}
       className="mb-3"
       onClick={(e) => {
-        // Only open modal if we didn't click the external link
-        if (!(e.target as HTMLElement).closest('a')) {
+        // Don't open modal when clicking the external link or the select checkbox.
+        if (!(e.target as HTMLElement).closest('a') && !(e.target as HTMLElement).closest('[data-select]')) {
           setSelectedJob(job)
         }
       }}
     >
-      <Card className={`bg-zinc-950/90 border-white/5 hover:border-white/20 hover:bg-zinc-900 cursor-pointer transition-colors shadow-lg ${snapshot.isDragging ? 'ring-2 ring-indigo-500/50 shadow-indigo-500/20 z-50' : ''}`}>
+      <Card className={`bg-zinc-950/90 border-white/5 hover:border-white/20 hover:bg-zinc-900 cursor-pointer transition-colors shadow-lg ${snapshot.isDragging ? 'ring-2 ring-indigo-500/50 shadow-indigo-500/20 z-50' : ''} ${isSelected ? 'ring-2 ring-blue-500/60' : ''}`}>
         <CardContent className="p-4">
           <div className="flex justify-between items-start gap-3 mb-2">
             <div className="flex items-center gap-2 text-zinc-300 font-medium text-sm truncate flex-1">
+              <button
+                data-select
+                onClick={(e) => { e.stopPropagation(); toggleSelect(job.id) }}
+                className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-white/20 hover:border-white/50'}`}
+                title="Select"
+              >
+                {isSelected && <Check className="w-3 h-3 text-white" />}
+              </button>
               <div className="w-6 h-6 rounded bg-white/10 flex items-center justify-center shrink-0">
                 <BriefcaseBusiness className="w-3 h-3 text-zinc-400" />
               </div>
@@ -109,7 +182,7 @@ export function KanbanBoard() {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
                 <Calendar className="w-3.5 h-3.5" />
-                {format(new Date(job.created_at), 'MMM d')}
+                {formatISTDate(job.created_at)}
               </div>
               {loc && (
                 <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
@@ -129,8 +202,8 @@ export function KanbanBoard() {
     return j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q)
   })
 
-  const archivedCount = filteredJobs.filter(j => j.status === "REJECTED").length
-  const columnsToRender = COLUMNS.filter(c => showArchived || c.id !== "REJECTED")
+  const archivedCount = filteredJobs.filter(j => ARCHIVED_STATUSES.includes(j.status)).length
+  const columnsToRender = COLUMNS.filter(c => showArchived || !ARCHIVED_STATUSES.includes(c.id))
 
   return (
     <div className="flex flex-col h-full relative">
@@ -148,24 +221,35 @@ export function KanbanBoard() {
           />
         </div>
 
-        <button
-          onClick={() => setShowArchived(!showArchived)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-            showArchived 
-            ? 'bg-red-500/10 text-red-400 border border-red-500/20' 
-            : 'bg-zinc-800/50 text-zinc-400 border border-white/5 hover:bg-zinc-800'
-          }`}
-        >
-          {showArchived ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-          {showArchived ? 'Hide Archived' : 'Show Archived'}
-          {archivedCount > 0 && (
-            <span className="bg-white/10 px-1.5 py-0.5 rounded-md ml-1">{archivedCount}</span>
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
+              showArchived
+              ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+              : 'bg-zinc-800/50 text-zinc-400 border border-white/5 hover:bg-zinc-800'
+            }`}
+          >
+            {showArchived ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            {showArchived ? 'Hide Closed' : 'Show Closed'}
+            {archivedCount > 0 && (
+              <span className="bg-white/10 px-1.5 py-0.5 rounded-md ml-1">{archivedCount}</span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setConfirmClearOpen(true)}
+            disabled={clearing || jobs.length === 0}
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-zinc-800/50 text-zinc-400 border border-white/5 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            {clearing ? 'Clearing...' : 'Clear All'}
+          </button>
+        </div>
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className={`grid gap-6 h-full items-start ${showArchived ? 'grid-cols-1 lg:grid-cols-4' : 'grid-cols-1 lg:grid-cols-3'}`}>
+        <div className={`grid gap-6 h-full items-start ${showArchived ? 'grid-cols-1 lg:grid-cols-5' : 'grid-cols-1 lg:grid-cols-3'}`}>
         {columnsToRender.map((col) => {
           const columnJobs = filteredJobs.filter(j => j.status === col.id)
           
@@ -256,14 +340,70 @@ export function KanbanBoard() {
 
       {/* Modal Overlay */}
       {selectedJob && (
-        <JobModal 
-          job={selectedJob} 
+        <JobModal
+          job={selectedJob}
           onClose={() => setSelectedJob(null)}
           onUpdate={(updatedJob) => {
             setJobs(jobs.map(j => j.id === updatedJob.id ? updatedJob : j))
             setSelectedJob(updatedJob)
           }}
+          onDelete={handleDeleteJob}
         />
+      )}
+
+      <ConfirmDialog
+        open={confirmClearOpen}
+        danger
+        title="Clear all jobs?"
+        message={`This permanently deletes all ${jobs.length} jobs from the database. This cannot be undone.`}
+        confirmLabel="Delete All"
+        onConfirm={handleClearAll}
+        onCancel={() => setConfirmClearOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmBulkDelete}
+        danger
+        title={`Delete ${selectedIds.length} selected job${selectedIds.length > 1 ? "s" : ""}?`}
+        message="The selected jobs will be permanently removed."
+        confirmLabel="Delete"
+        onConfirm={bulkDelete}
+        onCancel={() => setConfirmBulkDelete(false)}
+      />
+
+      {/* Bulk action bar */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-2 bg-[#12141a] border border-white/10 rounded-full shadow-2xl px-3 py-2 animate-in slide-in-from-bottom-4 fade-in duration-200">
+          <span className="text-xs font-semibold text-zinc-300 px-2">{selectedIds.length} selected</span>
+          <div className="w-px h-5 bg-white/10" />
+          {[
+            { label: "Applied", status: "APPLIED" },
+            { label: "Interviewing", status: "INTERVIEWING" },
+            { label: "Rejected", status: "REJECTED" },
+            { label: "Ignored", status: "IGNORED" },
+          ].map(a => (
+            <button
+              key={a.status}
+              onClick={() => bulkSetStatus(a.status)}
+              className="px-3 py-1.5 rounded-full text-xs font-medium text-zinc-300 hover:bg-white/10 transition-colors"
+            >
+              {a.label}
+            </button>
+          ))}
+          <button
+            onClick={() => setConfirmBulkDelete(true)}
+            className="px-3 py-1.5 rounded-full text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1"
+          >
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </button>
+          <button
+            onClick={() => setSelectedIds([])}
+            className="p-1.5 rounded-full text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
+            title="Clear selection"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
     </div>
   )
