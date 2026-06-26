@@ -1,6 +1,6 @@
 import { KanbanBoard } from "./components/KanbanBoard"
 import { Button } from "@/components/ui/button"
-import { Play, Sparkles, LayoutDashboard, Settings, Bell } from "lucide-react"
+import { Play, Sparkles, LayoutDashboard } from "lucide-react"
 import axios from "axios"
 import { useState } from "react"
 import { motion } from "framer-motion"
@@ -12,7 +12,6 @@ function App() {
     setLoading(true)
     try {
       await axios.post("http://localhost:8000/api/run-scraper")
-      // Simple notification
     } catch (e) {
       console.error(e)
     } finally {
@@ -32,9 +31,9 @@ function App() {
             </div>
             <div>
               <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400 tracking-tight">
-                Antigravity ATS
+                Job Tracker Pro
               </h1>
-              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">Workspace v3.0</p>
+              <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">AutoApply Engine</p>
             </div>
           </div>
         </div>
@@ -43,14 +42,6 @@ function App() {
           <div className="px-3 py-2.5 rounded-lg bg-blue-500/10 text-blue-400 flex items-center gap-3 font-medium border border-blue-500/20 cursor-pointer">
             <LayoutDashboard className="w-4 h-4" />
             Job Pipeline
-          </div>
-          <div className="px-3 py-2.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/5 flex items-center gap-3 font-medium transition-colors cursor-pointer">
-            <Bell className="w-4 h-4" />
-            Notifications
-          </div>
-          <div className="px-3 py-2.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-white/5 flex items-center gap-3 font-medium transition-colors cursor-pointer">
-            <Settings className="w-4 h-4" />
-            Engine Settings
           </div>
         </nav>
       </aside>
@@ -61,23 +52,25 @@ function App() {
         <header className="h-20 border-b border-white/5 bg-black/20 backdrop-blur-md flex items-center justify-between px-8 z-30 sticky top-0">
           <div>
             <h2 className="text-2xl font-bold tracking-tight text-white">Pipeline Dashboard</h2>
-            <p className="text-sm text-zinc-400 mt-1">Track and manage your automated job applications.</p>
+            <p className="text-sm text-zinc-400 mt-1">Track and manage your automated job matches.</p>
           </div>
           
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button 
-              onClick={handleRunScraper} 
-              disabled={loading}
-              className={`h-11 px-6 rounded-full font-medium transition-all duration-300 shadow-lg ${
-                loading 
-                ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-white/5' 
-                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/25 hover:shadow-blue-500/40 border border-blue-400/20'
-              }`}
-            >
-              <Play className={`w-4 h-4 mr-2 ${loading ? 'animate-pulse' : ''}`} />
-              {loading ? "Engines Running..." : "Trigger Scraper"}
-            </Button>
-          </motion.div>
+          <div className="flex items-center gap-4">
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <Button 
+                onClick={handleRunScraper} 
+                disabled={loading}
+                className={`h-11 px-6 rounded-full font-medium transition-all duration-300 shadow-lg ${
+                  loading 
+                  ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed border border-white/5' 
+                  : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/25 hover:shadow-blue-500/40 border border-blue-400/20'
+                }`}
+              >
+                <Play className={`w-4 h-4 mr-2 ${loading ? 'animate-pulse' : ''}`} />
+                {loading ? "Engines Running..." : "Trigger Scraper"}
+              </Button>
+            </motion.div>
+          </div>
         </header>
 
         {/* Kanban Board Container */}

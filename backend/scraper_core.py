@@ -35,8 +35,8 @@ def has_been_notified(db: Session, url: str) -> bool:
     seven_days_ago = datetime.now() - timedelta(days=7)
     return db.query(models.Job).filter(models.Job.url == url, models.Job.created_at > seven_days_ago).first() is not None
 
-def record_job(db: Session, company: str, title: str, url: str) -> models.Job:
-    job = models.Job(company=company, title=title, url=url)
+def record_job(db: Session, company: str, title: str, url: str, location: str = "") -> models.Job:
+    job = models.Job(company=company, title=title, url=url, location=location)
     db.add(job)
     db.commit()
     db.refresh(job)
@@ -64,8 +64,8 @@ def process_greenhouse(db: Session, target: dict, keywords: List[str], locations
                 job_url = job.get("absolute_url", "")
                 if check_keywords_and_location(title, location, keywords, locations):
                     if not has_been_notified(db, job_url):
-                        record_job(db, company, title, job_url)
-                        new_jobs.append({"company": company, "title": title, "url": job_url})
+                        record_job(db, company, title, job_url, location)
+                        new_jobs.append({"company": company, "title": title, "url": job_url, "location": location})
     except Exception as e:
         logger.error(f"Error processing Greenhouse {company}: {e}")
 
@@ -82,8 +82,8 @@ def process_lever(db: Session, target: dict, keywords: List[str], locations: Lis
                 job_url = job.get("hostedUrl", "")
                 if check_keywords_and_location(title, location, keywords, locations):
                     if not has_been_notified(db, job_url):
-                        record_job(db, company, title, job_url)
-                        new_jobs.append({"company": company, "title": title, "url": job_url})
+                        record_job(db, company, title, job_url, location)
+                        new_jobs.append({"company": company, "title": title, "url": job_url, "location": location})
     except Exception as e:
         logger.error(f"Error processing Lever {company}: {e}")
 
@@ -104,7 +104,7 @@ def process_api_post(db: Session, target: dict, keywords: List[str], new_jobs: l
                     title = f"{keyword.capitalize()} Role (Automated API Match)"
                     if not has_been_notified(db, url):
                         record_job(db, company, title, url)
-                        new_jobs.append({"company": company, "title": title, "url": url})
+                        new_jobs.append({"company": company, "title": title, "url": url, "location": ""})
         except Exception as e:
             logger.error(f"Error processing API POST {company}: {e}")
 
@@ -160,7 +160,7 @@ def process_tech_mahindra(db: Session, target: dict, keywords: List[str], new_jo
                 info_url = f"{url} (Search: {keyword})"
                 if not has_been_notified(db, info_url):
                     record_job(db, company, title, info_url)
-                    new_jobs.append({"company": company, "title": title, "url": info_url})
+                    new_jobs.append({"company": company, "title": title, "url": info_url, "location": ""})
         except Exception as e:
             logger.error(f"Error Tech Mahindra {company}: {e}")
 
@@ -188,7 +188,7 @@ async def process_playwright(db: Session, targets: List[dict], keywords: List[st
                         if not has_been_notified(db, url):
                             title = f"{keyword.capitalize()} Role (Automated URL Match)"
                             record_job(db, company, title, url)
-                            new_jobs.append({"company": company, "title": title, "url": url})
+                            new_jobs.append({"company": company, "title": title, "url": url, "location": ""})
                 except Exception as e:
                     logger.error(f"Playwright error {company}: {e}")
         await browser.close()

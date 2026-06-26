@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HuntOS | Personal Career CRM</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        background: '#030303',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #030303;
+            background-image: 
+              radial-gradient(circle at 15% 50%, rgba(30, 58, 138, 0.15), transparent 25%),
+              radial-gradient(circle at 85% 30%, rgba(124, 58, 237, 0.15), transparent 25%);
+            background-attachment: fixed;
+            color: #fff;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-8 text-center">
+    
+    <div class="max-w-3xl space-y-8">
+        <div class="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 flex items-center justify-center shadow-[0_0_40px_rgba(79,70,229,0.4)]">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-white"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+        </div>
+        
+        <h1 class="font-display text-5xl md:text-7xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-500">
+            HuntOS
+        </h1>
+        
+        <p class="text-xl text-zinc-400 font-medium">
+            An automated, full-stack Applicant Tracking System designed for job seekers.
+        </p>
+
+        <div class="grid md:grid-cols-3 gap-6 text-left mt-12">
+            <div class="bg-zinc-900/50 backdrop-blur-md p-6 rounded-2xl border border-white/10">
+                <h3 class="font-display font-bold text-lg mb-2 text-blue-400">Automated Scraping</h3>
+                <p class="text-sm text-zinc-400">Headless Playwright engine safely extracts matching job roles from enterprise ATS providers.</p>
+            </div>
+            <div class="bg-zinc-900/50 backdrop-blur-md p-6 rounded-2xl border border-white/10">
+                <h3 class="font-display font-bold text-lg mb-2 text-indigo-400">Kanban Pipeline</h3>
+                <p class="text-sm text-zinc-400">Beautiful React + Framer Motion drag-and-drop dashboard to seamlessly track applications.</p>
+            </div>
+            <div class="bg-zinc-900/50 backdrop-blur-md p-6 rounded-2xl border border-white/10">
+                <h3 class="font-display font-bold text-lg mb-2 text-purple-400">Containerized</h3>
+                <p class="text-sm text-zinc-400">Deployed via multi-container Docker Compose architectures featuring FastAPI and Nginx.</p>
+            </div>
+        </div>
+
+        <div class="pt-8">
+            <a href="https://github.com/yourusername/job-scraper" class="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-white text-black font-bold hover:scale-105 transition-transform">
+                View Source on GitHub
+            </a>
+        </div>
+    </div>
+
+</body>
+</html>

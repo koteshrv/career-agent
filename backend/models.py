@@ -9,6 +9,7 @@ class Job(Base):
     company = Column(String, index=True)
     title = Column(String, index=True)
     url = Column(String, unique=True, index=True)
+    location = Column(String, nullable=True)
     
     # New v3.0 ATS fields
     status = Column(String, default="NEW") # NEW, APPLIED, INTERVIEWING, REJECTED, IGNORED
