@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatISTDate } from "@/lib/datetime"
 import { api } from "@/lib/api"
-import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X } from "lucide-react"
+import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X, Globe } from "lucide-react"
 import { JobModal } from "./JobModal"
 import { useToast } from "./Toast"
 import { ConfirmDialog } from "./ConfirmDialog"
@@ -218,7 +218,11 @@ export function KanbanBoard() {
               </div>
               {loc && (
                 <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                  <MapPin className="w-3.5 h-3.5" />
+                  {loc.startsWith("Extension") ? (
+                    <Globe className="w-3.5 h-3.5 text-blue-400" />
+                  ) : (
+                    <MapPin className="w-3.5 h-3.5" />
+                  )}
                   {loc}
                 </div>
               )}

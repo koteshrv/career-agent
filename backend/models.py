@@ -35,6 +35,10 @@ class Settings(Base):
     active_companies = Column(String, nullable=True) # JSON array of active companies
     search_keywords = Column(String, nullable=True) # JSON array of search keywords
     extracted_keywords = Column(String, nullable=True) # JSON array of keywords extracted from resume
+    total_prompt_tokens = Column(Integer, default=0)
+    total_candidate_tokens = Column(Integer, default=0)
+    custom_guidelines = Column(String, nullable=True)
+    model_telemetry = Column(String, nullable=True) # JSON object tracking per-model statistics
 
 class ScraperLog(Base):
     __tablename__ = "scraper_logs"

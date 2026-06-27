@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import type { Job } from "./KanbanBoard"
 import { Button } from "@/components/ui/button"
-import { Sparkles, MapPin, Calendar, ExternalLink, X, FileText, Trash2, Download } from "lucide-react"
+import { Sparkles, MapPin, Calendar, ExternalLink, X, FileText, Trash2, Download, Globe } from "lucide-react"
 import { formatISTDate } from "@/lib/datetime"
 import { api } from "@/lib/api"
 import { useToast } from "./Toast"
@@ -221,7 +221,14 @@ const TECH_KEYWORDS = [
             <div className="flex items-center gap-4 mt-2 text-sm text-zinc-400">
               <span className="font-semibold text-blue-400">{job.company}</span>
               {job.location && (
-                <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" />{job.location}</span>
+                <span className="flex items-center gap-1">
+                  {job.location.startsWith("Extension") ? (
+                    <Globe className="w-3.5 h-3.5 text-blue-400" />
+                  ) : (
+                    <MapPin className="w-3.5 h-3.5" />
+                  )}
+                  {job.location}
+                </span>
               )}
               <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatISTDate(job.created_at, true)}</span>
             </div>

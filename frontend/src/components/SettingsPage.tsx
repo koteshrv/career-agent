@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrapeConfig } from "./ScrapeConfig"
 import { useToast } from "./Toast"
-import { FileText, Trash2 } from "lucide-react"
+import { FileText, Trash2, Cpu, X } from "lucide-react"
 
 export function SettingsPage() {
   const { toast } = useToast()
@@ -23,6 +23,51 @@ export function SettingsPage() {
   const [resumeName, setResumeName] = useState("")
   const [uploading, setUploading] = useState(false)
   const [resumes, setResumes] = useState<string[]>([])
+  const [newSkill, setNewSkill] = useState("")
+
+  const handleAddSkill = async () => {
+    if (!newSkill.trim()) return
+    let current = []
+    try {
+      if (settings.extracted_keywords) {
+        current = JSON.parse(settings.extracted_keywords)
+      }
+    } catch (e) {}
+    if (!Array.isArray(current)) current = []
+    if (current.includes(newSkill.trim())) {
+      toast("Skill already exists", "error")
+      return
+    }
+    const updatedKws = [...current, newSkill.trim()]
+    const updatedSettings = { ...settings, extracted_keywords: JSON.stringify(updatedKws) }
+    try {
+      await api.put("/api/settings", updatedSettings)
+      setSettings(updatedSettings)
+      setNewSkill("")
+      toast("Skill added", "success")
+    } catch {
+      toast("Failed to add skill", "error")
+    }
+  }
+
+  const handleDeleteSkill = async (skillToDelete: string) => {
+    let current = []
+    try {
+      if (settings.extracted_keywords) {
+        current = JSON.parse(settings.extracted_keywords)
+      }
+    } catch (e) {}
+    if (!Array.isArray(current)) current = []
+    const updatedKws = current.filter((k: string) => k !== skillToDelete)
+    const updatedSettings = { ...settings, extracted_keywords: JSON.stringify(updatedKws) }
+    try {
+      await api.put("/api/settings", updatedSettings)
+      setSettings(updatedSettings)
+      toast("Skill removed", "success")
+    } catch {
+      toast("Failed to remove skill", "error")
+    }
+  }
 
   useEffect(() => {
     api.get("/api/settings").then(res => {
@@ -162,26 +207,53 @@ export function SettingsPage() {
           <p className="text-xs text-zinc-500">Leave the name blank to keep the original filename. The extension is added automatically.</p>
         </div>
 
-        {settings?.extracted_keywords && (() => {
-          try {
-            const kws = JSON.parse(settings.extracted_keywords)
-            if (Array.isArray(kws) && kws.length > 0) {
-              return (
-                <div className="mt-6 pt-6 border-t border-white/5">
-                  <h4 className="text-sm font-bold text-white mb-3">AI Extracted Skills (Match Score Baseline)</h4>
-                  <div className="flex flex-wrap gap-2">
+        <div className="mt-6 pt-6 border-t border-white/5 space-y-3">
+          <h4 className="text-sm font-bold text-white uppercase tracking-wider">Baseline Match Skills</h4>
+          <p className="text-xs text-zinc-500">These skills are matched against fetched Job Descriptions to calculate your Match Score. You can edit them manually below.</p>
+          
+          {(() => {
+            try {
+              const kws = settings?.extracted_keywords ? JSON.parse(settings.extracted_keywords) : []
+              if (Array.isArray(kws) && kws.length > 0) {
+                return (
+                  <div className="flex flex-wrap gap-2 mb-3">
                     {kws.map(k => (
-                      <span key={k} className="px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-medium">
+                      <span key={k} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-medium">
                         {k}
+                        <button 
+                          onClick={() => handleDeleteSkill(k)}
+                          className="hover:text-red-400 hover:bg-red-500/10 rounded-sm p-0.5 transition-colors"
+                          title="Remove skill"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
                       </span>
                     ))}
                   </div>
-                </div>
-              )
-            }
-          } catch (e) {}
-          return null;
-        })()}
+                )
+              }
+            } catch (e) {}
+            return <div className="text-xs text-zinc-600 italic mb-2">No baseline skills saved yet. Upload a resume or add some manually below.</div>
+          })()}
+
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              value={newSkill}
+              onChange={e => setNewSkill(e.target.value)}
+              placeholder="Add skill (e.g. Docker, APIM)"
+              className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+              onKeyDown={e => { if (e.key === 'Enter') handleAddSkill() }}
+            />
+            <Button
+              onClick={handleAddSkill}
+              disabled={!newSkill.trim()}
+              className="bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs shrink-0"
+            >
+              Add Skill
+            </Button>
+          </div>
+        </div>
 
         <div className="space-y-4 pt-4 border-t border-white/5">
           <div>
@@ -214,8 +286,20 @@ export function SettingsPage() {
             </datalist>
             <p className="text-xs text-zinc-500 mt-1">Pick a suggestion or type any Gemini model name your key has access to.</p>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">Custom AI Tailoring Guidelines</label>
+            <textarea
+              value={settings.custom_guidelines || ""}
+              onChange={e => setSettings({...settings, custom_guidelines: e.target.value})}
+              className="w-full h-24 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 text-sm resize-none custom-scrollbar"
+              placeholder="e.g. Keep resume job titles exactly as they are. Sound humble, focus on system design and scaling bullet points, avoid corporate jargon."
+            />
+            <p className="text-xs text-zinc-500 mt-1">These custom directives are safely appended to all resume and cover letter generation prompts.</p>
+          </div>
         </div>
       </div>
+
 
       <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl space-y-4">
         <h3 className="text-lg font-bold text-white mb-2">System Settings</h3>

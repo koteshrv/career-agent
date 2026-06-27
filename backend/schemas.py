@@ -57,6 +57,10 @@ class SettingsBase(BaseModel):
     active_companies: Optional[str] = None
     search_keywords: Optional[str] = None
     extracted_keywords: Optional[str] = None
+    total_prompt_tokens: Optional[int] = 0
+    total_candidate_tokens: Optional[int] = 0
+    custom_guidelines: Optional[str] = None
+    model_telemetry: Optional[str] = None
 
 class Settings(SettingsBase):
     id: int

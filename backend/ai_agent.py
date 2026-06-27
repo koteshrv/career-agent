@@ -73,6 +73,53 @@ def extract_resume_text(name: str = None) -> str:
         logger.error(f"Failed to read resume '{path.name}': {e}")
         return ""
 
+def record_token_usage(model_name: str, prompt_tokens: int, candidate_tokens: int):
+    """Accrues Gemini API token usage per model at project level in database settings."""
+    from .database import SessionLocal
+    from . import models
+    import json
+    from datetime import date
+    
+    db = SessionLocal()
+    try:
+        settings = db.query(models.Settings).first()
+        if settings:
+            # 1. Update global metrics
+            settings.total_prompt_tokens = (settings.total_prompt_tokens or 0) + prompt_tokens
+            settings.total_candidate_tokens = (settings.total_candidate_tokens or 0) + candidate_tokens
+            
+            # 2. Update per-model telemetry logs
+            telemetry = {}
+            if settings.model_telemetry:
+                try:
+                    telemetry = json.loads(settings.model_telemetry)
+                except Exception:
+                    telemetry = {}
+            
+            normalized_model = model_name or "unknown-model"
+            if normalized_model not in telemetry:
+                telemetry[normalized_model] = {"requests": 0, "prompt_tokens": 0, "candidate_tokens": 0}
+            
+            model_stats = telemetry[normalized_model]
+            today_str = date.today().isoformat()
+            
+            # Reset daily counter if it's a new day
+            if model_stats.get("last_request_date") != today_str:
+                model_stats["today_requests"] = 0
+                model_stats["last_request_date"] = today_str
+            
+            model_stats["requests"] = model_stats.get("requests", 0) + 1
+            model_stats["prompt_tokens"] = model_stats.get("prompt_tokens", 0) + prompt_tokens
+            model_stats["candidate_tokens"] = model_stats.get("candidate_tokens", 0) + candidate_tokens
+            model_stats["today_requests"] = model_stats.get("today_requests", 0) + 1
+            
+            settings.model_telemetry = json.dumps(telemetry)
+            db.commit()
+    except Exception as e:
+        logger.error(f"Failed to record token usage: {e}")
+    finally:
+        db.close()
+
 def _generate(prompt: str, api_key: str = None, model_name: str = None) -> str:
     """Run a prompt through Gemini, falling back to lower models on error."""
     resolved_key = api_key or ENV_API_KEY
@@ -90,6 +137,11 @@ def _generate(prompt: str, api_key: str = None, model_name: str = None) -> str:
     for model in chain:
         try:
             response = client.models.generate_content(model=model, contents=prompt)
+            # Record token metrics
+            if hasattr(response, 'usage_metadata') and response.usage_metadata:
+                pt = response.usage_metadata.prompt_token_count or 0
+                ct = response.usage_metadata.candidates_token_count or 0
+                record_token_usage(model, pt, ct)
             return response.text
         except Exception as e:
             last_err = str(e)
@@ -98,12 +150,32 @@ def _generate(prompt: str, api_key: str = None, model_name: str = None) -> str:
                 break  # auth/config issue — fallback won't help
     return f"Error generating content (all models failed). Last error: {last_err}"
 
+def _get_custom_guidelines() -> str:
+    """Helper to fetch custom user guidelines from the Settings database."""
+    from .database import SessionLocal
+    from . import models
+    db = SessionLocal()
+    try:
+        settings = db.query(models.Settings).first()
+        if settings and settings.custom_guidelines:
+            return settings.custom_guidelines.strip()
+    except Exception:
+        pass
+    finally:
+        db.close()
+    return ""
+
 def generate_cover_letter(job_title: str, company: str, location: str = "", description: str = "", api_key: str = None, model_name: str = None, resume_name: str = None) -> str:
     resume_text = extract_resume_text(resume_name)
     if not resume_text:
         return "Error: Could not read resume. Please upload your resume first."
 
     jd_context = f"\n\nJob Description Context:\n---\n{description}\n---\n" if description else ""
+    
+    # Inject user guidelines if configured
+    guidelines = _get_custom_guidelines()
+    custom_directive = f"\nCRITICAL USER PERSONAL DIRECTIVES/GUIDELINES:\n{guidelines}\n" if guidelines else ""
+
     prompt = f"""
 You are an expert career coach and professional writer.
 Write a concise, modern, and highly persuasive cover letter for the role of {job_title} at {company} {f'located in {location}' if location else ''}.
@@ -118,6 +190,7 @@ Requirements:
 - Keep it under 3 paragraphs.
 - Be highly confident and direct.
 - Focus strictly on matching the resume skills to the likely requirements of {job_title}{' based on the provided Job Description context' if description else ''}.
+{custom_directive}
 """
     return _generate(prompt, api_key, model_name)
 
@@ -133,6 +206,10 @@ def generate_tailored_resume(job_title: str, company: str, location: str = "", d
 
     escape_directive = "\nCRITICAL LATEX REQUIREMENT:\nYou MUST escape ALL special LaTeX characters in the content you generate. Specifically, you must replace '&' with '\&', '%' with '\%', '$' with '\$', and '_' with '\_'. Failure to escape these characters will cause the compiler to crash!" if is_tex else ""
 
+    # Inject user guidelines if configured
+    guidelines = _get_custom_guidelines()
+    custom_directive = f"\nCRITICAL USER PERSONAL DIRECTIVES/GUIDELINES:\n{guidelines}\n" if guidelines else ""
+
     shared = f"""You are an expert technical recruiter and professional resume writer.
 Rewrite and tailor the resume below for the role of {job_title} at {company} {f'located in {location}' if location else ''}.
 {jd_context}
@@ -143,9 +220,11 @@ Original resume:
 
 Rules:
 - Keep ONLY truthful information from the original resume. Do NOT invent experience, employers, or dates.
-- Reorder, reword, and emphasize the bullet points and skills most relevant to a {job_title} role{' as outlined in the Job Description' if description else ''}.
-- Rewrite the professional summary to target this specific role.
+- CRITICAL: Do NOT inflate or escalate job titles. Keep the original job titles (e.g. 'Senior Software Engineer') exactly as they are in the original resume. Do NOT change them to 'Lead', 'Staff', or 'Manager' even if the target job description is for a higher level.
+- Reorder, reword, and emphasize the bullet points and skills most relevant to a {job_title} role{' as outlined in the Job Description' if description else ''}, but do NOT exaggerate responsibilities.
+- Rewrite the professional summary to target this specific role while remaining strictly honest to your true seniority.
 - Surface keywords a {job_title} job description and ATS would look for, but only where the resume genuinely supports them.
+{custom_directive}
 {escape_directive}"""
 
     if is_tex:
