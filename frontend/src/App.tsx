@@ -44,7 +44,7 @@ function Layout() {
             Live Demo — running with sample data
           </span>
           <span className="text-white/50">·</span>
-          <a href="https://github.com/koteshrv/job-scraper" target="_blank" rel="noopener noreferrer"
+          <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer"
             className="underline underline-offset-2 hover:text-white/80 transition-colors">
             ⭐ Star on GitHub
           </a>

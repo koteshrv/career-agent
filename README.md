@@ -1,103 +1,68 @@
 <div align="center">
-  <img src="assets/logo.svg" width="96" height="96" alt="Job Tracker Pro Logo">
-  <h1 align="center">Job Tracker Pro</h1>
-  <p align="center">
-    <strong>A self-hosted, full-stack Personal Applicant Tracking System (ATS).</strong>
-    <br />
-    <br />
-    <a href="https://koteshrv.github.io/job-tracker-pro">View Demo</a>
-    ·
-    <a href="#-features">Explore Features</a>
-    ·
-    <a href="#-quick-start">Installation</a>
-    ·
-    <a href="#-configuration">Configuration</a>
-  </p>
+  <img src="frontend/public/favicon.svg" alt="CareerAgent Logo" width="120" />
+  
+  # CareerAgent
+  
+  **Enterprise-grade AI Career Platform.**  
+  Automates job discovery, dynamically aligns resumes to JD requirements, and generates pristine LaTeX PDFs for flawless ATS parsing.
+
+  [![GitHub Stars](https://img.shields.io/github/stars/koteshrv/career-agent.svg)](https://github.com/koteshrv/career-agent/stargazers)
+  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+  [![React](https://img.shields.io/badge/React-19-blue.svg)](https://react.dev/)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green.svg)](https://fastapi.tiangolo.com/)
+
 </div>
 
-<div align="center">
-  <a href="https://reactjs.org/"><img src="https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react" alt="React"></a>
-  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.109-009688?style=for-the-badge&logo=fastapi" alt="FastAPI"></a>
-  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED?style=for-the-badge&logo=docker" alt="Docker"></a>
-  <a href="https://playwright.dev/"><img src="https://img.shields.io/badge/Playwright-Automated-2EAD33?style=for-the-badge&logo=playwright" alt="Playwright"></a>
-  <a href="https://ai.google.dev/"><img src="https://img.shields.io/badge/Gemini-AI_Tailored-8E75B2?style=for-the-badge&logo=google" alt="Gemini"></a>
-</div>
+<br/>
 
-<br />
+CareerAgent is an open-source, multi-LLM platform engineered to automate your job search while maintaining the highest standards of data privacy and professional formatting. 
 
-Job Tracker Pro is an open-source automation tool designed to streamline your job search. It safely scrapes listings from heavily obfuscated enterprise ATS portals (Taleo, Workday) and modern platforms (Greenhouse, Lever), helps you track your pipeline via a Kanban board, and leverages Gemini AI to generate bespoke `.tex` resumes and cover letters for each specific role.
+It finds jobs via Telegram/web scraping, extracts competencies using AI, perfectly aligns your qualifications with the job description, and compiles mathematically perfect LaTeX PDFs designed to bypass corporate Applicant Tracking Systems (ATS) cleanly.
 
 ## ✨ Features
 
-- **Automated Hybrid Scraper** 
-  - Extracts direct roles using fast JSON parsing for Lever and Greenhouse endpoints.
-  - Bypasses Web Application Firewalls (like Akamai) using a headless Playwright engine with stealth capabilities to scrape enterprise portals.
-  - Deduplicates jobs into a local SQLite database (`jobs.db`) to eliminate alert fatigue.
+- **Intelligent ATS Alignment**: Ensure your true qualifications are recognized. CareerAgent dynamically aligns your resume with job requirements for accurate parsing by enterprise ATS platforms (Taleo, Workday, Greenhouse).
+- **LaTeX Precision**: Generates mathematically perfect PDFs via LaTeX. Ensuring 100% data fidelity when parsed by automated systems.
+- **100% Private (Local LLMs)**: Plug in Ollama and run Llama-3 locally. Your career data never touches Google or OpenAI servers if you require strict privacy.
+- **Multi-LLM Routing**: Configure prioritized fallback chains (e.g., Gemini → Claude → OpenAI) for maximum reliability and rate-limit management.
+- **Automated Pipeline**: A beautiful Kanban dashboard to track jobs from `NEW` to `APPLIED` to `INTERVIEWING`.
 
-- **Kanban Application Pipeline**
-  - A responsive React + Vite frontend with Tailwind CSS and glassmorphism styling.
-  - Drag-and-drop jobs through stages (New, Applied, Interviewing, Rejected).
-  - Bulk multi-select actions for rapid pipeline triage.
+## 🚀 Getting Started
 
-- **AI-Tailored Resumes & Cover Letters** 
-  - Integrates directly with Google Gemini AI.
-  - Generates bespoke resumes and cover letters mapped specifically to extracted job descriptions.
-  - Export tailored resumes as raw `.tex` source or a compiled PDF via jsPDF.
+### Prerequisites
+- Node.js (v20+)
+- Python (3.11+)
+- API Keys (OpenAI, Gemini, Anthropic) or local Ollama running.
 
-- **Multi-Resume Management** 
-  - Upload and manage multiple base resumes (supports both `.pdf` and `.tex` files).
-  - Select any base resume as the context source when generating tailored applications.
-
-- **Secure & Containerized**
-  - Full JWT authentication (username/password) secures your web dashboard.
-  - Entire application runs in a multi-container Docker Compose architecture (FastAPI backend + Vite frontend).
-
-- **Real-Time Telegram Alerts** 
-  - Get batched push notifications for newly found job postings directly to your phone.
-
-## 🚀 Quick Start
-
-### 1. Configure Environment
-Clone the repository and set up your local environment:
+### 1. Start the Backend (FastAPI)
 ```bash
-git clone https://github.com/koteshrv/job-tracker-pro.git
-cd job-tracker-pro
-cp .env.example .env
-```
-Open `.env` and fill in your details:
-- `APP_USERNAME` & `APP_PASSWORD`: Credentials to secure your web dashboard.
-- `GEMINI_API_KEY`: Required for AI resume/cover letter tailoring.
-- *(Optional)* `TELEGRAM_BOT_TOKEN` & `TELEGRAM_CHAT_ID`: For mobile alerts.
+cd backend
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
-### 2. Build & Run
-The easiest way to start both the backend and frontend is via Docker Compose:
+# Start the server
+uvicorn main:app --reload --port 8000
+```
+
+### 2. Start the Frontend (React + Vite)
 ```bash
-docker-compose up -d --build
+cd frontend
+npm install
+npm run dev
 ```
-Alternatively, to run the services natively:
+
+Visit `http://localhost:5173` to access the CareerAgent dashboard.
+
+## 📸 Demo Mode
+Want to see the UI without running a backend? You can run the frontend in demo mode with mocked data:
 ```bash
-./start.sh
+cd frontend
+VITE_DEMO_MODE=true npm run dev
 ```
-This spawns the FastAPI Backend on `http://localhost:8000` and the Vite Frontend on `http://localhost:5173` (or `5174` if busy).
 
-### 3. Log In
-Open your browser to the frontend URL (e.g., `http://localhost:5173`). 
-Log in using the credentials defined in your `.env` file.
-
-## 🎯 Configuration
-
-### Managing Targets
-The application is driven by `targets.json`, which dictates which companies are scraped:
-- **Greenhouse / Lever:** Simply provide the company name and their ATS Board Token.
-- **Playwright Targets:** Provide the search URL. The engine extracts job URLs automatically, or gracefully falls back to presence detection if the site structure is highly obfuscated.
-
-### Dashboard Settings
-Search keywords, active companies, and the background Cron schedule can be configured directly from the **Settings** page in the web dashboard—no code modifications required.
-
-## 🛠️ Tech Stack
-- **Frontend:** React, Vite, Tailwind CSS, Lucide Icons, jsPDF.
-- **Backend:** Python, FastAPI, SQLite, Playwright, PyPDF2, Google Generative AI (Gemini).
-- **Deployment:** Docker, Docker Compose, GitHub Actions.
+## 🤝 Contributing
+Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/koteshrv/career-agent/issues).
 
 ## 📄 License
-This project is licensed under the MIT License.
+This project is [MIT](https://opensource.org/licenses/MIT) licensed.

@@ -1,6 +1,6 @@
 import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
-import { ShieldAlert, Zap, Lock, Sparkles, Terminal, FileText, ArrowRight, Code2 } from "lucide-react"
+import { ShieldAlert, Zap, Lock, Sparkles, FileText, ArrowRight, Code2 } from "lucide-react"
 import { useState, useEffect } from "react"
 
 export function LandingPage() {
@@ -25,7 +25,7 @@ export function LandingPage() {
     let currentLog = 0
     let currentChar = 0
     let text = ""
-    let timeout: NodeJS.Timeout
+    let timeout: ReturnType<typeof setTimeout>
 
     const typeWriter = () => {
       if (currentLog < logs.length) {
@@ -93,7 +93,7 @@ export function LandingPage() {
             <span className="font-bold text-lg tracking-tight">CareerAgent</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="https://github.com/koteshrv/job-scraper" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-2">
+            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-2">
               <Code2 className="w-4 h-4" />
               GitHub
             </a>
@@ -164,7 +164,7 @@ export function LandingPage() {
                   Launch Demo <ArrowRight className="w-5 h-5" />
                 </button>
                 <a 
-                  href="https://github.com/koteshrv/job-scraper" 
+                  href="https://github.com/koteshrv/career-agent" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all"
