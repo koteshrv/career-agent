@@ -1,7 +1,11 @@
-name: Deploy Demo Page to GitHub Pages
+name: Deploy Demo to GitHub Pages
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [main]          # Auto-deploy on every push to main
+    paths:
+      - 'frontend/**'         # Only when frontend changes
+  workflow_dispatch:           # Also allow manual trigger
 
 permissions:
   contents: read
@@ -13,20 +17,49 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build demo (static, no backend)
+        working-directory: frontend
+        env:
+          VITE_DEMO_MODE: "true"
+          # Set base to your GitHub Pages path e.g. /job-scraper/
+          # Change this to match your repo name if different
+          VITE_BASE_URL: "/job-scraper/"
+        run: npm run build
+
+      # GitHub Pages can't handle client-side routing without this:
+      # Copy index.html as 404.html so deep links still work.
+      - name: Fix SPA routing for GitHub Pages
+        run: cp frontend/dist/index.html frontend/dist/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
   deploy:
+    needs: build
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: 'demo'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

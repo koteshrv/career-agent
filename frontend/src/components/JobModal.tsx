@@ -87,7 +87,6 @@ const TECH_KEYWORDS = [
     }
   }, [description, extractedKeywords])
 
-  const resumeParam = selectedResume ? `?resume=${encodeURIComponent(selectedResume)}` : ""
 
   const handleSaveNotes = async () => {
     setSavingNotes(true)

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrapeConfig } from "./ScrapeConfig"
 import { useToast } from "./Toast"
-import { FileText, Trash2, Cpu, X, Check, ShieldCheck, ShieldAlert, Lock } from "lucide-react"
+import { FileText, Trash2, X, Check, ShieldCheck, ShieldAlert, Lock } from "lucide-react"
 
 // ── Model Priority Picker (drag-to-reorder) ────────────────────────────────────
 type ModelSuggestion = { value: string; label: string; badge?: string }
