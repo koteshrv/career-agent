@@ -6,7 +6,7 @@ import App from './App.tsx'
 import { ToastProvider } from './components/Toast'
 
 createRoot(document.getElementById('root')!).render(
-  <BrowserRouter>
+  <BrowserRouter basename={import.meta.env.BASE_URL}>
     <ToastProvider>
       <App />
     </ToastProvider>
