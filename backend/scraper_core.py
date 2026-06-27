@@ -5,12 +5,23 @@ import asyncio
 import urllib.parse
 import re
 import os
+from pydantic import BaseModel, HttpUrl
+try:
+    from pyvirtualdisplay import Display
+    HAS_VIRTUAL_DISPLAY = True
+except ImportError:
+    HAS_VIRTUAL_DISPLAY = False
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 from sqlalchemy.orm import Session
 from . import models, schemas
 from playwright.async_api import async_playwright
 from playwright_stealth import Stealth
+try:
+    from fake_useragent import UserAgent
+    ua = UserAgent(os="windows", browsers=["chrome", "edge"])
+except ImportError:
+    ua = None
 
 logger = logging.getLogger(__name__)
 
@@ -229,11 +240,107 @@ async def extract_playwright_jobs(page, keyword: str, selector: str = None) -> L
         jobs.append({"title": title, "href": href})
     return jobs[:25]
 
+async def fetch_job_description(url: str) -> str:
+    """Fetch visible text from a URL using headless Playwright."""
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-blink-features=AutomationControlled"])
+            context = await browser.new_context(viewport={"width": 1280, "height": 800})
+            page = await context.new_page()
+            await Stealth().apply_stealth_async(page)
+            
+            await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            
+            # Remove scripts, styles, and nav elements to get clean text
+            await page.evaluate('''() => {
+                document.querySelectorAll('script, style, noscript, nav, header, footer, iframe, svg').forEach(el => el.remove());
+            }''')
+            
+            # Extract text from body
+            text = await page.locator("body").inner_text()
+            await browser.close()
+            
+            # Clean up excessive whitespace
+            clean_text = re.sub(r'\\n+', '\\n\\n', text).strip()
+            return clean_text
+    except Exception as e:
+        logger.error(f"Failed to fetch JD from {url}: {e}")
+        return ""
+
+async def fetch_job_description(url: str) -> str:
+    """Fetch visible text from a URL using headless Playwright."""
+    
+    # Optional virtual display for Docker environments to bypass Cloudflare
+    display = None
+    if HAS_VIRTUAL_DISPLAY:
+        try:
+            display = Display(visible=0, size=(1280, 800))
+            display.start()
+        except Exception as e:
+            logger.warning(f"Could not start virtual display, falling back to standard: {e}")
+            display = None
+
+    try:
+        async with async_playwright() as p:
+            args = [
+                "--no-sandbox",
+                "--disable-blink-features=AutomationControlled",
+                "--disable-reading-from-canvas",
+                "--disable-webgl"
+            ]
+            browser = await p.chromium.launch(headless=False, args=args)
+            context = await browser.new_context(
+                viewport={"width": 1280, "height": 800},
+                user_agent=ua.random if ua else None
+            )
+            page = await context.new_page()
+            await Stealth().apply_stealth_async(page)
+            
+            await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+            
+            # Remove scripts, styles, and nav elements to get clean text
+            await page.evaluate('''() => {
+                document.querySelectorAll('script, style, noscript, nav, header, footer, iframe, svg').forEach(el => el.remove());
+            }''')
+            
+            # Extract text from body
+            text = await page.locator("body").inner_text()
+            await browser.close()
+            
+            # Clean up excessive whitespace
+            clean_text = re.sub(r'\\n+', '\\n\\n', text).strip()
+            
+            if "Cloudflare Ray ID:" in clean_text or "Sorry, you have been blocked" in clean_text:
+                raise ValueError("Cloudflare bot protection blocked the request.")
+                
+            return clean_text
+    except ValueError as ve:
+        logger.warning(f"JD fetch blocked: {ve}")
+        raise
+    except Exception as e:
+        logger.error(f"Failed to fetch JD from {url}: {e}")
+        return ""
+    finally:
+        if display:
+            try:
+                display.stop()
+            except Exception:
+                pass
+
 async def process_playwright(db: Session, targets: List[dict], keywords: List[str], new_jobs: list):
     if not targets: return
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-blink-features=AutomationControlled"])
-        context = await browser.new_context(viewport={"width": 1280, "height": 800})
+        args = [
+            "--no-sandbox",
+            "--disable-blink-features=AutomationControlled",
+            "--disable-reading-from-canvas",
+            "--disable-webgl"
+        ]
+        browser = await p.chromium.launch(headless=True, args=args)
+        context = await browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent=ua.random if ua else None
+        )
         page = await context.new_page()
         await Stealth().apply_stealth_async(page)
         

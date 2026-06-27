@@ -14,9 +14,10 @@ export type Job = {
   company: string
   title: string
   url: string
-  location?: string
+  location: string | null
   status: string
-  notes?: string
+  notes: string | null
+  description: string | null
   cover_letter?: string
   tailored_resume?: string
   created_at: string
@@ -255,7 +256,7 @@ export function KanbanBoard() {
             {showArchived ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             {showArchived ? 'Hide Closed' : 'Show Closed'}
             {archivedCount > 0 && (
-              <span className="bg-white/10 px-1.5 py-0.5 rounded-md ml-1">{archivedCount}</span>
+              <span className="bg-white/10 px-1.5 py-0.5 rounded-md ml-1">{archivedCount} jobs</span>
             )}
           </button>
 
@@ -271,7 +272,7 @@ export function KanbanBoard() {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div className={`grid gap-6 h-full items-start ${showArchived ? 'grid-cols-1 lg:grid-cols-5' : 'grid-cols-1 lg:grid-cols-3'}`}>
+        <div className={`grid gap-6 h-full items-start ${showArchived ? 'grid-cols-1 lg:grid-cols-6' : 'grid-cols-1 lg:grid-cols-3'}`}>
         {columnsToRender.map((col) => {
           const columnJobs = filteredJobs.filter(j => j.status === col.id)
           

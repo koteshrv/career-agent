@@ -17,6 +17,8 @@ interface JobModalProps {
 export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
   const { toast } = useToast()
   const [notes, setNotes] = useState(job.notes || "")
+  const [description, setDescription] = useState(job.description || "")
+  const [fetchingJD, setFetchingJD] = useState(false)
   const [savingNotes, setSavingNotes] = useState(false)
   const [generatingCL, setGeneratingCL] = useState(false)
   const [clError, setClError] = useState<string | null>(null)
@@ -28,6 +30,8 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
   const [selectedResume, setSelectedResume] = useState<string>("")
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [extractedKeywords, setExtractedKeywords] = useState<string[]>([])
+  const [matchScore, setMatchScore] = useState<number | null>(null)
 
   useEffect(() => {
     api.get("/api/resumes").then(res => {
@@ -35,7 +39,25 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
       setResumes(list)
       if (list.length) setSelectedResume(list[0])
     })
+    api.get("/api/settings").then(res => {
+      if (res.data.extracted_keywords) {
+        try {
+          const kws = JSON.parse(res.data.extracted_keywords)
+          if (Array.isArray(kws)) setExtractedKeywords(kws)
+        } catch (e) {}
+      }
+    })
   }, [])
+
+  useEffect(() => {
+    if (description && extractedKeywords.length > 0) {
+      const jdLower = description.toLowerCase()
+      const found = extractedKeywords.filter(k => jdLower.includes(k.toLowerCase())).length
+      setMatchScore(Math.round((found / extractedKeywords.length) * 100))
+    } else {
+      setMatchScore(null)
+    }
+  }, [description, extractedKeywords])
 
   const resumeParam = selectedResume ? `?resume=${encodeURIComponent(selectedResume)}` : ""
 
@@ -49,6 +71,30 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
       toast("Error saving notes", "error")
     }
     setSavingNotes(false)
+  }
+
+  const handleSaveDescription = async () => {
+    try {
+      const res = await api.put(`/api/jobs/${job.id}`, { description })
+      onUpdate(res.data)
+      toast("Description saved", "success")
+    } catch {
+      toast("Error saving description", "error")
+    }
+  }
+
+  const handleFetchJD = async () => {
+    setFetchingJD(true)
+    try {
+      const res = await api.post(`/api/jobs/${job.id}/fetch-jd`)
+      setDescription(res.data.description)
+      onUpdate({...job, description: res.data.description})
+      toast("Job Description fetched!", "success")
+    } catch (e: any) {
+      const msg = e.response?.data?.detail || "Failed to fetch JD. You can paste it manually."
+      toast(msg, "error")
+    }
+    setFetchingJD(false)
   }
 
   const handleSoftDelete = async () => {
@@ -201,6 +247,39 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
                 {savingNotes ? "Saving..." : "Save Notes"}
               </Button>
             </div>
+          </div>
+
+          {/* JD Section */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Job Description</h3>
+              <Button 
+                onClick={handleFetchJD} 
+                disabled={fetchingJD}
+                className="bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs shadow-lg shadow-blue-500/20"
+              >
+                {fetchingJD ? "Fetching..." : "Fetch JD"}
+              </Button>
+            </div>
+            {matchScore !== null && (
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-xs font-bold text-zinc-400">Match Score</span>
+                <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-1000 ${matchScore > 70 ? 'bg-green-500' : matchScore > 40 ? 'bg-amber-500' : 'bg-red-500'}`} 
+                    style={{ width: `${matchScore}%` }} 
+                  />
+                </div>
+                <span className="text-xs font-bold text-white">{matchScore}%</span>
+              </div>
+            )}
+            <textarea 
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={handleSaveDescription}
+              placeholder="Paste the full job description here, or click Fetch..."
+              className="w-full h-48 bg-black/40 border border-white/10 rounded-xl p-4 text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 resize-none custom-scrollbar text-sm font-sans"
+            />
           </div>
 
           {/* Shared Resume Selector for AI generation */}

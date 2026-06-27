@@ -10,6 +10,7 @@ class Job(Base):
     title = Column(String, index=True)
     url = Column(String, unique=True, index=True)
     location = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
     
     # New v3.0 ATS fields
     status = Column(String, default="NEW") # NEW, APPLIED, INTERVIEWING, REJECTED, IGNORED
@@ -33,6 +34,7 @@ class Settings(Base):
     trash_retention_days = Column(Integer, default=30)
     active_companies = Column(String, nullable=True) # JSON array of active companies
     search_keywords = Column(String, nullable=True) # JSON array of search keywords
+    extracted_keywords = Column(String, nullable=True) # JSON array of keywords extracted from resume
 
 class ScraperLog(Base):
     __tablename__ = "scraper_logs"

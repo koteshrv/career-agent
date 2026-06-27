@@ -1,6 +1,8 @@
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, UploadFile, File, Form
 import shutil
 from pathlib import Path
+from pydantic import BaseModel
+import httpx
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 import subprocess
@@ -13,7 +15,7 @@ import logging
 
 from . import models, schemas, crud, scheduler, ai_agent, auth
 from .database import engine, get_db
-from .scraper_core import run_scraper, load_targets
+from .scraper_core import run_scraper, load_targets, fetch_job_description
 from .ai_agent import generate_cover_letter, generate_tailored_resume
 
 logger = logging.getLogger(__name__)
@@ -128,6 +130,30 @@ def update_job(job_id: int, job_update: schemas.JobUpdate, db: Session = Depends
         raise HTTPException(status_code=404, detail="Job not found")
     return db_job
 
+class ExtensionPayload(BaseModel):
+    url: str
+    page_title: str
+    description: str
+
+@app.post("/api/jobs/extension", response_model=schemas.Job)
+def save_from_extension(payload: ExtensionPayload, db: Session = Depends(get_db)):
+    """Receives a job scraped by the Chrome Extension."""
+    settings = crud.get_settings(db)
+    api_key = settings.gemini_api_key if settings else None
+    model_name = settings.gemini_model if settings else None
+
+    # Parse title
+    parsed = ai_agent.parse_job_page_title(payload.page_title, api_key, model_name)
+    company = parsed.get("company", "Unknown Company")
+    title = parsed.get("title", payload.page_title)
+
+    # Save to Kanban
+    job = scraper_core.record_job(db, company, title, payload.url, "")
+    
+    # Update description directly
+    job_update = schemas.JobUpdate(description=payload.description)
+    return crud.update_job_status(db, job.id, job_update)
+
 @app.get("/api/settings", response_model=schemas.Settings)
 def get_settings(db: Session = Depends(get_db)):
     return crud.get_settings(db)
@@ -159,7 +185,7 @@ def get_resumes():
     return {"resumes": ai_agent.list_resumes()}
 
 @app.post("/api/upload-resume")
-async def upload_resume(file: UploadFile = File(...), name: str = Form(None)):
+async def upload_resume(file: UploadFile = File(...), name: str = Form(None), db: Session = Depends(get_db)):
     orig = ai_agent.safe_resume_name(file.filename or "")
     ext = Path(orig).suffix.lower()
     if ext not in ai_agent.ALLOWED_RESUME_EXT:
@@ -176,6 +202,21 @@ async def upload_resume(file: UploadFile = File(...), name: str = Form(None)):
     file_path = ai_agent.RESUMES_DIR / target
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
+        
+    # Extract keywords using AI in the background, or do it inline
+    settings = crud.get_settings(db)
+    resume_text = ai_agent.extract_resume_text(target)
+    if resume_text and settings:
+        try:
+            keywords_json = ai_agent.extract_resume_keywords(
+                resume_text, 
+                api_key=settings.gemini_api_key, 
+                model_name=settings.gemini_model
+            )
+            crud.update_settings(db, schemas.SettingsBase(extracted_keywords=keywords_json))
+        except Exception as e:
+            logger.error(f"Failed to extract keywords: {e}")
+
     return {"message": "Resume uploaded successfully", "resumes": ai_agent.list_resumes()}
 
 @app.delete("/api/resumes/{name}")
@@ -192,7 +233,7 @@ def generate_cl_for_job(job_id: int, resume: str = None, db: Session = Depends(g
 
     settings = crud.get_settings(db)
     cl_text = generate_cover_letter(
-        db_job.title, db_job.company, db_job.location or "",
+        db_job.title, db_job.company, db_job.location or "", db_job.description or "",
         api_key=settings.gemini_api_key, model_name=settings.gemini_model, resume_name=resume
     )
     if cl_text.startswith("Error"):
@@ -209,7 +250,7 @@ def generate_resume_for_job(job_id: int, resume: str = None, db: Session = Depen
 
     settings = crud.get_settings(db)
     resume_text = generate_tailored_resume(
-        db_job.title, db_job.company, db_job.location or "",
+        db_job.title, db_job.company, db_job.location or "", db_job.description or "",
         api_key=settings.gemini_api_key, model_name=settings.gemini_model, resume_name=resume
     )
     if resume_text.startswith("Error"):
@@ -226,7 +267,16 @@ def get_resume_pdf(job_id: int, db: Session = Depends(get_db)):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         tex_path = Path(tmpdir) / "resume.tex"
-        tex_path.write_text(db_job.tailored_resume)
+        
+        # Clean up Markdown code fences if Gemini incorrectly output them
+        clean_tex = db_job.tailored_resume.strip()
+        if clean_tex.startswith("```"):
+            lines = clean_tex.split("\n")
+            if lines[0].startswith("```"): lines = lines[1:]
+            if lines[-1].startswith("```"): lines = lines[:-1]
+            clean_tex = "\n".join(lines).strip()
+            
+        tex_path.write_text(clean_tex)
         
         try:
             # Run pdflatex twice for references, though usually once is enough for simple resumes
@@ -254,3 +304,23 @@ def get_resume_pdf(job_id: int, db: Session = Depends(get_db)):
         media_type="application/pdf",
         filename=f"{db_job.company}_Resume.pdf"
     )
+
+@app.post("/api/jobs/{job_id}/fetch-jd")
+async def fetch_jd(job_id: int, db: Session = Depends(get_db)):
+    db_job = crud.get_job(db, job_id)
+    if not db_job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    if not db_job.url:
+        raise HTTPException(status_code=400, detail="Job has no URL")
+        
+    try:
+        description = await fetch_job_description(db_job.url)
+    except ValueError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+        
+    if not description:
+        raise HTTPException(status_code=500, detail="Failed to fetch job description")
+        
+    db_job = crud.update_job_status(db, job_id, schemas.JobUpdate(description=description))
+    return {"description": description}

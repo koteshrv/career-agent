@@ -17,6 +17,8 @@ class JobBase(BaseModel):
     company: str
     title: str
     url: str
+    location: Optional[str] = None
+    description: Optional[str] = None
 
 class JobCreate(JobBase):
     pass
@@ -24,6 +26,7 @@ class JobCreate(JobBase):
 class JobUpdate(BaseModel):
     status: Optional[str] = None
     notes: Optional[str] = None
+    description: Optional[str] = None
     cover_letter: Optional[str] = None
     tailored_resume: Optional[str] = None
     applied_at: Optional[datetime] = None
@@ -50,6 +53,7 @@ class SettingsBase(BaseModel):
     trash_retention_days: Optional[int] = 30
     active_companies: Optional[str] = None
     search_keywords: Optional[str] = None
+    extracted_keywords: Optional[str] = None
 
 class Settings(SettingsBase):
     id: int

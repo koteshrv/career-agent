@@ -162,6 +162,27 @@ export function SettingsPage() {
           <p className="text-xs text-zinc-500">Leave the name blank to keep the original filename. The extension is added automatically.</p>
         </div>
 
+        {settings?.extracted_keywords && (() => {
+          try {
+            const kws = JSON.parse(settings.extracted_keywords)
+            if (Array.isArray(kws) && kws.length > 0) {
+              return (
+                <div className="mt-6 pt-6 border-t border-white/5">
+                  <h4 className="text-sm font-bold text-white mb-3">AI Extracted Skills (Match Score Baseline)</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {kws.map(k => (
+                      <span key={k} className="px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-medium">
+                        {k}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )
+            }
+          } catch (e) {}
+          return null;
+        })()}
+
         <div className="space-y-4 pt-4 border-t border-white/5">
           <div>
             <label className="block text-sm font-medium text-zinc-400 mb-1">Gemini API Key (Stored Encrypted)</label>
