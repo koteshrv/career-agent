@@ -490,7 +490,7 @@ export function SettingsPage() {
               {(() => {
                 if (!settings?.model_telemetry) return null;
                 // Accurate RPD limits per model as of June 2026 (v1beta free tier)
-                const getLimit = (model: string) => {
+                const getLimit = (model: string): number => {
                   const m = (model || "").toLowerCase()
                   if (m.includes("gemma-4")) return 1500
                   if (m.includes("3.1-flash-lite")) return 500

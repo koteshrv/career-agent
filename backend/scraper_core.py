@@ -504,7 +504,7 @@ async def extract_playwright_jobs(page, keyword: str, source_url: str, max_pages
                             if (scope) {
                                 const jobObj = scope.job || scope.j;
                                 if (jobObj && jobObj.jobId) {
-                                    const href = window.location.origin + '/candidate/job-details/' + jobObj.jobId;
+                                    const href = window.location.origin + '/candidate/jobs/' + jobObj.jobId;
                                     const title = jobObj.title || "";
                                     results.push({title: title, href: href});
                                 }

@@ -6,6 +6,7 @@ import { AnalyticsPage } from "./components/AnalyticsPage"
 import { Login } from "./components/Login"
 import { LandingPage } from "./components/LandingPage"
 import { getToken, clearToken, IS_DEMO } from "@/lib/api"
+import { QuickGeneratePage } from "./components/QuickGeneratePage"
 import { Zap, LayoutDashboard, Settings, History, LineChart, LogOut } from "lucide-react"
 import type { ReactNode } from "react"
 
@@ -13,6 +14,7 @@ const NAV = [
   { to: "/app/applications", label: "Job Applications", title: "Application Dashboard", icon: LayoutDashboard },
   { to: "/app/analytics", label: "Analytics", title: "Analytics", icon: LineChart },
   { to: "/app/history", label: "Run History", title: "Run History", icon: History },
+  { to: "/app/quick-generate", label: "Quick Generate", title: "On-Demand Parsing", icon: Zap },
   { to: "/app/settings", label: "Settings", title: "Settings", icon: Settings },
 ]
 
@@ -130,6 +132,7 @@ function App() {
         <Route path="applications" element={<div className="flex-1 overflow-x-auto overflow-y-hidden p-8 custom-scrollbar"><KanbanBoard /></div>} />
         <Route path="analytics" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><AnalyticsPage /></div>} />
         <Route path="history" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><HistoryPage /></div>} />
+        <Route path="quick-generate" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><QuickGeneratePage /></div>} />
         <Route path="settings" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><SettingsPage /></div>} />
         <Route path="*" element={<Navigate to="/app/applications" replace />} />
       </Route>

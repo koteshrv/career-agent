@@ -135,7 +135,7 @@
     "search_input_selector": "input[data-ng-model='searchString']",
     "search_btn_selector": "span.glyphicon-search",
     "next_btn_selector": "ul.pagination li.active + li > a",
-    "job_url_pattern": "job-details",
+    "job_url_pattern": "/candidate/jobs/\\d+J",
     "extra_wait_ms": 7000
   },
   {

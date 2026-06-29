@@ -29,7 +29,7 @@ export function LiveLogsModal({ isOpen, onClose }: LiveLogsModalProps) {
 
     let socket: WebSocket | null = null
     let reconnectAttempts = 0
-    let reconnectTimeout: NodeJS.Timeout
+    let reconnectTimeout: ReturnType<typeof setTimeout>
 
     const connect = () => {
       socket = new WebSocket(wsUrl)

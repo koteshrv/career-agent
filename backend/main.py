@@ -416,6 +416,83 @@ def generate_resume_for_job(job_id: int, req: schemas.GenerationRequest, db: Ses
     crud.update_job_status(db, job_id, schemas.JobUpdate(tailored_resume=resume_text))
     return {"tailored_resume": resume_text}
 
+@app.post("/api/generate/on-demand")
+def generate_on_demand(req: schemas.OnDemandRequest, db: Session = Depends(get_db)):
+    settings = crud.get_settings(db)
+    api_key = settings.gemini_api_key if settings else None
+    model_name = settings.gemini_model if settings else None
+    
+    # Pre-clean the description in case it's huge or has HTML
+    clean_desc = ai_agent.sanitize_job_description(req.description, api_key)
+
+    if req.type == "cover_letter":
+        result = ai_agent.generate_cover_letter(
+            req.title, req.company, "", clean_desc,
+            api_key=api_key, model_name=model_name, resume_name=req.resume,
+            generation_mode=req.generation_mode
+        )
+        if result.startswith("Error"):
+            raise HTTPException(status_code=400, detail=result)
+        return {"content": result}
+    elif req.type == "resume":
+        result = ai_agent.generate_tailored_resume(
+            req.title, req.company, "", clean_desc,
+            api_key=api_key, model_name=model_name, resume_name=req.resume,
+            generation_mode=req.generation_mode
+        )
+        if result.startswith("Error"):
+            raise HTTPException(status_code=400, detail=result)
+        return {"content": result}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid generation type")
+
+class OnDemandPdfRequest(BaseModel):
+    latex_content: str
+    company: str
+
+@app.post("/api/generate/on-demand/pdf")
+def generate_on_demand_pdf(req: OnDemandPdfRequest):
+    if not req.latex_content:
+        raise HTTPException(status_code=400, detail="No LaTeX content provided")
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tex_path = Path(tmpdir) / "resume.tex"
+        
+        # Clean up Markdown code fences
+        clean_tex = req.latex_content.strip()
+        if clean_tex.startswith("```"):
+            lines = clean_tex.split("\n")
+            if lines[0].startswith("```"): lines = lines[1:]
+            if lines[-1].startswith("```"): lines = lines[:-1]
+            clean_tex = "\n".join(lines).strip()
+            
+        tex_path.write_text(clean_tex)
+        
+        try:
+            subprocess.run(
+                ["pdflatex", "-interaction=nonstopmode", "resume.tex"],
+                cwd=tmpdir,
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+        except subprocess.CalledProcessError as e:
+            logger.error(f"LaTeX compilation failed: {e.stdout.decode()} {e.stderr.decode()}")
+            raise HTTPException(status_code=500, detail="Failed to compile PDF from LaTeX")
+        
+        pdf_path = Path(tmpdir) / "resume.pdf"
+        if not pdf_path.exists():
+            raise HTTPException(status_code=500, detail="PDF file was not generated")
+            
+        out_path = Path("/tmp") / f"resume_ondemand_{hash(req.company)}.pdf"
+        shutil.copy(pdf_path, out_path)
+        
+    return FileResponse(
+        path=out_path,
+        media_type="application/pdf",
+        filename=f"{req.company}_Resume.pdf"
+    )
+
 @app.get("/api/jobs/{job_id}/resume/pdf")
 def get_resume_pdf(job_id: int, db: Session = Depends(get_db)):
     db_job = crud.get_job(db, job_id)

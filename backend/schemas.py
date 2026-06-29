@@ -51,6 +51,14 @@ class GenerationRequest(BaseModel):
     resume: Optional[str] = None
     generation_mode: Optional[str] = None
 
+class OnDemandRequest(BaseModel):
+    company: str
+    title: str
+    description: str
+    resume: Optional[str] = None
+    generation_mode: Optional[str] = None
+    type: str = "cover_letter" # 'cover_letter' or 'resume'
+
 class SettingsBase(BaseModel):
     telegram_chat_id: Optional[str] = None
     telegram_bot_token: Optional[str] = None
