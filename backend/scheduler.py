@@ -12,10 +12,28 @@ logger = logging.getLogger(__name__)
 scheduler = BackgroundScheduler()
 JOB_ID = "scheduled_scrape"
 
+class RunLogCaptureHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.logs = []
+        self.formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+
+    def emit(self, record):
+        try:
+            self.logs.append(self.format(record))
+        except Exception:
+            pass
+
+
 def _scheduled_scrape():
     """Run the scraper from a self-managed DB session (no request context)."""
     db = SessionLocal()
     log = crud.create_scraper_log(db, schemas.ScraperLogBase(jobs_found=0, status="RUNNING", trigger_source="CRON"))
+    
+    capture_handler = RunLogCaptureHandler()
+    capture_handler.setLevel(logging.INFO)
+    logging.getLogger().addHandler(capture_handler)
+    
     try:
         settings = crud.get_settings(db)
         # Clean old trash before scraping
@@ -30,12 +48,16 @@ def _scheduled_scrape():
             logger.info(f"Cleaned up {deleted_logs} old scraper logs.")
                 
         new_jobs, company_logs = run_scraper(db)
-        crud.update_scraper_log(db, log.id, jobs_found=len(new_jobs), status="SUCCESS", detailed_logs=json.dumps(company_logs))
+        
+        raw_logs_str = "\n".join(capture_handler.logs)
+        crud.update_scraper_log(db, log.id, jobs_found=len(new_jobs), status="SUCCESS", detailed_logs=json.dumps(company_logs), raw_logs=raw_logs_str)
         logger.info(f"Scheduled scrape complete. Found {len(new_jobs)} new jobs.")
     except Exception as e:
-        crud.update_scraper_log(db, log.id, status="FAILED", error_message=str(e))
+        raw_logs_str = "\n".join(capture_handler.logs)
+        crud.update_scraper_log(db, log.id, status="FAILED", error_message=str(e), raw_logs=raw_logs_str)
         logger.error(f"Scheduled scrape failed: {e}")
     finally:
+        logging.getLogger().removeHandler(capture_handler)
         db.close()
 
 def reschedule(cron_expr: str) -> bool:

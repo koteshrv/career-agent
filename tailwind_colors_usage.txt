@@ -1,0 +1,286 @@
+frontend/src/components/QuickGeneratePage.tsx:108:            <Zap className="w-5 h-5 text-yellow-400" />
+frontend/src/components/QuickGeneratePage.tsx:111:          <p className="text-sm text-zinc-400 mt-1">
+frontend/src/components/QuickGeneratePage.tsx:117:          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3">
+frontend/src/components/QuickGeneratePage.tsx:118:            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+frontend/src/components/QuickGeneratePage.tsx:119:            <div className="text-sm text-red-200">{error}</div>
+frontend/src/components/QuickGeneratePage.tsx:126:              <label className="block text-sm font-medium text-zinc-400 mb-1">Company Name <span className="text-zinc-600">(Optional)</span></label>
+frontend/src/components/QuickGeneratePage.tsx:131:                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 placeholder:text-zinc-700"
+frontend/src/components/QuickGeneratePage.tsx:136:              <label className="block text-sm font-medium text-zinc-400 mb-1">Job Title <span className="text-zinc-600">(Optional)</span></label>
+frontend/src/components/QuickGeneratePage.tsx:141:                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 placeholder:text-zinc-700"
+frontend/src/components/QuickGeneratePage.tsx:148:            <label className="block text-sm font-medium text-zinc-400 mb-1">Base Resume</label>
+frontend/src/components/QuickGeneratePage.tsx:153:                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 pr-10 text-white appearance-none focus:outline-none focus:border-blue-500 cursor-pointer text-sm"
+frontend/src/components/QuickGeneratePage.tsx:158:              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-zinc-400">
+frontend/src/components/QuickGeneratePage.tsx:165:            <label className="block text-sm font-medium text-zinc-400 mb-1">Job Description <span className="text-red-400">*</span></label>
+frontend/src/components/QuickGeneratePage.tsx:169:              className="flex-1 w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 placeholder:text-zinc-700 resize-none custom-scrollbar"
+frontend/src/components/QuickGeneratePage.tsx:178:              className="bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 border border-purple-500/30"
+frontend/src/components/QuickGeneratePage.tsx:187:              className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+frontend/src/components/QuickGeneratePage.tsx:203:                ? "border-blue-500 text-blue-400" 
+frontend/src/components/QuickGeneratePage.tsx:204:                : "border-transparent text-zinc-400 hover:text-zinc-200 hover:border-white/20"
+frontend/src/components/QuickGeneratePage.tsx:213:                ? "border-blue-500 text-blue-400" 
+frontend/src/components/QuickGeneratePage.tsx:214:                : "border-transparent text-zinc-400 hover:text-zinc-200 hover:border-white/20"
+frontend/src/components/QuickGeneratePage.tsx:223:            <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-4">
+frontend/src/components/QuickGeneratePage.tsx:224:              <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
+frontend/src/components/QuickGeneratePage.tsx:225:              <p className="text-sm font-medium animate-pulse text-blue-400">AI is crafting your {activeTab.replace("_", " ")}...</p>
+frontend/src/components/QuickGeneratePage.tsx:239:              <pre className="text-sm text-zinc-300 font-sans whitespace-pre-wrap overflow-x-auto pb-8">
+frontend/src/components/QuickGeneratePage.tsx:258:                  className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg"
+frontend/src/components/QuickGeneratePage.tsx:264:              <pre className="text-xs text-zinc-400 font-mono whitespace-pre-wrap overflow-x-auto pb-8">
+frontend/src/components/QuickGeneratePage.tsx:269:            <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-4 opacity-50">
+frontend/src/components/JobModal.tsx:226:            <div className="flex items-center gap-4 mt-2 text-sm text-zinc-400">
+frontend/src/components/JobModal.tsx:227:              <span className="font-semibold text-blue-400">{job.company}</span>
+frontend/src/components/JobModal.tsx:231:                    <Globe className="w-3.5 h-3.5 text-blue-400" />
+frontend/src/components/JobModal.tsx:242:            <a href={job.url} target="_blank" rel="noopener noreferrer" className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+frontend/src/components/JobModal.tsx:248:                className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors flex items-center gap-2"
+frontend/src/components/JobModal.tsx:257:                className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+frontend/src/components/JobModal.tsx:263:            <button onClick={onClose} className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
+frontend/src/components/JobModal.tsx:279:              className="w-full h-32 bg-black/40 border border-white/10 rounded-xl p-4 text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 resize-none"
+frontend/src/components/JobModal.tsx:285:                className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 text-xs"
+frontend/src/components/JobModal.tsx:299:                className="bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs shadow-lg shadow-blue-500/20"
+frontend/src/components/JobModal.tsx:306:                <span className="text-xs font-bold text-zinc-400">Match Score</span>
+frontend/src/components/JobModal.tsx:307:                <div className="flex-1 h-2 bg-zinc-800 rounded-full overflow-hidden">
+frontend/src/components/JobModal.tsx:309:                    className={`h-full transition-all duration-1000 ${matchScore > 70 ? 'bg-green-500' : matchScore > 40 ? 'bg-amber-500' : 'bg-red-500'}`} 
+frontend/src/components/JobModal.tsx:321:              className="w-full h-48 bg-black/40 border border-white/10 rounded-xl p-4 text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 resize-none custom-scrollbar text-sm font-sans"
+frontend/src/components/JobModal.tsx:327:            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Source Resume</span>
+frontend/src/components/JobModal.tsx:332:                className="bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 max-w-[60%]"
+frontend/src/components/JobModal.tsx:337:              <span className="text-xs text-zinc-500">No resumes uploaded — add one in Settings.</span>
+frontend/src/components/JobModal.tsx:345:                <Sparkles className="w-4 h-4 text-purple-400" /> AI Cover Letter
+frontend/src/components/JobModal.tsx:350:                className="bg-purple-600 hover:bg-purple-500 text-white h-8 text-xs shadow-lg shadow-purple-500/20"
+frontend/src/components/JobModal.tsx:357:              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-sm text-red-300 flex items-start gap-2">
+frontend/src/components/JobModal.tsx:364:              <div className="bg-zinc-900/50 border border-purple-500/20 rounded-xl p-6 text-sm text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">
+frontend/src/components/JobModal.tsx:368:              <div className="bg-black/20 border border-white/5 border-dashed rounded-xl p-8 text-center text-zinc-500 text-sm">
+frontend/src/components/JobModal.tsx:383:                    <Button onClick={handleCopyResume} className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 text-xs">
+frontend/src/components/JobModal.tsx:386:                    <Button onClick={handleDownloadTex} className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 text-xs">
+frontend/src/components/JobModal.tsx:389:                    <Button onClick={handleDownloadPdf} disabled={downloadingPdf} className="bg-zinc-800 hover:bg-zinc-700 text-white h-8 text-xs">
+frontend/src/components/JobModal.tsx:409:              <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-sm text-red-300 flex items-start gap-2">
+frontend/src/components/JobModal.tsx:416:              <div className="bg-zinc-900/50 border border-emerald-500/20 rounded-xl p-6 text-sm text-zinc-300 whitespace-pre-wrap font-mono leading-relaxed">
+frontend/src/components/JobModal.tsx:420:              <div className="bg-black/20 border border-white/5 border-dashed rounded-xl p-8 text-center text-zinc-500 text-sm">
+frontend/src/components/LiveLogsModal.tsx:85:    let colorClass = "text-zinc-300"
+frontend/src/components/LiveLogsModal.tsx:87:      colorClass = "text-red-400"
+frontend/src/components/LiveLogsModal.tsx:89:      colorClass = "text-yellow-400"
+frontend/src/components/LiveLogsModal.tsx:114:              className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+frontend/src/components/LiveLogsModal.tsx:121:              className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+frontend/src/components/LiveLogsModal.tsx:131:            <div className="text-zinc-600 text-xs font-mono italic">Waiting for log stream...</div>
+frontend/src/components/ScrapeConfig.tsx:55:        <p className="text-sm text-zinc-400 mt-1">Keywords and companies the scraper targets. Runs automatically on your cron schedule.</p>
+frontend/src/components/ScrapeConfig.tsx:60:        <label className="block text-sm font-medium text-zinc-400 mb-2">Search Keywords</label>
+frontend/src/components/ScrapeConfig.tsx:61:        <div className="flex flex-wrap gap-2 bg-black/40 border border-white/10 rounded-lg p-3 focus-within:border-blue-500/50 transition-colors">
+frontend/src/components/ScrapeConfig.tsx:63:            <span key={kw} className="flex items-center gap-1.5 bg-blue-500/10 text-blue-300 border border-blue-500/20 rounded-full pl-3 pr-1.5 py-1 text-xs font-medium">
+frontend/src/components/ScrapeConfig.tsx:77:            className="flex-1 min-w-[140px] bg-transparent text-sm text-white placeholder:text-zinc-600 focus:outline-none"
+frontend/src/components/ScrapeConfig.tsx:80:        <p className="text-xs text-zinc-500 mt-1">Press Enter or comma to add. A job matches if its title contains any keyword.</p>
+frontend/src/components/ScrapeConfig.tsx:86:          <label className="block text-sm font-medium text-zinc-400">Target Companies</label>
+frontend/src/components/ScrapeConfig.tsx:87:          <span className="text-xs text-zinc-500">{allCompanies ? "All companies" : `${activeCompanies.length} selected`}</span>
+frontend/src/components/ScrapeConfig.tsx:92:            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium mb-1 transition-colors ${allCompanies ? "text-blue-400 bg-blue-500/10" : "text-zinc-400 hover:bg-white/5"}`}
+frontend/src/components/ScrapeConfig.tsx:94:            <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center ${allCompanies ? "bg-blue-500 border-blue-500" : "border-white/20"}`}>
+frontend/src/components/ScrapeConfig.tsx:106:                  className="flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-zinc-300 hover:bg-white/5 transition-colors"
+frontend/src/components/ScrapeConfig.tsx:108:                  <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${checked ? "bg-blue-500 border-blue-500" : "border-white/20"}`}>
+frontend/src/components/ScrapeConfig.tsx:121:        <label className="block text-sm font-medium text-zinc-400 mb-2">Max Pages to Scrape (Pagination limit)</label>
+frontend/src/components/ScrapeConfig.tsx:128:          className="w-full bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500/50 transition-colors"
+frontend/src/components/ScrapeConfig.tsx:130:        <p className="text-xs text-zinc-500 mt-1">Maximum number of job list pages to scrape per company (default 3).</p>
+frontend/src/components/ConfirmDialog.tsx:32:          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${danger ? "bg-red-500/10 text-red-400" : "bg-blue-500/10 text-blue-400"}`}>
+frontend/src/components/ConfirmDialog.tsx:37:            <p className="text-sm text-zinc-400 mt-1">{message}</p>
+frontend/src/components/ConfirmDialog.tsx:41:          <Button onClick={onCancel} className="bg-zinc-800 hover:bg-zinc-700 text-white">
+frontend/src/components/ConfirmDialog.tsx:46:            className={danger ? "bg-red-600 hover:bg-red-500 text-white" : "bg-blue-600 hover:bg-blue-500 text-white"}
+frontend/src/components/HistoryPage.tsx:85:            <p className="text-sm text-zinc-400">Logs from background cron executions</p>
+frontend/src/components/HistoryPage.tsx:100:              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-zinc-800/50 text-zinc-300 border border-white/5 hover:bg-zinc-800 transition-all disabled:opacity-50"
+frontend/src/components/HistoryPage.tsx:108:              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-50"
+frontend/src/components/HistoryPage.tsx:116:              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shrink-0 rounded-full h-8 px-4 text-xs font-semibold"
+frontend/src/components/HistoryPage.tsx:125:            <thead className="text-xs text-zinc-400 bg-black/20 uppercase">
+frontend/src/components/HistoryPage.tsx:137:                  <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">No logs found yet. Run the scraper from Settings or wait for the cron schedule.</td>
+frontend/src/components/HistoryPage.tsx:158:                  <td className="px-6 py-4 text-zinc-300 whitespace-nowrap">
+frontend/src/components/HistoryPage.tsx:164:                        ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
+frontend/src/components/HistoryPage.tsx:165:                        : "bg-blue-500/10 text-blue-300 border border-blue-500/20"
+frontend/src/components/HistoryPage.tsx:178:                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+frontend/src/components/HistoryPage.tsx:183:                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+frontend/src/components/HistoryPage.tsx:189:                  <td className="px-6 py-4 text-zinc-300">
+frontend/src/components/HistoryPage.tsx:192:                  <td className="px-6 py-4 text-zinc-500 max-w-xs">
+frontend/src/components/HistoryPage.tsx:206:                          <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider font-semibold">Full error detail</p>
+frontend/src/components/HistoryPage.tsx:207:                          <pre className="text-xs text-red-300 bg-red-500/5 border border-red-500/20 rounded-lg p-4 whitespace-pre-wrap break-words overflow-x-auto">
+frontend/src/components/HistoryPage.tsx:214:                          <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider font-semibold">Per-Company Results</p>
+frontend/src/components/HistoryPage.tsx:217:                              <div key={i} className={`p-3 rounded-lg border ${d.status === 'SUCCESS' ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-red-500/5 border-red-500/10'}`}>
+frontend/src/components/HistoryPage.tsx:223:                                    <span className="text-xs font-medium text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">Failed</span>
+frontend/src/components/HistoryPage.tsx:227:                                  <p className="text-xs text-zinc-400 mt-2 truncate" title={d.message}>{d.message}</p>
+frontend/src/components/HistoryPage.tsx:233:                            <summary className="text-xs text-zinc-500 uppercase tracking-wider font-semibold cursor-pointer hover:text-zinc-400 select-none">View Raw JSON Logs</summary>
+frontend/src/components/HistoryPage.tsx:234:                            <pre className="mt-2 text-[10px] text-zinc-400 bg-black/40 border border-white/5 rounded-lg p-4 overflow-x-auto max-h-64 overflow-y-auto">
+frontend/src/components/HistoryPage.tsx:244:                            <summary className="text-xs text-zinc-500 uppercase tracking-wider font-semibold cursor-pointer hover:text-zinc-400 select-none">View Full Console Stream</summary>
+frontend/src/components/HistoryPage.tsx:245:                            <pre className="mt-2 text-[11px] font-mono text-zinc-300 bg-[#0f1115] border border-white/10 rounded-lg p-4 overflow-x-auto max-h-96 overflow-y-auto whitespace-pre-wrap">
+frontend/src/components/AnalyticsPage.tsx:196:          <p className="text-zinc-400 text-sm font-medium mb-1">Total Jobs Scraped</p>
+frontend/src/components/AnalyticsPage.tsx:200:          <p className="text-zinc-400 text-sm font-medium mb-1">Application Rate</p>
+frontend/src/components/AnalyticsPage.tsx:201:          <p className="text-4xl font-bold text-purple-400">
+frontend/src/components/AnalyticsPage.tsx:206:          <p className="text-zinc-400 text-sm font-medium mb-1">Interview Rate</p>
+frontend/src/components/AnalyticsPage.tsx:207:          <p className="text-4xl font-bold text-yellow-400">
+frontend/src/components/AnalyticsPage.tsx:219:            <Filter className="w-5 h-5 text-blue-400" />
+frontend/src/components/AnalyticsPage.tsx:224:              <div className="flex justify-between text-xs font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">
+frontend/src/components/AnalyticsPage.tsx:228:              <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
+frontend/src/components/AnalyticsPage.tsx:229:                <div className="h-full bg-blue-500" style={{ width: '100%' }} />
+frontend/src/components/AnalyticsPage.tsx:233:              <div className="flex justify-between text-xs font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">
+frontend/src/components/AnalyticsPage.tsx:235:                <span className="text-purple-400 font-bold">{appliedJobs} Roles</span>
+frontend/src/components/AnalyticsPage.tsx:237:              <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
+frontend/src/components/AnalyticsPage.tsx:238:                <div className="h-full bg-purple-500 transition-all duration-1000" style={{ width: `${totalJobs > 0 ? (appliedJobs / totalJobs) * 100 : 0}%` }} />
+frontend/src/components/AnalyticsPage.tsx:242:              <div className="flex justify-between text-xs font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">
+frontend/src/components/AnalyticsPage.tsx:244:                <span className="text-yellow-400 font-bold">{interviewingJobs} Roles</span>
+frontend/src/components/AnalyticsPage.tsx:246:              <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
+frontend/src/components/AnalyticsPage.tsx:247:                <div className="h-full bg-yellow-500 transition-all duration-1000" style={{ width: `${totalJobs > 0 ? (interviewingJobs / totalJobs) * 100 : 0}%` }} />
+frontend/src/components/AnalyticsPage.tsx:258:                <Cpu className="w-5 h-5 text-purple-400" />
+frontend/src/components/AnalyticsPage.tsx:262:                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+frontend/src/components/AnalyticsPage.tsx:268:              <p className="text-xs text-zinc-400">Real-time tracking of tokens & API limits.</p>
+frontend/src/components/AnalyticsPage.tsx:271:                className={`text-[10px] px-2 py-1 rounded border transition-colors ${isFreeTier ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'}`}
+frontend/src/components/AnalyticsPage.tsx:278:                <span className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Requests</span>
+frontend/src/components/AnalyticsPage.tsx:282:                <span className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Input Tokens</span>
+frontend/src/components/AnalyticsPage.tsx:286:                <span className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Output Tokens</span>
+frontend/src/components/AnalyticsPage.tsx:291:            <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Model Breakdown</div>
+frontend/src/components/AnalyticsPage.tsx:294:                <div className="text-zinc-500 text-sm">No telemetry data available yet.</div>
+frontend/src/components/AnalyticsPage.tsx:297:                  <div key={stats.model} className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-xl flex flex-col gap-2">
+frontend/src/components/AnalyticsPage.tsx:299:                      <span className="font-mono text-blue-400 font-semibold text-sm">{stats.model}</span>
+frontend/src/components/AnalyticsPage.tsx:303:                      <span className="text-zinc-400">
+frontend/src/components/AnalyticsPage.tsx:309:                          stats.dailyLimit !== -1 && stats.requestsLeft < 5 ? "text-red-400" : "text-blue-300"
+frontend/src/components/AnalyticsPage.tsx:319:                          className={`h-full rounded-full transition-all ${stats.requestsLeft < 5 ? "bg-red-500" : "bg-blue-500"}`}
+frontend/src/components/AnalyticsPage.tsx:341:                    <span className="text-xs text-zinc-400 font-mono">
+frontend/src/components/AnalyticsPage.tsx:348:                      const colours = ["bg-blue-500","bg-violet-500","bg-cyan-500","bg-indigo-500","bg-sky-500"]
+frontend/src/components/AnalyticsPage.tsx:362:                    <span className="text-[10px] text-zinc-600">Each segment = one model's quota</span>
+frontend/src/components/AnalyticsPage.tsx:366:                    <p className="text-[10px] text-zinc-600 mt-1">
+frontend/src/components/AnalyticsPage.tsx:374:          <div className="bg-purple-950/20 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between mt-4">
+frontend/src/components/AnalyticsPage.tsx:376:              <span className="block text-[10px] font-bold text-purple-400 uppercase tracking-wider">Estimated Project Cost</span>
+frontend/src/components/AnalyticsPage.tsx:377:              <span className="text-xs text-zinc-500">{isFreeTier ? "Using Free Tier Limits" : "Based on model-specific API rates"}</span>
+frontend/src/components/AnalyticsPage.tsx:429:              <div key={i} className="flex items-center gap-2 text-xs text-zinc-300">
+frontend/src/components/KanbanBoard.tsx:28:  { id: "NEW", title: "New Matches", color: "from-blue-500/20 to-cyan-500/10", border: "border-blue-500/20", badge: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
+frontend/src/components/KanbanBoard.tsx:29:  { id: "APPLIED", title: "Applied", color: "from-indigo-500/20 to-purple-500/10", border: "border-indigo-500/20", badge: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30" },
+frontend/src/components/KanbanBoard.tsx:30:  { id: "INTERVIEWING", title: "Interviewing", color: "from-amber-500/20 to-orange-500/10", border: "border-amber-500/20", badge: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
+frontend/src/components/KanbanBoard.tsx:31:  { id: "REJECTED", title: "Rejected", color: "from-red-500/20 to-rose-600/10", border: "border-red-500/20", badge: "bg-red-500/20 text-red-300 border-red-500/30" },
+frontend/src/components/KanbanBoard.tsx:32:  { id: "IGNORED", title: "Ignored", color: "from-zinc-500/20 to-zinc-600/10", border: "border-zinc-500/20", badge: "bg-zinc-800 text-zinc-400 border-zinc-700" },
+frontend/src/components/KanbanBoard.tsx:33:  { id: "TRASH", title: "Trash", color: "from-red-950/20 to-red-900/10", border: "border-red-900/30 border-dashed", badge: "bg-red-900/20 text-red-500 border-red-900/30" }
+frontend/src/components/KanbanBoard.tsx:176:      <Card className={`bg-zinc-950/80 backdrop-blur-md border-white/5 hover:border-white/20 hover:bg-zinc-900 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl ${snapshot.isDragging ? 'ring-2 ring-indigo-500/50 shadow-indigo-500/20 z-50 -translate-y-2 scale-105' : ''} ${isSelected ? 'ring-2 ring-blue-500/60' : ''}`}>
+frontend/src/components/KanbanBoard.tsx:179:            <div className="flex items-center gap-2 text-zinc-300 font-medium text-sm truncate flex-1">
+frontend/src/components/KanbanBoard.tsx:183:                className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-white/20 hover:border-white/50'}`}
+frontend/src/components/KanbanBoard.tsx:189:                <BriefcaseBusiness className="w-3 h-3 text-zinc-400" />
+frontend/src/components/KanbanBoard.tsx:194:              <a href={job.url} target="_blank" rel="noreferrer" className="p-1 text-zinc-500 hover:text-white hover:bg-white/10 rounded transition-colors" title="View Job">
+frontend/src/components/KanbanBoard.tsx:200:                  className="p-1 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
+frontend/src/components/KanbanBoard.tsx:215:              <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
+frontend/src/components/KanbanBoard.tsx:220:                <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
+frontend/src/components/KanbanBoard.tsx:222:                    <Globe className="w-3.5 h-3.5 text-blue-400" />
+frontend/src/components/KanbanBoard.tsx:250:          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+frontend/src/components/KanbanBoard.tsx:256:            className="w-full bg-zinc-900/50 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 focus:bg-zinc-900 transition-all"
+frontend/src/components/KanbanBoard.tsx:265:              ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+frontend/src/components/KanbanBoard.tsx:266:              : 'bg-zinc-800/50 text-zinc-400 border border-white/5 hover:bg-zinc-800'
+frontend/src/components/KanbanBoard.tsx:279:            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-zinc-800/50 text-zinc-400 border border-white/5 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+frontend/src/components/KanbanBoard.tsx:301:                <h3 className="text-sm font-bold text-zinc-100 uppercase tracking-wider">{col.title}</h3>
+frontend/src/components/KanbanBoard.tsx:329:                                <span className="font-semibold text-sm text-zinc-200 truncate">{company}</span>
+frontend/src/components/KanbanBoard.tsx:331:                                  <Badge className="bg-blue-500/20 text-blue-300 hover:bg-blue-500/30">{companyJobs.length}</Badge>
+frontend/src/components/KanbanBoard.tsx:332:                                  {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
+frontend/src/components/KanbanBoard.tsx:413:          <span className="text-xs font-semibold text-zinc-300 px-2">{selectedIds.length} selected</span>
+frontend/src/components/KanbanBoard.tsx:425:              className="px-3 py-1.5 rounded-full text-xs font-medium text-zinc-300 hover:bg-white/10 transition-colors"
+frontend/src/components/KanbanBoard.tsx:432:            className="px-3 py-1.5 rounded-full text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1"
+frontend/src/components/KanbanBoard.tsx:438:            className="p-1.5 rounded-full text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
+frontend/src/components/Login.tsx:29:    <div className="min-h-screen flex items-center justify-center p-4 text-zinc-100">
+frontend/src/components/Login.tsx:32:          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 flex items-center justify-center shadow-[0_0_20px_rgba(79,70,229,0.3)] mb-3">
+frontend/src/components/Login.tsx:36:          <p className="text-xs text-zinc-500 uppercase tracking-widest font-semibold">AI Career Platform</p>
+frontend/src/components/Login.tsx:41:            <label className="block text-sm font-medium text-zinc-400 mb-1">Username</label>
+frontend/src/components/Login.tsx:47:              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+frontend/src/components/Login.tsx:51:            <label className="block text-sm font-medium text-zinc-400 mb-1">Password</label>
+frontend/src/components/Login.tsx:56:              className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+frontend/src/components/Login.tsx:61:            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-300">
+frontend/src/components/Login.tsx:69:            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white"
+frontend/src/components/LandingPage.tsx:62:      icon: <Search className="w-6 h-6 text-indigo-400" />,
+frontend/src/components/LandingPage.tsx:67:      icon: <Target className="w-6 h-6 text-red-400" />,
+frontend/src/components/LandingPage.tsx:72:      icon: <FileText className="w-6 h-6 text-blue-400" />,
+frontend/src/components/LandingPage.tsx:84:    <div className="min-h-screen bg-[#09090b] text-white overflow-x-hidden selection:bg-blue-500/30 font-sans">
+frontend/src/components/LandingPage.tsx:90:            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
+frontend/src/components/LandingPage.tsx:96:            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-2">
+frontend/src/components/LandingPage.tsx:100:            <button onClick={handleEnter} className="text-sm font-semibold bg-white text-black px-4 py-1.5 rounded-full hover:bg-zinc-200 transition-colors">
+frontend/src/components/LandingPage.tsx:113:          className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-blue-600/30 blur-[120px] rounded-full pointer-events-none" 
+frontend/src/components/LandingPage.tsx:118:          className="absolute top-1/2 right-1/4 translate-x-1/4 -translate-y-1/3 w-[500px] h-[300px] bg-purple-600/30 blur-[100px] rounded-full pointer-events-none" 
+frontend/src/components/LandingPage.tsx:129:                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-semibold mb-6 uppercase tracking-widest"
+frontend/src/components/LandingPage.tsx:142:                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">Powered by AI.</span>
+frontend/src/components/LandingPage.tsx:149:                className="text-lg text-zinc-400 mb-8 leading-relaxed max-w-xl"
+frontend/src/components/LandingPage.tsx:162:                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all shadow-[0_0_40px_rgba(79,70,229,0.4)] hover:shadow-[0_0_60px_rgba(79,70,229,0.6)]"
+frontend/src/components/LandingPage.tsx:188:                    <div className="w-4 h-4 rounded bg-blue-500/20 flex items-center justify-center">
+frontend/src/components/LandingPage.tsx:189:                      <Sparkles className="w-2.5 h-2.5 text-blue-400" />
+frontend/src/components/LandingPage.tsx:191:                    <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">Live Agent Activity</span>
+frontend/src/components/LandingPage.tsx:193:                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20">
+frontend/src/components/LandingPage.tsx:194:                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+frontend/src/components/LandingPage.tsx:195:                    <span className="text-[10px] font-medium text-green-400">Processing</span>
+frontend/src/components/LandingPage.tsx:198:                <div className="p-6 font-mono text-sm leading-relaxed min-h-[320px] text-zinc-300">
+frontend/src/components/LandingPage.tsx:202:                        <Zap className="w-4 h-4 text-amber-400" />
+frontend/src/components/LandingPage.tsx:209:                          className="inline-block w-1.5 h-3.5 bg-blue-400 align-middle ml-1 rounded-sm"
+frontend/src/components/LandingPage.tsx:227:            <p className="text-zinc-400 max-w-2xl mx-auto">A comprehensive suite of tools to automate your job search while maintaining the highest standards of data privacy and professional formatting.</p>
+frontend/src/components/LandingPage.tsx:244:                <p className="text-sm text-zinc-400 leading-relaxed">{f.description}</p>
+frontend/src/components/LandingPage.tsx:254:          <div className="flex items-center gap-2 text-sm text-zinc-400">
+frontend/src/components/LandingPage.tsx:256:            <Heart className="w-4 h-4 text-red-500 fill-red-500/20" />
+frontend/src/components/LandingPage.tsx:260:          <div className="flex items-center justify-center gap-6 text-sm text-zinc-500 font-medium">
+frontend/src/components/LandingPage.tsx:265:            <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
+frontend/src/components/LandingPage.tsx:266:            <span className="hover:text-zinc-300 transition-colors">MIT License</span>
+frontend/src/components/LandingPage.tsx:267:            <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
+frontend/src/components/SettingsPage.tsx:56:      <label className="block text-sm font-medium text-zinc-400 mb-2">{label}</label>
+frontend/src/components/SettingsPage.tsx:74:                    ? "border-blue-400/60 bg-blue-500/20 scale-[1.01] shadow-lg shadow-blue-500/10"
+frontend/src/components/SettingsPage.tsx:75:                    : "border-blue-500/20 bg-blue-900/15"}`}
+frontend/src/components/SettingsPage.tsx:79:                  className="text-zinc-600 hover:text-zinc-300 cursor-grab active:cursor-grabbing shrink-0 transition-colors"
+frontend/src/components/SettingsPage.tsx:91:                <span className="w-5 h-5 flex items-center justify-center rounded-full bg-blue-500/20 text-blue-400 text-[10px] font-bold shrink-0">
+frontend/src/components/SettingsPage.tsx:96:                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/5 text-zinc-500 shrink-0">{suggestion.badge}</span>
+frontend/src/components/SettingsPage.tsx:102:                    className="w-5 h-4 flex items-center justify-center rounded hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-zinc-400 hover:text-white transition-colors"
+frontend/src/components/SettingsPage.tsx:107:                    className="w-5 h-4 flex items-center justify-center rounded hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed text-zinc-400 hover:text-white transition-colors"
+frontend/src/components/SettingsPage.tsx:115:                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-red-500/20 text-zinc-600 hover:text-red-400 transition-colors shrink-0"
+frontend/src/components/SettingsPage.tsx:122:          <p className="text-[10px] text-zinc-600 pl-1">Drag ⠿ to reorder · #1 is tried first on failure</p>
+frontend/src/components/SettingsPage.tsx:133:                ${isChecked ? "bg-blue-900/10 hover:bg-blue-900/20" : "hover:bg-white/[0.04]"}`}
+frontend/src/components/SettingsPage.tsx:136:                ${isChecked ? "bg-blue-500 border-blue-500" : "border-white/20 bg-transparent"}`}>
+frontend/src/components/SettingsPage.tsx:139:              <span className={`flex-1 font-mono ${isChecked ? "text-white" : "text-zinc-400"}`}>{s.label}</span>
+frontend/src/components/SettingsPage.tsx:142:                  ${isChecked ? "bg-blue-500/15 text-blue-400" : "bg-white/5 text-zinc-600"}`}>
+frontend/src/components/SettingsPage.tsx:147:                <span className="text-[10px] text-blue-500 font-semibold shrink-0">
+frontend/src/components/SettingsPage.tsx:163:    warn:    { icon: <ShieldAlert className="w-3.5 h-3.5 shrink-0 mt-0.5" />, bg: "bg-yellow-500/10 border-yellow-500/20", txt: "text-yellow-400", prefix: "⚠ Data Privacy" },
+frontend/src/components/SettingsPage.tsx:165:    private: { icon: <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5" />, bg: "bg-blue-500/10 border-blue-500/20", txt: "text-blue-400", prefix: "🔒 Fully Private" },
+frontend/src/components/SettingsPage.tsx:173:          <span className="text-zinc-400">{text}</span>
+frontend/src/components/SettingsPage.tsx:314:          <p className="text-xs text-zinc-400">Configure your scraper, AI models, and resumes.</p>
+frontend/src/components/SettingsPage.tsx:316:        <Button onClick={handleSave} disabled={saving} className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20">
+frontend/src/components/SettingsPage.tsx:326:        <p className="text-sm text-zinc-400 mb-4">Upload one or more resumes (.pdf or .tex). You can pick which one to use when generating a tailored resume or cover letter for a job.</p>
+frontend/src/components/SettingsPage.tsx:332:                <span className="flex items-center gap-2 text-sm text-zinc-300 truncate">
+frontend/src/components/SettingsPage.tsx:333:                  <FileText className="w-4 h-4 text-blue-400 shrink-0" />
+frontend/src/components/SettingsPage.tsx:338:                  className="p-1.5 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded-md transition-colors shrink-0"
+frontend/src/components/SettingsPage.tsx:353:            className="block w-full text-sm text-zinc-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-500/10 file:text-blue-400 hover:file:bg-blue-500/20 cursor-pointer"
+frontend/src/components/SettingsPage.tsx:361:              className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+frontend/src/components/SettingsPage.tsx:366:              className="bg-blue-600 hover:bg-blue-500 text-white shrink-0"
+frontend/src/components/SettingsPage.tsx:371:          <p className="text-xs text-zinc-500">Leave the name blank to keep the original filename. The extension is added automatically.</p>
+frontend/src/components/SettingsPage.tsx:376:          <p className="text-xs text-zinc-500">These skills are matched against fetched Job Descriptions to calculate your Match Score. You can edit them manually below.</p>
+frontend/src/components/SettingsPage.tsx:385:                      <span key={k} className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-medium">
+frontend/src/components/SettingsPage.tsx:389:                          className="hover:text-red-400 hover:bg-red-500/10 rounded-sm p-0.5 transition-colors"
+frontend/src/components/SettingsPage.tsx:400:            return <div className="text-xs text-zinc-600 italic mb-2">No baseline skills saved yet. Upload a resume or add some manually below.</div>
+frontend/src/components/SettingsPage.tsx:409:              className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-blue-500"
+frontend/src/components/SettingsPage.tsx:415:              className="bg-blue-600 hover:bg-blue-500 text-white h-8 text-xs shrink-0"
+frontend/src/components/SettingsPage.tsx:425:            <label className="block text-sm font-medium text-zinc-400 mb-1">AI Generation Mode</label>
+frontend/src/components/SettingsPage.tsx:433:                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 pr-10 text-white appearance-none focus:outline-none focus:border-blue-500 cursor-pointer"
+frontend/src/components/SettingsPage.tsx:441:              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-zinc-400">
+frontend/src/components/SettingsPage.tsx:451:                <label className="block text-sm font-medium text-zinc-400 mb-1">Gemini API Key</label>
+frontend/src/components/SettingsPage.tsx:457:                    className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+frontend/src/components/SettingsPage.tsx:464:                    className="w-1/3 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 placeholder:text-zinc-600"
+frontend/src/components/SettingsPage.tsx:503:                      <div className="p-3 bg-blue-900/10 border border-blue-500/20 rounded-lg flex items-center justify-between text-xs">
+frontend/src/components/SettingsPage.tsx:505:                          <span className="block font-semibold text-blue-400">Active Model Usage</span>
+frontend/src/components/SettingsPage.tsx:506:                          <span className="text-zinc-400">{(currentStats.prompt_tokens + currentStats.candidate_tokens).toLocaleString()} tokens · {currentStats.requests} requests</span>
+frontend/src/components/SettingsPage.tsx:509:                          <span className="block font-semibold text-blue-400">Daily Quota</span>
+frontend/src/components/SettingsPage.tsx:510:                          <span className={reqsLeft !== null && reqsLeft < 5 ? "text-red-400 font-bold" : "text-zinc-300"}>
+frontend/src/components/SettingsPage.tsx:528:                <label className="block text-sm font-medium text-zinc-400 mb-1">OpenAI API Key</label>
+frontend/src/components/SettingsPage.tsx:533:                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+frontend/src/components/SettingsPage.tsx:557:                <label className="block text-sm font-medium text-zinc-400 mb-1">Anthropic API Key</label>
+frontend/src/components/SettingsPage.tsx:562:                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+frontend/src/components/SettingsPage.tsx:585:                <label className="block text-sm font-medium text-zinc-400 mb-1">xAI API Key</label>
+frontend/src/components/SettingsPage.tsx:590:                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+frontend/src/components/SettingsPage.tsx:613:                <label className="block text-sm font-medium text-zinc-400 mb-1">Ollama Server URL</label>
+frontend/src/components/SettingsPage.tsx:618:                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 font-mono"
+frontend/src/components/SettingsPage.tsx:640:            <label className="block text-sm font-medium text-zinc-400 mb-1">Custom AI Tailoring Guidelines</label>
+frontend/src/components/SettingsPage.tsx:644:              className="w-full h-24 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 text-sm resize-none custom-scrollbar"
+frontend/src/components/SettingsPage.tsx:647:            <p className="text-xs text-zinc-500 mt-1">These custom directives are safely appended to all resume and cover letter generation prompts.</p>
+frontend/src/components/SettingsPage.tsx:657:          <label className="block text-sm font-medium text-zinc-400 mb-1">Telegram Chat ID</label>
+frontend/src/components/SettingsPage.tsx:662:            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+frontend/src/components/SettingsPage.tsx:668:          <label className="block text-sm font-medium text-zinc-400 mb-1">Telegram Bot Token (Stored Encrypted)</label>
+frontend/src/components/SettingsPage.tsx:673:            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+frontend/src/components/SettingsPage.tsx:679:          <label className="block text-sm font-medium text-zinc-400 mb-1">Cron Schedule</label>
+frontend/src/components/SettingsPage.tsx:684:            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 font-mono"
+frontend/src/components/SettingsPage.tsx:690:          <label className="block text-sm font-medium text-zinc-400 mb-1">Trash Retention (Days)</label>
+frontend/src/components/SettingsPage.tsx:696:              className="flex-1 bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 font-mono"
+frontend/src/components/SettingsPage.tsx:700:            <Button onClick={handleCleanTrash} disabled={cleaningTrash} className="bg-red-600/20 text-red-400 hover:bg-red-600/30 border border-red-500/30 shrink-0">
+frontend/src/components/SettingsPage.tsx:705:          <p className="text-xs text-zinc-500 mt-1">Jobs in the Trash state older than this will be permanently deleted during cron scrapes. Set to 0 to disable auto-cleanup.</p>
+frontend/src/components/Toast.tsx:33:                : "bg-red-950/90 border-red-500/30 text-red-200"
+frontend/src/App.tsx:39:    <div className="min-h-screen text-zinc-100 selection:bg-blue-500/30 font-sans flex flex-col overflow-hidden">
+frontend/src/App.tsx:43:        <div className="w-full bg-gradient-to-r from-blue-600/90 via-indigo-600/90 to-purple-600/90 text-white text-xs font-medium px-4 py-1.5 flex items-center justify-center gap-3 z-50">
+frontend/src/App.tsx:45:            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+frontend/src/App.tsx:63:              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 flex items-center justify-center shadow-[0_0_20px_rgba(79,70,229,0.3)]">
+frontend/src/App.tsx:67:                <h1 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400 tracking-tight">
+frontend/src/App.tsx:70:                <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-semibold">AI Career Platform</p>
+frontend/src/App.tsx:83:                      ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+frontend/src/App.tsx:84:                      : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
+frontend/src/App.tsx:98:                className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent transition-colors"
+frontend/src/App.tsx:113:              <p className="text-sm text-zinc-400 mt-1">Track and manage your automated job matches.</p>

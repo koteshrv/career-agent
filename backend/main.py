@@ -324,6 +324,11 @@ def update_settings(settings: schemas.SettingsBase, db: Session = Depends(get_db
 def get_history(limit: int = 50, db: Session = Depends(get_db)):
     return crud.get_scraper_logs(db, limit=limit)
 
+@app.delete("/api/history")
+def clear_history(db: Session = Depends(get_db)):
+    count = crud.delete_all_scraper_logs(db)
+    return {"message": "History cleared", "deleted": count}
+
 @app.get("/api/companies")
 def get_companies():
     """Distinct companies available in targets.json, for the sidebar selector."""

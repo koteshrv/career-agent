@@ -585,7 +585,24 @@ async def extract_playwright_jobs(page, keyword: str, source_url: str, max_pages
                 let results = [];
                 // 1. Standard anchor tags
                 document.querySelectorAll('a[href]').forEach(el => {
-                    const text = (el.innerText || el.getAttribute('aria-label') || el.title || "").replace(/\s+/g, ' ').trim();
+                    let text = (el.innerText || el.getAttribute('aria-label') || el.title || "").replace(/\s+/g, ' ').trim();
+                    
+                    // Smarter title extraction for Oracle HCM / complex cards (e.g. Hexaware Technologies)
+                    // If the text is empty, generic, or just a company name, look in the parent container.
+                    if (!text || text.toLowerCase().includes("apply") || text.toLowerCase().includes("view job") || text.length < 5 || text.toLowerCase() === "hexaware technologies") {
+                        const container = el.closest('li, .job-list-item, .card, article, [class*="job-item"], div[class*="job"]');
+                        if (container) {
+                            const heading = container.querySelector('h1, h2, h3, h4, h5, .job-title, [class*="title"], [class*="jobTitle"]');
+                            if (heading && heading.innerText) {
+                                text = heading.innerText.replace(/\s+/g, ' ').trim();
+                            } else {
+                                // Fallback: grab the first bold or distinct text in the container
+                                const strong = container.querySelector('strong, b, [class*="title-text"]');
+                                if (strong && strong.innerText) text = strong.innerText.replace(/\s+/g, ' ').trim();
+                            }
+                        }
+                    }
+                    
                     results.push({title: text, href: el.href || ""});
                 });
                 
@@ -1041,6 +1058,7 @@ def run_scraper(db: Session):
     logger.info(f"Keywords: {keywords}")
     logger.debug(f"Loaded {len(targets)} total targets from targets.json")
     all_new_jobs = []
+    new_jobs = []
     company_logs = []
     playwright_targets = []
 

@@ -2,10 +2,11 @@ import { useState, useEffect, Fragment } from "react"
 import { api } from "@/lib/api"
 import { formatISTDateTime } from "@/lib/datetime"
 import { Skeleton } from "@/components/ui/skeleton"
-import { CheckCircle2, XCircle, ChevronDown, RefreshCw, Clock, Hand, Loader2, Play, Terminal } from "lucide-react"
+import { CheckCircle2, XCircle, ChevronDown, RefreshCw, Clock, Hand, Loader2, Play, Terminal, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "./Toast"
 import { LiveLogsModal } from "./LiveLogsModal"
+import { ConfirmDialog } from "./ConfirmDialog"
 
 export function HistoryPage() {
   const { toast } = useToast()
@@ -15,6 +16,7 @@ export function HistoryPage() {
   const [expanded, setExpanded] = useState<number | null>(null)
   const [running, setRunning] = useState(false)
   const [isLogsModalOpen, setIsLogsModalOpen] = useState(false)
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false)
 
   const hasRunning = logs.some(l => l.status === "RUNNING")
 
@@ -40,6 +42,17 @@ export function HistoryPage() {
       toast("Failed to start scraper", "error")
     }
     setTimeout(() => setRunning(false), 2000)
+  }
+
+  const handleClearHistory = async () => {
+    setConfirmClearOpen(false)
+    try {
+      await api.delete("/api/history")
+      toast("History cleared successfully.", "success")
+      fetchLogs(true)
+    } catch {
+      toast("Failed to clear history", "error")
+    }
   }
 
   useEffect(() => {
@@ -88,6 +101,14 @@ export function HistoryPage() {
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Refreshing..." : "Refresh"}
+            </button>
+            <button
+              onClick={() => setConfirmClearOpen(true)}
+              disabled={refreshing || logs.length === 0}
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-50"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Clear History
             </button>
             <Button
               onClick={handleRunNow}
@@ -238,6 +259,15 @@ export function HistoryPage() {
         </div>
       </div>
       <LiveLogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} />
+      <ConfirmDialog
+        open={confirmClearOpen}
+        danger
+        title="Clear Run History?"
+        message="Are you sure you want to clear all scraper run history? This will permanently delete all attached logs."
+        confirmLabel="Delete All"
+        onConfirm={handleClearHistory}
+        onCancel={() => setConfirmClearOpen(false)}
+      />
     </div>
   )
 }

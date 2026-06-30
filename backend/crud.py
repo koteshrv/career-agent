@@ -156,3 +156,8 @@ def delete_old_scraper_logs(db: Session, days: int = 14) -> int:
             db.delete(log)
         db.commit()
     return count
+
+def delete_all_scraper_logs(db: Session) -> int:
+    count = db.query(models.ScraperLog).delete()
+    db.commit()
+    return count
