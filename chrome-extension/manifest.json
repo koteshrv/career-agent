@@ -11,7 +11,8 @@
   "permissions": [
     "activeTab",
     "scripting",
-    "storage"
+    "storage",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -23,5 +24,24 @@
       "48": "icon48.png",
       "128": "icon128.png"
     }
-  }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.linkedin.com/*",
+        "*://*.naukri.com/*"
+      ],
+      "js": ["content_script.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["icon48.png"],
+      "matches": ["*://*.linkedin.com/*", "*://*.naukri.com/*"]
+    }
+  ]
 }

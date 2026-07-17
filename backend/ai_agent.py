@@ -95,10 +95,29 @@ def _set_rate_limit(model: str, seconds: int = 60):
     finally:
         db.close()
 
+# Single source of truth for the default Gemini model chain. Used as the DB-unreachable
+# emergency fallback and whenever a caller doesn't pass an explicit model.
+DEFAULT_MODEL_CHAIN = "gemini-2.5-flash, gemini-flash-latest, gemini-2.5-pro"
+
 # Emergency fallback used ONLY if the DB is completely unreachable at runtime.
 # This is NOT the intended configuration path — use the Settings UI to set your model chain.
-_EMERGENCY_FALLBACK_MODEL = "gemini-3.1-flash-lite"
+_EMERGENCY_FALLBACK_MODEL = DEFAULT_MODEL_CHAIN
 ENV_API_KEY = os.getenv("GEMINI_API_KEY")
+
+
+def strip_code_fences(text: str) -> str:
+    """Remove a leading/trailing Markdown code fence (``` or ```json) from LLM output."""
+    if not text:
+        return text
+    clean = text.strip()
+    if clean.startswith("```"):
+        lines = clean.split("\n")
+        if lines and lines[0].startswith("```"):
+            lines = lines[1:]
+        if lines and lines[-1].startswith("```"):
+            lines = lines[:-1]
+        clean = "\n".join(lines).strip()
+    return clean
 
 # Substrings that indicate retrying a different model won't help (auth/config issues).
 _FATAL_ERROR_HINTS = ("api key not valid", "api_key_invalid", "permission denied", "unauthenticated")
@@ -349,6 +368,59 @@ def _generate_ollama(prompt: str, settings: any, output_schema: BaseModel) -> st
             
     return f"Error: Local generation failed - {last_err}"
 
+def extract_job_details_from_description(description: str, api_key: str = None, model_name: str = None) -> dict:
+    prompt = f"""
+    You are an expert at parsing raw job descriptions and LinkedIn feed posts.
+    Extract the Company Name and Job Title from this raw text.
+    If you cannot find a company name, output "Unknown Company".
+    If you cannot find a job title, output "Unknown Title".
+    
+    Text:
+    {description[:2500]}
+    
+    Output strictly as JSON in this exact format:
+    {{"company": "...", "title": "..."}}
+    """
+    try:
+        res = _generate(prompt, api_key, model_name)
+        return json.loads(strip_code_fences(res))
+    except Exception as e:
+        logger.error(f"Failed to extract details from description: {e}")
+        return {}
+
+def batch_extract_job_details(jobs: list, api_key: str = None, model_name: str = None) -> list:
+    """Takes a list of dictionaries with 'description' and returns a list of dicts with company, title, clean_description."""
+    if not jobs:
+        return []
+        
+    prompt = f"""
+    You are an expert at parsing raw job descriptions and LinkedIn feed posts.
+    I am providing you {len(jobs)} raw job descriptions/posts.
+    For each one, extract the Company Name and Job Title. If unknown, output "Unknown Company" / "Unknown Title".
+    Then, clean and sanitize the description into nicely formatted Markdown (remove cookies, headers, etc.).
+    
+    Output strictly as a JSON array in the exact same order as the input.
+    Format:
+    [
+      {{"company": "...", "title": "...", "clean_description": "..."}},
+      ...
+    ]
+    
+    Data:
+    """
+    for i, job in enumerate(jobs):
+        prompt += f"\n\n--- JOB {i} ---\n{job['description'][:4000]}\n"
+        
+    try:
+        res = _generate(prompt, api_key, model_name)
+        parsed = json.loads(strip_code_fences(res))
+        if isinstance(parsed, list) and len(parsed) == len(jobs):
+            return parsed
+    except Exception as e:
+        logger.error(f"Failed to batch extract details: {e}")
+    
+    return [{"company": "Unknown Company", "title": "Unknown Title", "clean_description": j["description"]} for j in jobs]
+
 def _route_generation(prompt: str, mode: str, settings: any, is_tex: bool = False, is_cl: bool = False) -> str:
     """Factory router for multi-provider AI generation."""
     if mode == "ollama":
@@ -489,16 +561,8 @@ Resume:
     result = _generate(prompt, api_key, model_name)
     if result.startswith("Error"):
         return "[]"
-        
-    # Clean up code fences just in case
-    clean = result.strip()
-    if clean.startswith("```"):
-        lines = clean.split("\n")
-        if lines[0].startswith("```"): lines = lines[1:]
-        if lines[-1].startswith("```"): lines = lines[:-1]
-        clean = "\n".join(lines).strip()
-    
-    return clean
+
+    return strip_code_fences(result)
 
 def parse_job_page_title(page_title: str, api_key: str = None, model_name: str = None) -> dict:
     """Uses Gemini to quickly extract a clean Company and Job Title from a messy HTML <title>."""
@@ -514,13 +578,7 @@ Page Title: "{page_title}"
 """
     result = _generate(prompt, api_key, model_name)
     try:
-        clean = result.strip()
-        if clean.startswith("```"):
-            lines = clean.split("\n")
-            if lines[0].startswith("```"): lines = lines[1:]
-            if lines[-1].startswith("```"): lines = lines[:-1]
-            clean = "\n".join(lines).strip()
-        return json.loads(clean)
+        return json.loads(strip_code_fences(result))
     except Exception as e:
         logger.error(f"Failed to parse job page title: {e}")
         return {"company": "Unknown Company", "title": page_title}
@@ -545,92 +603,10 @@ Raw Webpage Text:
     result = _generate(prompt, api_key, None)
     if result.startswith("Error") or not result.strip():
         return raw_text  # Fallback to raw text if AI fails
-        
-    # Clean up code fences just in case
-    clean = result.strip()
-    if clean.startswith("```"):
-        lines = clean.split("\n")
-        if lines[0].startswith("```"): lines = lines[1:]
-        if lines[-1].startswith("```"): lines = lines[:-1]
-        clean = "\n".join(lines).strip()
-        
-    return clean
+
+    return strip_code_fences(result)
 
 
-
-def filter_job_links(jobs: list, keyword: str, api_key: str = None) -> tuple[list, list]:
-    """Uses Gemini to filter out false positive links. Returns (valid_jobs, rejected_jobs)."""
-    if not jobs:
-        return [], []
-    
-    # Safety cap to avoid exceeding token limits.
-    # At ~50 tokens/link, 2000 links ≈ 100K tokens — well within gemini-2.5-flash's 250K TPM.
-    # The old 400 cap was silently dropping entire companies from the AI filter!
-    MAX_JOBS = 2000
-    if len(jobs) > MAX_JOBS:
-        logger.warning(f"Capping AI input from {len(jobs)} to {MAX_JOBS} candidates to stay within token limits.")
-        jobs = jobs[:MAX_JOBS]
-        
-    import json
-    prompt = f"""
-You are an expert technical recruiter parsing scraped web links.
-Your ONLY job is to filter a list of links and return the IDs of actual, individual job postings.
-
-CRITICAL RULES for REJECTING links (False Positives):
-1. REJECT any generic site navigation links: "Privacy", "Terms", "FAQ", "Login", "Register", "Contact Us", "About", "Home", "Accessibility", "Cookie Policy".
-2. REJECT category or search-result pages that don't point to a single specific job (e.g., URLs ending in `#footer` or generic search endpoints like `jobsearch?jk=software`).
-3. REJECT blog posts, news articles, investor relations, press releases, and alumni networks.
-4. REJECT any link where the title does not look like a specific job role.
-
-CRITICAL RULES for ACCEPTING links (True Positives):
-1. ACCEPT links that point to a SPECIFIC job description (e.g., "Software Engineer - Backend", "Data Analyst").
-2. We are specifically searching for roles related to the keyword: '{keyword}', but you may accept any legitimate technical/corporate job posting.
-
-Here is the JSON list of links:
-{json.dumps([{"id": i, "company": j.get("company", "Unknown"), "title": j["title"], "url": j.get("url", j.get("href", ""))} for i, j in enumerate(jobs)], indent=2)}
-
-Return a JSON array containing ONLY the integer IDs of the valid job links.
-For example: [0, 2, 5]
-Do not return markdown fences. Just the raw JSON array.
-"""
-    try:
-        result = _generate(prompt, api_key, None)
-        
-        # --- Diagnostic Dump ---
-        try:
-            dump_dir = Path(__file__).parent / "dump"
-            dump_dir.mkdir(exist_ok=True)
-            import time
-            ts = int(time.time())
-            with open(dump_dir / f"ai_input_{ts}.json", "w") as f:
-                json.dump(jobs, f, indent=2)
-            with open(dump_dir / f"ai_output_{ts}.txt", "w") as f:
-                f.write(str(result))
-        except Exception as dump_e:
-            logger.error(f"Failed to write AI diagnostic dump: {dump_e}")
-        # -----------------------
-
-        if not result or result.startswith("Error"):
-            return jobs, []
-            
-        clean = result.strip()
-        if clean.startswith("```"):
-            lines = clean.split("\n")
-            if lines[0].startswith("```json"): lines = lines[1:]
-            elif lines[0].startswith("```"): lines = lines[1:]
-            if lines[-1].startswith("```"): lines = lines[:-1]
-            clean = "\n".join(lines).strip()
-            
-        valid_ids = json.loads(clean)
-        if isinstance(valid_ids, list):
-            valid_set = set(v for v in valid_ids if isinstance(v, int) and 0 <= v < len(jobs))
-            valid_jobs = [jobs[i] for i in range(len(jobs)) if i in valid_set]
-            rejected_jobs = [jobs[i] for i in range(len(jobs)) if i not in valid_set]
-            return valid_jobs, rejected_jobs
-    except Exception as e:
-        logger.error(f"AI filtering failed: {e}")
-        
-    return jobs, []
 
 def batch_evaluate_jobs(jobs_data: list, resume_text: str, api_key: str = None, model_name: str = None) -> list:
     """
@@ -668,25 +644,16 @@ Expected JSON format:
 ]
 """
     try:
-        # Default to a model that handles big contexts well if None is passed
+        # Default to the standard model chain if the caller doesn't specify one.
         if not model_name:
-            model_name = "gemini-3.1-flash-lite"
-            
+            model_name = DEFAULT_MODEL_CHAIN
+
         result = _generate(prompt, api_key, model_name)
         if result.startswith("Error"):
             logger.error(f"Batch evaluation returned error: {result}")
             return []
-            
-        clean = result.strip()
-        if clean.startswith("```"):
-            lines = clean.split("\n")
-            if lines[0].startswith("```json"): lines = lines[1:]
-            elif lines[0].startswith("```"): lines = lines[1:]
-            if lines[-1].startswith("```"): lines = lines[:-1]
-            clean = "\n".join(lines).strip()
-            
-        parsed = json.loads(clean)
-        return parsed
+
+        return json.loads(strip_code_fences(result))
     except Exception as e:
         logger.error(f"Failed to batch evaluate jobs: {e}")
         return []

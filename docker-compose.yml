@@ -15,6 +15,11 @@ services:
       - APP_PASSWORD=${APP_PASSWORD:-admin}
       - AUTH_SECRET=${AUTH_SECRET:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # Fallback if not set via the Settings UI — see .env.example
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      # Dead-man's-switch ping for the scheduled scraper — see .env.example
+      - HEALTHCHECK_PING_URL=${HEALTHCHECK_PING_URL:-}
       # Tell the app to save the SQLite database in the mapped data folder
       - DATABASE_URL=sqlite:////app/data/jobs.db
     restart: unless-stopped
@@ -24,5 +29,6 @@ services:
     ports:
       - "5173:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped

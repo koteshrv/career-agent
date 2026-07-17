@@ -2,7 +2,20 @@ import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from "recharts"
-import { Cpu, TrendingUp, Filter } from "lucide-react"
+import { Cpu, TrendingUp, Filter, AlertTriangle, HeartPulse } from "lucide-react"
+
+type TargetHealth = {
+  company: string
+  last_status: string
+  last_message: string
+  runs_seen: number
+  consecutive_failures: number
+  success_rate: number
+  last_success_at: string | null
+  zero_streak: number
+  historical_avg_jobs_found: number
+  possibly_silent_failure: boolean
+}
 
 /**
  * Returns the Gemini free-tier daily request limit for a given model name.
@@ -38,8 +51,9 @@ function getModelDailyLimit(model: string): number {
 export function AnalyticsPage() {
   const [jobs, setJobs] = useState<any[]>([])
   const [settings, setSettings] = useState<any>(null)
+  const [targetHealth, setTargetHealth] = useState<TargetHealth[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'app' | 'ai'>('app')
+  const [activeTab, setActiveTab] = useState<'app' | 'ai' | 'health'>('app')
   const [isFreeTier, setIsFreeTier] = useState(() => {
     return localStorage.getItem("gemini_pricing_tier") !== "paygo"
   })
@@ -53,10 +67,12 @@ export function AnalyticsPage() {
   useEffect(() => {
     Promise.all([
       api.get("/api/jobs?limit=5000"),
-      api.get("/api/settings")
-    ]).then(([jobsRes, settingsRes]) => {
+      api.get("/api/settings"),
+      api.get("/api/companies/health")
+    ]).then(([jobsRes, settingsRes, healthRes]) => {
       setJobs(jobsRes.data)
       setSettings(settingsRes.data)
+      setTargetHealth(healthRes.data?.targets || [])
       setLoading(false)
     }).catch(e => {
       console.error(e)
@@ -202,11 +218,22 @@ export function AnalyticsPage() {
         >
           App Analytics
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('ai')}
           className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'ai' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500 hover:text-zinc-300'}`}
         >
           AI Telemetry
+        </button>
+        <button
+          onClick={() => setActiveTab('health')}
+          className={`px-4 py-2 rounded-md text-sm font-semibold transition-all flex items-center gap-1.5 ${activeTab === 'health' ? 'bg-red-500/20 text-red-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+        >
+          Target Health
+          {targetHealth.filter(t => t.consecutive_failures >= 3 || t.possibly_silent_failure).length > 0 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+              {targetHealth.filter(t => t.consecutive_failures >= 3 || t.possibly_silent_failure).length}
+            </span>
+          )}
         </button>
       </div>
 
@@ -473,6 +500,81 @@ export function AnalyticsPage() {
               </div>
               <span className="text-2xl font-bold text-white font-mono">{isFreeTier ? "$0.00" : `$${estCost.toFixed(5)}`}</span>
             </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'health' && (
+        <div className="max-w-2xl">
+          <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl">
+            <div className="flex items-center gap-2 text-lg font-bold text-white mb-1">
+              <HeartPulse className="w-5 h-5 text-red-400" />
+              Target Health
+            </div>
+            <p className="text-xs text-zinc-400 mb-6">
+              Success rate per company across the last {targetHealth.reduce((a, t) => Math.max(a, t.runs_seen), 0) || 20} scrape runs.
+              A company failing several runs in a row usually means its site markup changed —
+              but a broken selector often doesn't throw at all, it just quietly returns 0 jobs.
+              The <span className="text-violet-400 font-semibold">violet</span> flag below catches that case too.
+            </p>
+
+            {targetHealth.length === 0 ? (
+              <div className="text-zinc-500 text-sm">No scrape history yet — run the scraper at least once.</div>
+            ) : (
+              <div className="space-y-3">
+                {targetHealth.map(t => {
+                  const isBroken = t.consecutive_failures >= 3
+                  const isWarning = t.consecutive_failures > 0 && t.consecutive_failures < 3
+                  const isSilentFailure = t.possibly_silent_failure
+                  return (
+                    <div
+                      key={t.company}
+                      className={`p-4 rounded-xl border flex flex-col gap-1.5 ${
+                        isBroken ? "bg-red-900/10 border-red-500/20" :
+                        isSilentFailure ? "bg-violet-900/10 border-violet-500/20" :
+                        isWarning ? "bg-amber-900/10 border-amber-500/20" :
+                        "bg-black/30 border-white/5"
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-semibold text-sm text-white flex items-center gap-1.5">
+                          {isBroken && <AlertTriangle className="w-3.5 h-3.5 text-red-400" />}
+                          {!isBroken && isSilentFailure && <AlertTriangle className="w-3.5 h-3.5 text-violet-400" />}
+                          {t.company}
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
+                          t.last_status === "SUCCESS"
+                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                            : "bg-red-500/10 text-red-400 border-red-500/30"
+                        }`}>
+                          {t.last_status}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-xs text-zinc-400">
+                        <span>
+                          {Math.round(t.success_rate * 100)}% success &bull; {t.runs_seen} run{t.runs_seen === 1 ? "" : "s"} seen
+                        </span>
+                        {t.consecutive_failures > 0 && (
+                          <span className={`font-semibold ${isBroken ? "text-red-400" : "text-amber-400"}`}>
+                            {t.consecutive_failures} failed in a row
+                          </span>
+                        )}
+                      </div>
+                      {isSilentFailure && (
+                        <p className="text-[11px] text-violet-400 font-semibold">
+                          ⚠ {t.zero_streak} runs in a row found 0 jobs — normally averages {t.historical_avg_jobs_found}. Likely a broken selector, not a real dry spell.
+                        </p>
+                      )}
+                      {t.last_status === "FAILED" && t.last_message && (
+                        <p className="text-[11px] text-zinc-500 font-mono truncate" title={t.last_message}>
+                          {t.last_message}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

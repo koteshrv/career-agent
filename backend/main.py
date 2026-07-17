@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 import asyncio
+from contextlib import asynccontextmanager
 from collections import deque
 import shutil
 from pathlib import Path
@@ -45,8 +46,8 @@ if _log_level == logging.DEBUG:
 
 
 
-from . import models, schemas, crud, scheduler, ai_agent, auth
-from .database import engine, get_db
+from . import models, schemas, crud, scheduler, ai_agent, auth, notifications
+from .database import engine, get_db, SessionLocal
 import json
 from .scraper_core import run_scraper, load_targets, fetch_job_description, record_job
 from .ai_agent import generate_application_materials
@@ -108,7 +109,47 @@ class RunLogCaptureHandler(logging.Handler):
 # Create tables if they don't exist
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="Job Scraper ATS API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- Startup ---
+    try:
+        with SessionLocal() as db:
+            settings = crud.get_settings(db)
+            is_debug = getattr(settings, "debug_logging_enabled", False)
+        logging.getLogger().setLevel(logging.DEBUG if is_debug else logging.INFO)
+
+        # Stream logs to connected WebSocket clients. The console/file handlers are
+        # already installed at import time — don't add more here or logs duplicate.
+        loop = asyncio.get_running_loop()
+        ws_handler = WebSocketLogHandler(manager, loop)
+        ws_handler.setLevel(logging.DEBUG if is_debug else logging.INFO)
+        logging.getLogger().addHandler(ws_handler)
+    except Exception as e:
+        logger.error(f"Failed to attach WS logger: {e}")
+
+    # Clean up any RUNNING logs orphaned by a previous crash/restart.
+    try:
+        with SessionLocal() as db:
+            n = crud.fail_orphaned_running_logs(db)
+            if n:
+                logger.info(f"Marked {n} orphaned RUNNING log(s) as FAILED.")
+    except Exception as e:
+        logger.error(f"Failed to clean orphaned logs: {e}")
+
+    try:
+        scheduler.start()
+    except Exception as e:
+        logger.error(f"Failed to start scheduler: {e}")
+
+    yield
+
+    # --- Shutdown ---
+    if scheduler.scheduler.running:
+        scheduler.scheduler.shutdown(wait=False)
+
+
+app = FastAPI(title="Job Scraper ATS API", lifespan=lifespan)
 
 @app.get("/healthz")
 def health_check():
@@ -134,7 +175,9 @@ app.add_middleware(AuthMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    # Auth is via a Bearer token header, not cookies. Credentials must be False for
+    # a wildcard origin to be valid (browsers reject "*" + credentials).
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -145,77 +188,44 @@ def login(creds: schemas.LoginRequest):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     return {"token": auth.create_token(creds.username)}
 
-@app.on_event("startup")
-def _start_scheduler():
-    try:
-        from backend.database import SessionLocal
-        from backend.crud import get_settings
-        with SessionLocal() as db:
-            settings = get_settings(db)
-            is_debug = getattr(settings, "debug_logging_enabled", False)
-            logging.getLogger().setLevel(logging.DEBUG if is_debug else logging.INFO)
-            
-        loop = asyncio.get_running_loop()
-        ws_handler = WebSocketLogHandler(manager, loop)
-        ws_handler.setLevel(logging.DEBUG if is_debug else logging.INFO)
-        root_logger = logging.getLogger()
-        root_logger.addHandler(ws_handler)
-        
-        # Also add a standard console handler so we don't lose stdout logs
-        console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.DEBUG if is_debug else logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(name)s - %(message)s')
-        console_handler.setFormatter(formatter)
-        root_logger.addHandler(console_handler)
-    except Exception as e:
-        logger.error(f"Failed to attach WS logger: {e}")
-    # Clean up any RUNNING logs orphaned by a previous crash/restart.
-    db = next(get_db())
-    try:
-        n = crud.fail_orphaned_running_logs(db)
-        if n:
-            logger.info(f"Marked {n} orphaned RUNNING log(s) as FAILED.")
-    finally:
-        db.close()
-    try:
-        scheduler.start()
-    except Exception as e:
-        logger.error(f"Failed to start scheduler: {e}")
-
-@app.on_event("shutdown")
-def _stop_scheduler():
-    if scheduler.scheduler.running:
-        scheduler.scheduler.shutdown(wait=False)
-
-def bg_scrape_task(db: Session):
-    # Log a RUNNING entry immediately so it shows up in history right away.
-    log = crud.create_scraper_log(db, schemas.ScraperLogBase(jobs_found=0, status="RUNNING", trigger_source="MANUAL"))
-    
+def bg_scrape_task():
+    # Owns its own session — a request-scoped session would be closed before this
+    # long-running background task finishes.
+    db = SessionLocal()
     capture_handler = RunLogCaptureHandler()
     capture_handler.setLevel(logging.INFO)
     logging.getLogger().addHandler(capture_handler)
-    
     try:
-        # Clean old scraper logs (14 days)
-        deleted_logs = crud.delete_old_scraper_logs(db, 14)
-        if deleted_logs > 0:
-            logger.info(f"Cleaned up {deleted_logs} old scraper logs.")
-            
-        new_jobs, company_logs = run_scraper(db)
-        
-        logger.info(f"Background scrape completed successfully. Found {len(new_jobs)} new jobs.")
-        raw_logs_str = "\n".join(capture_handler.logs)
-        crud.update_scraper_log(db, log.id, jobs_found=len(new_jobs), status="SUCCESS", detailed_logs=json.dumps(company_logs), raw_logs=raw_logs_str)
-    except Exception as e:
-        raw_logs_str = "\n".join(capture_handler.logs)
-        crud.update_scraper_log(db, log.id, status="FAILED", error_message=str(e), raw_logs=raw_logs_str)
-        logger.error(f"Background scrape failed: {e}")
+        # Log a RUNNING entry immediately so it shows up in history right away.
+        log = crud.create_scraper_log(db, schemas.ScraperLogBase(jobs_found=0, status="RUNNING", trigger_source="MANUAL"))
+        try:
+            # Clean old scraper logs (14 days)
+            deleted_logs = crud.delete_old_scraper_logs(db, 14)
+            if deleted_logs > 0:
+                logger.info(f"Cleaned up {deleted_logs} old scraper logs.")
+
+            new_jobs, company_logs = run_scraper(db)
+
+            logger.info(f"Background scrape completed successfully. Found {len(new_jobs)} new jobs.")
+            raw_logs_str = "\n".join(capture_handler.logs)
+            crud.update_scraper_log(db, log.id, jobs_found=len(new_jobs), status="SUCCESS", detailed_logs=json.dumps(company_logs), raw_logs=raw_logs_str)
+            notifications.notify_broken_targets(db)
+        except Exception as e:
+            raw_logs_str = "\n".join(capture_handler.logs)
+            crud.update_scraper_log(db, log.id, status="FAILED", error_message=str(e), raw_logs=raw_logs_str)
+            logger.error(f"Background scrape failed: {e}")
+            notifications.notify_scrape_run_failed(db, str(e), "MANUAL")
     finally:
         logging.getLogger().removeHandler(capture_handler)
+        db.close()
 
 @app.post("/api/run-scraper")
 def trigger_scraper(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    background_tasks.add_task(bg_scrape_task, db)
+    # Cron and manual triggers can otherwise overlap and hit SQLite write contention
+    # ("database is locked"), plus double-count/duplicate jobs mid-run.
+    if crud.has_running_scrape(db):
+        raise HTTPException(status_code=409, detail="A scrape is already running.")
+    background_tasks.add_task(bg_scrape_task)
     return {"message": "Scraper started in background"}
 
 @app.websocket("/api/ws/logs")
@@ -265,75 +275,69 @@ def update_job(job_id: int, job_update: schemas.JobUpdate, db: Session = Depends
         raise HTTPException(status_code=404, detail="Job not found")
     return db_job
 
-class ExtensionPayload(BaseModel):
-    url: str
-    page_title: str
-    description: str
-    company: str = None
-    title: str = None
-
-def _process_extension_job(payload: schemas.ExtensionPayload, db_gen, settings, api_key, model_name):
-    db = next(db_gen)
+def _extension_location_tag(url: str) -> str:
+    """Build the "Manual - Extension (Site)" source tag from a job URL's domain."""
     import urllib.parse
-    
-    # Parse domain for source tag
     try:
-        domain = urllib.parse.urlparse(payload.url).netloc
+        domain = urllib.parse.urlparse(url).netloc
         parts = domain.replace("www.", "").split(".")
         site_name = parts[-2].capitalize() if len(parts) >= 2 else domain
     except Exception:
         site_name = "Extension"
-    location_tag = f"Manual - Extension ({site_name})"
-
-    logger.info(f"Extension extracted {len(payload.description)} chars from {payload.url}")
-    with open("last_extension_payload.txt", "w") as f:
-        f.write(payload.description)
-        
-    clean_desc = ai_agent.sanitize_job_description(payload.description, api_key)
-
-    company = payload.company.strip() if payload.company else ""
-    title = payload.title.strip() if payload.title else ""
-    
-    if not company or company == "Unknown Company":
-        parsed = ai_agent.parse_job_page_title(payload.page_title, api_key, model_name)
-        company = parsed.get("company", "Unknown Company")
-        if not title or title == payload.page_title:
-            title = parsed.get("title", payload.page_title)
-            
-    if not company: company = "Unknown Company"
-    if not title: title = payload.page_title
-
-    job = record_job(db, company, title, payload.url, location_tag)
-    db.commit()
-    db.refresh(job)
-    
-    update_data = {
-        "description": clean_desc, "location": location_tag,
-        "company": company, "title": title
-    }
-    job_update = schemas.JobUpdate(**update_data)
-    crud.update_job_status(db, job.id, job_update)
-    db.refresh(job)
-    
-    return job
+    return f"Manual - Extension ({site_name})"
 
 def process_batch_background(payloads: List[schemas.ExtensionPayload], settings: schemas.Settings):
     api_key = settings.gemini_api_key if settings else None
     model_name = settings.gemini_model if settings else None
-    
+
     # Get a fresh DB session for the background task
     db_gen = get_db()
     db = next(db_gen)
-    
+
     jobs_to_evaluate = []
-    for payload in payloads:
-        try:
-            # Pass the same session so objects stay attached
-            job = _process_extension_job(payload, iter([db]), settings, api_key, model_name)
-            jobs_to_evaluate.append({"url": job.url})
-        except Exception as e:
-            logger.error(f"Failed background extension job: {e}")
-            
+
+    chunk_size = 5
+    for i in range(0, len(payloads), chunk_size):
+        chunk = payloads[i:i + chunk_size]
+
+        jobs_for_ai = [{"description": p.description, "url": p.url} for p in chunk]
+        ai_results = ai_agent.batch_extract_job_details(jobs_for_ai, api_key, model_name)
+
+        for j, payload in enumerate(chunk):
+            try:
+                location_tag = _extension_location_tag(payload.url)
+
+                ai_company = ai_results[j].get("company", "Unknown Company")
+                ai_title = ai_results[j].get("title", "Unknown Title")
+                clean_desc = ai_results[j].get("clean_description", payload.description)
+                
+                company = payload.company.strip() if payload.company else ""
+                title = payload.title.strip() if payload.title else ""
+                
+                if not company or company == "Unknown Company":
+                    company = ai_company
+                if not title or title == payload.page_title or title == "LinkedIn" or title == "Search":
+                    title = ai_title
+                    
+                if not company: company = "Unknown Company"
+                if not title: title = payload.page_title
+                
+                job = record_job(db, company, title, payload.url, location_tag)
+                db.commit()
+                db.refresh(job)
+                
+                update_data = {
+                    "description": clean_desc, "location": location_tag,
+                    "company": company, "title": title
+                }
+                job_update = schemas.JobUpdate(**update_data)
+                crud.update_job_status(db, job.id, job_update)
+                db.refresh(job)
+                
+                jobs_to_evaluate.append({"url": job.url})
+            except Exception as e:
+                logger.error(f"Failed background extension job: {e}")
+                
     if jobs_to_evaluate:
         from .scraper_core import bulk_evaluate_jobs
         try:
@@ -362,22 +366,13 @@ def parse_title_endpoint(page_title: str, db: Session = Depends(get_db)):
     return parsed
 
 @app.post("/api/jobs/extension", response_model=schemas.Job)
-def save_from_extension(payload: ExtensionPayload, db: Session = Depends(get_db)):
+def save_from_extension(payload: schemas.ExtensionPayload, db: Session = Depends(get_db)):
     """Receives a job scraped by the Chrome Extension."""
-    import urllib.parse
     settings = crud.get_settings(db)
     api_key = settings.gemini_api_key if settings else None
-
     model_name = settings.gemini_model if settings else None
 
-    # Parse domain for source tag
-    try:
-        domain = urllib.parse.urlparse(payload.url).netloc
-        parts = domain.replace("www.", "").split(".")
-        site_name = parts[-2].capitalize() if len(parts) >= 2 else domain
-    except Exception:
-        site_name = "Extension"
-    location_tag = f"Manual - Extension ({site_name})"
+    location_tag = _extension_location_tag(payload.url)
 
     # Clean description using AI
     clean_desc = ai_agent.sanitize_job_description(payload.description, api_key)
@@ -390,6 +385,15 @@ def save_from_extension(payload: ExtensionPayload, db: Session = Depends(get_db)
         company = parsed.get("company", "Unknown Company")
         if not title or title == payload.page_title:
             title = parsed.get("title", payload.page_title)
+            
+        # If it's still missing or we know it's a feed post (title is "LinkedIn"), ask AI to parse the description
+        if (company == "Unknown Company" or title == "LinkedIn" or title == "Search") and payload.description:
+            parsed_desc = ai_agent.extract_job_details_from_description(payload.description, api_key, model_name)
+            if parsed_desc:
+                if company == "Unknown Company" and parsed_desc.get("company") and parsed_desc.get("company") != "Unknown Company":
+                    company = parsed_desc.get("company")
+                if (title == "LinkedIn" or title == "Search" or title == payload.page_title) and parsed_desc.get("title") and parsed_desc.get("title") != "Unknown Title":
+                    title = parsed_desc.get("title")
             
     if not company:
         company = "Unknown Company"
@@ -411,7 +415,6 @@ def save_from_extension(payload: ExtensionPayload, db: Session = Depends(get_db)
     job_update = schemas.JobUpdate(**update_data)
     crud.update_job_status(db, job.id, job_update)
     db.refresh(job)
-    print("RETURNING JOB:", job, "ID:", job.id, flush=True)
     return job
 
 @app.get("/api/settings", response_model=schemas.Settings)
@@ -441,6 +444,12 @@ def get_history(limit: int = 50, db: Session = Depends(get_db)):
 def clear_history(db: Session = Depends(get_db)):
     count = crud.delete_all_scraper_logs(db)
     return {"message": "History cleared", "deleted": count}
+
+@app.get("/api/companies/health")
+def get_companies_health(run_limit: int = 20, db: Session = Depends(get_db)):
+    """Per-company scrape health rollup, surfacing targets that are repeatedly
+    failing (e.g. a site's markup changed) instead of silently showing 0 jobs."""
+    return {"targets": crud.get_target_health(db, run_limit=run_limit)}
 
 @app.get("/api/companies")
 def get_companies():
@@ -559,47 +568,47 @@ class OnDemandPdfRequest(BaseModel):
     latex_content: str
     company: str
 
-@app.post("/api/generate/on-demand/pdf")
-def generate_on_demand_pdf(req: OnDemandPdfRequest):
-    if not req.latex_content:
+def _compile_latex_to_pdf(latex_content: str, out_basename: str, download_name: str) -> FileResponse:
+    """Compile LaTeX source to a PDF and return it as a download.
+
+    `-no-shell-escape` is passed explicitly to block LaTeX's \\write18 shell
+    execution on user-supplied source.
+    """
+    if not latex_content or not latex_content.strip():
         raise HTTPException(status_code=400, detail="No LaTeX content provided")
 
+    clean_tex = ai_agent.strip_code_fences(latex_content)
+
     with tempfile.TemporaryDirectory() as tmpdir:
-        tex_path = Path(tmpdir) / "resume.tex"
-        
-        # Clean up Markdown code fences
-        clean_tex = req.latex_content.strip()
-        if clean_tex.startswith("```"):
-            lines = clean_tex.split("\n")
-            if lines[0].startswith("```"): lines = lines[1:]
-            if lines[-1].startswith("```"): lines = lines[:-1]
-            clean_tex = "\n".join(lines).strip()
-            
-        tex_path.write_text(clean_tex)
-        
+        (Path(tmpdir) / "resume.tex").write_text(clean_tex)
         try:
             subprocess.run(
-                ["pdflatex", "-interaction=nonstopmode", "resume.tex"],
-                cwd=tmpdir,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "resume.tex"],
+                cwd=tmpdir, check=True,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
             )
+        except FileNotFoundError:
+            raise HTTPException(status_code=500, detail="pdflatex is not installed on the server.")
         except subprocess.CalledProcessError as e:
-            logger.error(f"LaTeX compilation failed: {e.stdout.decode()} {e.stderr.decode()}")
+            logger.error(f"LaTeX compilation failed: {e.stdout.decode(errors='ignore')} {e.stderr.decode(errors='ignore')}")
             raise HTTPException(status_code=500, detail="Failed to compile PDF from LaTeX")
-        
+
         pdf_path = Path(tmpdir) / "resume.pdf"
         if not pdf_path.exists():
             raise HTTPException(status_code=500, detail="PDF file was not generated")
-            
-        out_path = Path("/tmp") / f"resume_ondemand_{hash(req.company)}.pdf"
+
+        # Copy out of the tempdir so the file survives for FileResponse to stream.
+        out_path = Path(tempfile.gettempdir()) / out_basename
         shutil.copy(pdf_path, out_path)
-        
-    return FileResponse(
-        path=out_path,
-        media_type="application/pdf",
-        filename=f"{req.company}_Resume.pdf"
+
+    return FileResponse(path=out_path, media_type="application/pdf", filename=download_name)
+
+@app.post("/api/generate/on-demand/pdf")
+def generate_on_demand_pdf(req: OnDemandPdfRequest):
+    return _compile_latex_to_pdf(
+        req.latex_content,
+        f"resume_ondemand_{abs(hash(req.company))}.pdf",
+        f"{req.company}_Resume.pdf",
     )
 
 @app.get("/api/jobs/{job_id}/resume/pdf")
@@ -608,44 +617,10 @@ def get_resume_pdf(job_id: int, db: Session = Depends(get_db)):
     if not db_job or not db_job.tailored_resume:
         raise HTTPException(status_code=404, detail="Tailored resume not found for this job")
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        tex_path = Path(tmpdir) / "resume.tex"
-        
-        # Clean up Markdown code fences if Gemini incorrectly output them
-        clean_tex = db_job.tailored_resume.strip()
-        if clean_tex.startswith("```"):
-            lines = clean_tex.split("\n")
-            if lines[0].startswith("```"): lines = lines[1:]
-            if lines[-1].startswith("```"): lines = lines[:-1]
-            clean_tex = "\n".join(lines).strip()
-            
-        tex_path.write_text(clean_tex)
-        
-        try:
-            # Run pdflatex twice for references, though usually once is enough for simple resumes
-            subprocess.run(
-                ["pdflatex", "-interaction=nonstopmode", "resume.tex"],
-                cwd=tmpdir,
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error(f"LaTeX compilation failed: {e.stdout.decode()} {e.stderr.decode()}")
-            raise HTTPException(status_code=500, detail="Failed to compile PDF from LaTeX")
-        
-        pdf_path = Path(tmpdir) / "resume.pdf"
-        if not pdf_path.exists():
-            raise HTTPException(status_code=500, detail="PDF file was not generated")
-            
-        # Copy the pdf out of the tempdir so it persists for FileResponse
-        out_path = Path("/tmp") / f"resume_{job_id}.pdf"
-        shutil.copy(pdf_path, out_path)
-        
-    return FileResponse(
-        path=out_path,
-        media_type="application/pdf",
-        filename=f"{db_job.company}_Resume.pdf"
+    return _compile_latex_to_pdf(
+        db_job.tailored_resume,
+        f"resume_{job_id}.pdf",
+        f"{db_job.company}_Resume.pdf",
     )
 
 @app.post("/api/jobs/{job_id}/fetch-jd")

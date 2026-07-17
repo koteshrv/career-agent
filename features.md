@@ -5,7 +5,11 @@ CareerAgent is an open-source, AI-powered job search automation platform built s
 ## 1. Automated Job Discovery & Scraping
 - **Headless Browser Scraping**: Uses Playwright to render and scrape dynamic JavaScript-heavy ATS platforms (Greenhouse, Lever, Workday).
 - **Background Cron Scheduler**: Configurable recurring scraping intervals (e.g., every 12 or 24 hours) running entirely in the background.
-- **Companion Chrome Extension**: A lightweight browser extension allowing 1-click job saving directly from job boards like LinkedIn and Indeed directly into your pipeline.
+- **Companion Chrome Extension**: A powerful browser extension bridging the gap for highly bot-protected sites (LinkedIn, Naukri, Indeed):
+  - **Auto-Scraping & Pagination**: Built-in polling engine that automatically scans cards, extracts data, and navigates across multiple pages in Single Page Applications (SPAs) without human intervention.
+  - **Dynamic UI Camouflage**: Injects "Agent Save" buttons that perfectly inherit the native CSS and DOM structure of the host site, blending seamlessly into any job board.
+  - **Silent JD Fetching**: Automatically fetches the full Job Description in the background when saving directly from a list view (bypassing the need to manually open each job).
+  - **Local Queue & Batch Processing**: Queues scraped jobs locally within the extension and syncs them to the backend in batches to respect API limits and optimize performance.
 
 ## 2. Advanced AI Engine
 - **Bring Your Own Keys (Free or Paid)**: Use any AI you prefer! Bring your own OpenAI or Anthropic keys, or use **100% Free AI Processing** with a Google AI Studio key. CareerAgent natively manages Google's strict free tier rate limits (**15 RPM / 1500 RPD for Gemma 4**, **15 RPM / 500 RPD for Gemini 3.1 Flash Lite**, **5 RPM / 20 RPD for Gemini 3.5 Flash**) so you can automate your search for $0. *(Disclaimer: Google uses free tier data for training. For complete privacy, run Ollama locally!)*
@@ -30,7 +34,9 @@ CareerAgent is an open-source, AI-powered job search automation platform built s
 - **Soft Deletes**: "Trash" state for jobs with a configurable retention policy (e.g., permanently delete after 30 days) to keep your pipeline clean.
 
 ## 6. Real-time Notifications & Integrations
-- **Telegram Push Alerts**: Connect a custom Telegram bot to instantly receive push notifications on your phone whenever a high-match job is discovered by the background scraper.
+- **Live Log Streaming**: A WebSocket-backed live log tail in the UI, plus every scrape run's full console output and per-company results are persisted to the database, so nothing is lost between runs.
+- **Target Health Rollup**: The Analytics page tracks per-company scrape success rate and consecutive-failure streaks across recent runs, surfacing targets whose scraper likely broke (e.g. a site's markup changed) instead of silently returning 0 jobs forever.
+- **Telegram Push Alerts (planned, not yet implemented)**: Settings has fields to configure a Telegram bot token/chat ID, encrypted at rest — but no backend logic currently sends a message. See [ROADMAP.md](ROADMAP.md) for the plan to wire this up.
 
 ## 7. Security & Privacy
 - **Encrypted Secrets**: Sensitive credentials (like Gemini API keys and Telegram Bot tokens) are encrypted at rest in the SQLite database using Fernet symmetric encryption.

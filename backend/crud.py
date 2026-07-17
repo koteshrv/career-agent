@@ -1,3 +1,4 @@
+import json
 from sqlalchemy.orm import Session
 from . import models, schemas
 from .crypto import encrypt_value, decrypt_value
@@ -72,6 +73,12 @@ def bulk_delete_jobs(db: Session, ids: list) -> int:
     db.commit()
     return count
 
+# Settings fields stored encrypted at rest (Fernet). Decrypted on read, encrypted on write.
+ENCRYPTED_FIELDS = {
+    "telegram_bot_token", "gemini_api_key",
+    "openai_api_key", "anthropic_api_key", "grok_api_key",
+}
+
 def get_settings(db: Session):
     settings = db.query(models.Settings).first()
     if not settings:
@@ -79,15 +86,13 @@ def get_settings(db: Session):
         db.add(settings)
         db.commit()
         db.refresh(settings)
-    
-    decrypted = schemas.Settings.model_validate(settings)
-    if decrypted.telegram_bot_token:
-        decrypted.telegram_bot_token = decrypt_value(decrypted.telegram_bot_token)
-    if decrypted.gemini_api_key:
-        decrypted.gemini_api_key = decrypt_value(decrypted.gemini_api_key)
-    return decrypted
 
-ENCRYPTED_FIELDS = {"telegram_bot_token", "gemini_api_key"}
+    decrypted = schemas.Settings.model_validate(settings)
+    for field in ENCRYPTED_FIELDS:
+        value = getattr(decrypted, field, None)
+        if value:
+            setattr(decrypted, field, decrypt_value(value))
+    return decrypted
 
 def update_settings(db: Session, settings: schemas.SettingsBase):
     db_settings = db.query(models.Settings).first()
@@ -108,6 +113,10 @@ def update_settings(db: Session, settings: schemas.SettingsBase):
     db.commit()
     db.refresh(db_settings)
     return get_settings(db)
+
+def has_running_scrape(db: Session) -> bool:
+    """True if a scraper run is already in flight (cron and manual can otherwise overlap)."""
+    return db.query(models.ScraperLog).filter(models.ScraperLog.status == "RUNNING").first() is not None
 
 def get_scraper_logs(db: Session, limit: int = 50):
     return db.query(models.ScraperLog).order_by(models.ScraperLog.timestamp.desc()).limit(limit).all()
@@ -161,3 +170,92 @@ def delete_all_scraper_logs(db: Session) -> int:
     count = db.query(models.ScraperLog).delete()
     db.commit()
     return count
+
+# A company needs this many consecutive SUCCESS-but-0-jobs runs, with a healthy history
+# behind them, before we flag it as a likely *silent* failure (broken selector/schema
+# drift) rather than a real dry spell. Exceptions already surface as consecutive_failures;
+# this catches the failure mode that never throws at all — it just quietly returns nothing.
+ZERO_STREAK_ALERT_THRESHOLD = 3
+
+def get_target_health(db: Session, run_limit: int = 20) -> list:
+    """Aggregate per-company scrape health across the most recent `run_limit` runs.
+
+    With 40+ scraped targets, a site's markup silently breaking usually doesn't raise an
+    exception at all — it just returns 0 jobs, which looks identical to "no openings today"
+    everywhere downstream. This surfaces both failure modes: explicit FAILED streaks, and
+    a run of SUCCESS-but-0-jobs for a company that normally finds some.
+    """
+    logs = (
+        db.query(models.ScraperLog)
+        .filter(models.ScraperLog.detailed_logs.isnot(None))
+        .order_by(models.ScraperLog.timestamp.desc())
+        .limit(run_limit)
+        .all()
+    )
+
+    # company -> list of {timestamp, status, message, jobs_found}, newest run first
+    history: dict = {}
+    for log in logs:
+        try:
+            entries = json.loads(log.detailed_logs)
+        except Exception:
+            continue
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            company = entry.get("company")
+            if not company:
+                continue
+            history.setdefault(company, []).append({
+                "timestamp": log.timestamp,
+                "status": entry.get("status"),
+                "message": entry.get("message") or "",
+                "jobs_found": entry.get("jobs_found") or 0,
+            })
+
+    results = []
+    for company, runs in history.items():
+        consecutive_failures = 0
+        for run in runs:  # already newest-first
+            if run["status"] == "FAILED":
+                consecutive_failures += 1
+            else:
+                break
+
+        successes = sum(1 for r in runs if r["status"] == "SUCCESS")
+        last_success_at = next((r["timestamp"] for r in runs if r["status"] == "SUCCESS"), None)
+
+        # Recent consecutive SUCCESS runs that found exactly 0 jobs.
+        zero_streak = 0
+        for run in runs:
+            if run["status"] == "SUCCESS" and run["jobs_found"] == 0:
+                zero_streak += 1
+            else:
+                break
+
+        # Average jobs_found on the older SUCCESS runs, i.e. excluding the current zero
+        # streak — this is "what did this company look like before it (maybe) broke".
+        older_successes = [r["jobs_found"] for r in runs[zero_streak:] if r["status"] == "SUCCESS"]
+        historical_avg_jobs_found = round(sum(older_successes) / len(older_successes), 1) if older_successes else 0.0
+
+        possibly_silent_failure = (
+            zero_streak >= ZERO_STREAK_ALERT_THRESHOLD and historical_avg_jobs_found >= 1
+        )
+
+        results.append({
+            "company": company,
+            "last_status": runs[0]["status"],
+            "last_message": runs[0]["message"],
+            "runs_seen": len(runs),
+            "consecutive_failures": consecutive_failures,
+            "success_rate": round(successes / len(runs), 2),
+            "last_success_at": last_success_at,
+            "zero_streak": zero_streak,
+            "historical_avg_jobs_found": historical_avg_jobs_found,
+            "possibly_silent_failure": possibly_silent_failure,
+        })
+
+    # Worst offenders first: explicit failure streaks, then possible silent failures,
+    # then lowest success rate.
+    results.sort(key=lambda r: (-r["consecutive_failures"], not r["possibly_silent_failure"], r["success_rate"]))
+    return results

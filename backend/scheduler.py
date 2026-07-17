@@ -4,7 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from .database import SessionLocal
-from . import crud, schemas
+from . import crud, schemas, notifications
 from .scraper_core import run_scraper
 
 logger = logging.getLogger(__name__)
@@ -28,8 +28,16 @@ class RunLogCaptureHandler(logging.Handler):
 def _scheduled_scrape():
     """Run the scraper from a self-managed DB session (no request context)."""
     db = SessionLocal()
+
+    # A manual run (or a previous cron tick that's still going) can otherwise overlap
+    # with this one and hit SQLite write contention / duplicate job commits.
+    if crud.has_running_scrape(db):
+        logger.warning("Skipping scheduled scrape — a scrape is already RUNNING.")
+        db.close()
+        return
+
     log = crud.create_scraper_log(db, schemas.ScraperLogBase(jobs_found=0, status="RUNNING", trigger_source="CRON"))
-    
+
     capture_handler = RunLogCaptureHandler()
     capture_handler.setLevel(logging.INFO)
     logging.getLogger().addHandler(capture_handler)
@@ -52,10 +60,14 @@ def _scheduled_scrape():
         logger.info(f"Scheduled scrape complete. Found {len(new_jobs)} new jobs.")
         raw_logs_str = "\n".join(capture_handler.logs)
         crud.update_scraper_log(db, log.id, jobs_found=len(new_jobs), status="SUCCESS", detailed_logs=json.dumps(company_logs), raw_logs=raw_logs_str)
+        notifications.notify_broken_targets(db)
+        notifications.ping_healthcheck(True)
     except Exception as e:
         raw_logs_str = "\n".join(capture_handler.logs)
         crud.update_scraper_log(db, log.id, status="FAILED", error_message=str(e), raw_logs=raw_logs_str)
         logger.error(f"Scheduled scrape failed: {e}")
+        notifications.notify_scrape_run_failed(db, str(e), "CRON")
+        notifications.ping_healthcheck(False)
     finally:
         logging.getLogger().removeHandler(capture_handler)
         db.close()

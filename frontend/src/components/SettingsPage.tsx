@@ -437,9 +437,9 @@ export function SettingsPage() {
                 className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 pr-10 text-white appearance-none focus:outline-none focus:border-blue-500 cursor-pointer"
               >
                 <option value="gemini" className="bg-[#12141a]">Google Gemini</option>
-                <option value="openai" className="bg-[#12141a]">OpenAI</option>
-                <option value="anthropic" className="bg-[#12141a]">Anthropic Claude</option>
-                <option value="grok" className="bg-[#12141a]">xAI Grok</option>
+                <option value="openai" disabled className="bg-[#12141a] text-zinc-600">OpenAI (Coming soon)</option>
+                <option value="anthropic" disabled className="bg-[#12141a] text-zinc-600">Anthropic Claude (Coming soon)</option>
+                <option value="grok" disabled className="bg-[#12141a] text-zinc-600">xAI Grok (Coming soon)</option>
                 <option value="ollama" className="bg-[#12141a]">Local Ollama (Private)</option>
               </select>
               <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-zinc-400">
@@ -525,89 +525,16 @@ export function SettingsPage() {
             </>
           )}
 
-          {/* ── OpenAI ── */}
-          {(localStorage.getItem("generation_mode") || "gemini") === "openai" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-zinc-400 mb-1">OpenAI API Key</label>
-                <input
-                  type="password"
-                  value={settings.openai_api_key || ""}
-                  onChange={e => setSettings({...settings, openai_api_key: e.target.value})}
-                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
-                  placeholder="sk-..."
-                />
-              </div>
-              <ModelPriorityPicker
-                label="Model Priority List (fallbacks in order)"
-                value={settings.openai_model || "gpt-4o-mini, gpt-4o"}
-                onChange={v => setSettings({...settings, openai_model: v})}
-                suggestions={[
-                  { value: "gpt-4o-mini", label: "gpt-4o-mini", badge: "fast · cheap" },
-                  { value: "gpt-4o", label: "gpt-4o", badge: "flagship" },
-                  { value: "o3-mini", label: "o3-mini", badge: "reasoning" },
-                  { value: "o1-mini", label: "o1-mini", badge: "reasoning" },
-                  { value: "gpt-4-turbo", label: "gpt-4-turbo", badge: "legacy" },
-                ]}
-              />
-              <TosWarning level="ok" text="OpenAI does not use API data for model training. Your resume data is private and not retained beyond 30 days." />
-            </>
-          )}
-
-          {/* ── Anthropic ── */}
-          {(localStorage.getItem("generation_mode") || "gemini") === "anthropic" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-zinc-400 mb-1">Anthropic API Key</label>
-                <input
-                  type="password"
-                  value={settings.anthropic_api_key || ""}
-                  onChange={e => setSettings({...settings, anthropic_api_key: e.target.value})}
-                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
-                  placeholder="sk-ant-..."
-                />
-              </div>
-              <ModelPriorityPicker
-                label="Model Priority List (fallbacks in order)"
-                value={settings.anthropic_model || "claude-3-5-haiku-latest, claude-3-7-sonnet-latest"}
-                onChange={v => setSettings({...settings, anthropic_model: v})}
-                suggestions={[
-                  { value: "claude-3-5-haiku-latest", label: "claude-3-5-haiku-latest", badge: "fast · cheap" },
-                  { value: "claude-3-7-sonnet-latest", label: "claude-3-7-sonnet-latest", badge: "flagship" },
-                  { value: "claude-3-opus-latest", label: "claude-3-opus-latest", badge: "highest quality" },
-                  { value: "claude-3-5-sonnet-latest", label: "claude-3-5-sonnet-latest", badge: "balanced" },
-                ]}
-              />
-              <TosWarning level="ok" text="Anthropic does not use API data for model training. Your resume data is not used to improve their models." />
-            </>
-          )}
-
-          {/* ── xAI Grok ── */}
-          {(localStorage.getItem("generation_mode") || "gemini") === "grok" && (
-            <>
-              <div>
-                <label className="block text-sm font-medium text-zinc-400 mb-1">xAI API Key</label>
-                <input
-                  type="password"
-                  value={settings.grok_api_key || ""}
-                  onChange={e => setSettings({...settings, grok_api_key: e.target.value})}
-                  className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
-                  placeholder="xai-..."
-                />
-              </div>
-              <ModelPriorityPicker
-                label="Model Priority List (fallbacks in order)"
-                value={settings.grok_model || "grok-3-mini, grok-2-latest"}
-                onChange={v => setSettings({...settings, grok_model: v})}
-                suggestions={[
-                  { value: "grok-3-mini", label: "grok-3-mini", badge: "fast · free tier" },
-                  { value: "grok-3-mini-fast", label: "grok-3-mini-fast", badge: "fastest" },
-                  { value: "grok-2-latest", label: "grok-2-latest", badge: "stable" },
-                  { value: "grok-3-latest", label: "grok-3-latest", badge: "flagship" },
-                ]}
-              />
-              <TosWarning level="warn" text="xAI may use API inputs/outputs for service improvement per their ToS. Review x.ai/legal before using with sensitive data." />
-            </>
+          {/* ── OpenAI / Anthropic / Grok: UI drafted ahead of the backend routing, which
+              is not implemented yet (see ai_agent._generate_cloud_private). The options
+              above are disabled so they can't actually be selected; this panel only
+              renders as a fallback if generation_mode was set to one of these values
+              before they were disabled. ── */}
+          {["openai", "anthropic", "grok"].includes(localStorage.getItem("generation_mode") || "gemini") && (
+            <div className="p-4 bg-amber-900/10 border border-amber-500/20 rounded-lg text-sm text-amber-300">
+              This provider isn't wired up on the backend yet — generation requests will fail with an error.
+              Switch to Google Gemini or Local Ollama above.
+            </div>
           )}
 
           {/* ── Local Ollama ── */}

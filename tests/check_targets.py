@@ -205,16 +205,16 @@ if __name__ == "__main__":
         epilog="""
 Examples:
   Test all targets (with visible browser):
-    ./venv/bin/python backend/test_targets.py
+    ./venv/bin/python tests/check_targets.py
 
   Test specific companies only:
-    ./venv/bin/python backend/test_targets.py -c "Wells Fargo" "Google" "Apple"
+    ./venv/bin/python tests/check_targets.py -c "Wells Fargo" "Google" "Apple"
 
   Test headless (no browser window):
-    ./venv/bin/python backend/test_targets.py --headless
+    ./venv/bin/python tests/check_targets.py --headless
 
   Test only the failed ones with visible browser:
-    ./venv/bin/python backend/test_targets.py -c "Wells Fargo" "JP Morgan Chase" "Cognizant" "Capgemini" "Citi" "Google" "Amazon" "Microsoft" "Apple"
+    ./venv/bin/python tests/check_targets.py -c "Wells Fargo" "JP Morgan Chase" "Cognizant" "Capgemini" "Citi" "Google" "Amazon" "Microsoft" "Apple"
 """
     )
     parser.add_argument(

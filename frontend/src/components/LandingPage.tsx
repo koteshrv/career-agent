@@ -80,7 +80,7 @@ export function LandingPage() {
         />
         
         <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
             {/* Left side text */}
             <div className="text-left">
               <motion.div 
@@ -109,7 +109,7 @@ export function LandingPage() {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="text-lg text-zinc-400 mb-8 leading-relaxed max-w-xl"
               >
-                CareerAgent is a sophisticated, 100% free automation platform built for ambitious IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, evaluates your precise fit using your choice of AI (bring your own OpenAI/Anthropic keys, or use Google Gemini/Gemma for free), and programmatically compiles ATS-optimized LaTeX resumes and personalized referral emails—acting as your personal career agent for $0.
+                CareerAgent is a sophisticated, 100% free automation platform built for ambitious IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, evaluates your precise fit using your choice of AI, and programmatically compiles ATS-optimized LaTeX resumes.
               </motion.p>
               
               <motion.div 
@@ -165,6 +165,21 @@ export function LandingPage() {
               </div>
             </motion.div>
           </div>
+          
+          {/* Massive Kanban Screenshot */}
+          <motion.div 
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.4 }}
+            className="relative max-w-5xl mx-auto"
+          >
+            <div className="rounded-xl border border-white/10 bg-[#0c0d12] shadow-2xl overflow-hidden group">
+              <img src="/screenshots/kanban.png" alt="Kanban Pipeline" className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-500" />
+            </div>
+            
+            {/* Ambient glow behind screenshot */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-2xl opacity-20 -z-10 pointer-events-none"></div>
+          </motion.div>
         </div>
       </div>
 

@@ -3,61 +3,87 @@
   
   # CareerAgent
   
-  **Your personal AI career agent.**  
-  Scrapes job boards, evaluates match scores using AI, and generates tailored ATS-friendly resumes and referral emails.
+  **Your personal AI-powered job search automation platform.**  
+  Quietly scrape job boards, evaluate match scores, and programmatically compile ATS-friendly LaTeX resumes and cold emails.
 
   [![GitHub Stars](https://img.shields.io/github/stars/hariharavk/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/hariharavk/career-agent/stargazers)
+  [![GitHub Forks](https://img.shields.io/github/forks/hariharavk/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/hariharavk/career-agent/network/members)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
   [![React](https://img.shields.io/badge/React-19-blue.svg?style=for-the-badge&logo=react)](https://react.dev/)
-  [![FastAPI](https://img.shields.io/badge/FastAPI-0.109-green.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
+  [![FastAPI](https://img.shields.io/badge/FastAPI-0.138-green.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
   [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=for-the-badge&logo=docker)](https://www.docker.com/)
+
+  <p align="center">
+    <a href="#-why-careeragent">Why CareerAgent?</a> •
+    <a href="#-features">Features</a> •
+    <a href="#-architecture">Architecture</a> •
+    <a href="#-getting-started">Installation</a> •
+    <a href="#-contributing">Contributing</a>
+  </p>
 
 </div>
 
-<br/>
+---
 
-CareerAgent is a sophisticated, 100% free automation platform built for ambitious IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, evaluates your precise fit using your choice of AI (bring your own OpenAI/Anthropic keys, or use Google Gemini/Gemma for free), and programmatically compiles ATS-optimized LaTeX resumes and personalized referral emails—acting as your personal career agent for $0.
+**CareerAgent** is a sophisticated, 100% free automation platform built for ambitious software engineers and IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, evaluates your precise fit using your choice of AI, and compiles professionally formatted LaTeX PDFs designed to bypass corporate Applicant Tracking Systems.
 
-It quietly tracks job boards and company pages in the background, extracts competencies using AI, and compiles professionally formatted LaTeX PDFs designed to be accurately parsed by corporate Applicant Tracking Systems.
+<div align="center">
+  <img src="frontend/public/screenshots/kanban.png" alt="Kanban Pipeline Screenshot" width="800" />
+  <p><em>Track your job applications in a beautiful, dynamic Kanban pipeline.</em></p>
+</div>
 
 ---
 
 ## 🚀 Why CareerAgent?
+
 Unlike generic AI job wrappers that spam "Easy Apply" buttons, **CareerAgent focuses on quality and precision.** It acts as your personal career agent, ensuring your resume mathematically aligns with the raw Job Description and generating personalized outreach materials that recruiters actually read.
-
 ## ✨ Features
-*See the full breakdown in our [Features List](features.md).*
 
-- **Automated Job Discovery**: Quietly scrapes job boards and career pages in the background, ensuring you never miss a newly posted position.
+- **Automated Job Discovery**: A powerful hybrid approach. Uses Playwright backend scrapers for standard ATS platforms, and a companion Chrome Extension to directly scrape heavily protected sites (LinkedIn, Indeed) completely bypassing IP bans.
 - **Kanban Pipeline**: Organize your job search visually. Drag and drop jobs across columns (New, Applied, Interviewing, Rejected) to track your pipeline at a glance.
-- **AI Match Scoring**: Instantly evaluates your profile against the job description, providing a definitive match score to help you prioritize your best opportunities.
-- **1-Click Application Materials**: Generates tailored cover letters, concise cold emails/LinkedIn DMs, and compiles pristine LaTeX resumes directly into PDFs.
-- **Telegram Alerts & Chrome Extension**: Get instant push notifications for high-match jobs, and use the companion browser extension to one-click save jobs directly from LinkedIn and Naukri.
-- **Bring Your Own Keys (Free or Paid)**: Use any AI you prefer! Bring your own OpenAI or Anthropic keys, or use **100% Free AI Processing** with a Google AI Studio key. CareerAgent natively manages Google's strict free tier rate limits (**15 RPM / 1500 RPD for Gemma 4**, **15 RPM / 500 RPD for Gemini 3.1 Flash Lite**, **5 RPM / 20 RPD for Gemini 3.5 Flash**) so you can automate your search for $0. *(Disclaimer: Google uses free tier data for training. For complete privacy, run Ollama locally!)*
-- **Flexible AI Engine**: Fully agnostic architecture. Route via OpenAI, Anthropic, or Gemini—or run 100% locally and privately with Ollama. The choice is yours.
+- **AI Match Scoring**: Instantly evaluates your exact profile against the raw job description, providing a definitive 0-100 match score.
+- **1-Click Application Materials**: Dynamically injects missing keywords into your base resume and natively compiles a pristine ATS-friendly PDF using LaTeX. Also generates tailored cover letters and cold emails.
+- **Bring Your Own Keys**: Bring your own OpenAI/Anthropic keys, or use Google AI Studio for 100% free AI processing. Natively manages API rate limits. For complete privacy, it supports executing fully locally via **Ollama**.
+## 🏗 Architecture
 
-## 🏢 Supported Companies (43+)
+CareerAgent uses an elegant, decoupled microservice architecture:
 
-CareerAgent natively integrates with the career portals and ATS systems (Greenhouse, Lever, Zwayam, custom Workday/Oracle SPAs) of the following top-tier companies:
+```mermaid
+graph TD
+    %% Define styles for modern dark theme look
+    classDef frontend fill:#1E293B,stroke:#3B82F6,stroke-width:2px,color:#F8FAFC
+    classDef backend fill:#1E293B,stroke:#10B981,stroke-width:2px,color:#F8FAFC
+    classDef storage fill:#1E293B,stroke:#8B5CF6,stroke-width:2px,color:#F8FAFC
+    classDef ai fill:#1E293B,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC
 
-**Big Tech & Unicorns:** Google, Amazon, Microsoft, Apple, Meta, Atlassian, Stripe, Airbnb, Snowflake, Databricks, Coinbase, Figma, Notion  
-**Banking & Finance:** JP Morgan Chase, Wells Fargo, Mastercard, Barclays, Citi, Visa  
-**Consulting & IT Services:** Accenture, IBM, Deloitte, TCS, Infosys, Cognizant, Capgemini, LTIMindtree, Wipro, HCLTech, Tech Mahindra, Hexaware Technologies, Mphasis, Persistent Systems  
-**Indian Tech Giants:** Meesho, PhonePe, Flipkart, Swiggy, Paytm, Cred, Razorpay, Zepto, Zoho  
-*(Plus automatic parsing for any generic Greenhouse or Lever job board!)*
+    subgraph "Client Side"
+        UI[React 19 / Tailwind Dashboard]:::frontend
+        Ext[Chrome Extension]:::frontend
+        LinkedIn[Job Boards<br>LinkedIn/Naukri]:::frontend
+        Ext -.->|Injects Agent UI &<br>Extracts JD DOM| LinkedIn
+    end
 
-## 🛠 Tech Stack
+    subgraph "Server Side"
+        API[FastAPI Backend]:::backend
+        Cron[Playwright<br>Background Workers]:::backend
+        API <-->|Reads/Writes| DB[(SQLite Database)]:::storage
+        Cron -->|Scrapes ATS platforms<br>Greenhouse/Lever| API
+    end
 
-- **Frontend:** React 19, TypeScript, TailwindCSS, Framer Motion, Vite
-- **Backend:** Python 3.11, FastAPI, SQLite, Playwright (Headless Scraping)
-- **AI Integration:** Google Gemini (1.5 Pro, 2.5 Flash), local Ollama support
-- **Infrastructure:** Docker, Docker Compose, GitHub Actions (GHCR)
+    subgraph "AI Engine"
+        LLM[Multi-LLM Manager<br>Gemini / OpenAI / Ollama]:::ai
+        Compiler[LaTeX PDF Compiler]:::ai
+        LLM -->|Injects Keywords| Compiler
+    end
 
-## 🏗 Architecture Overview
-1. **Scraping Engine:** Headless Playwright workers silently scrape ATS portals based on user-defined intervals (via Cron).
-2. **AI Evaluation Node:** New jobs are piped to the selected LLM (Gemini/Ollama) to extract required competencies (`System Design`, `gRPC`, etc) and cross-reference them with the user's base qualifications.
-3. **LaTeX Compiler:** High-match jobs trigger the ATS generator. The AI injects missing keywords into a strict `.tex` template and natively compiles a pristine PDF using `pdflatex`.
-4. **Kanban Pipeline:** Job objects are persisted in local SQLite and surfaced to the React dashboard via REST API.
+    %% Cross-subgraph edges must live outside every subgraph block — Mermaid assigns a
+    %% node's subgraph membership to wherever it's FIRST referenced (edge or declaration),
+    %% so an edge to API placed inside "Client Side" would silently render API inside the
+    %% wrong box even though it's declared under "Server Side".
+    UI <-->|REST API| API
+    Ext -->|Syncs Scraped Jobs<br>Batch Processing| API
+    API <-->|Extracts Competencies &<br>Scores Match| LLM
+```
 
 ## 🚀 Getting Started
 
@@ -80,16 +106,14 @@ docker compose up -d
 #### Prerequisites
 - Node.js (v20+)
 - Python (3.11+)
-- API Keys (OpenAI, Gemini, Anthropic) or local Ollama running.
+- `pdflatex` (TexLive / MiKTeX) for resume compilation
 
 #### Setup & Run
-First, install the required Python and Node dependencies:
-
 ```bash
 # 1. Setup Python Backend
 python3 -m venv venv
 source venv/bin/activate
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 
 # 2. Setup Node Frontend
 cd frontend
@@ -98,13 +122,10 @@ cd ..
 
 # 3. Run the full application (Frontend + Backend APIs)
 ./start.sh
-
-# Or, run the UI in Demo Mode (mocked data, no backend required)
-./demo.sh
 ```
 
 ## 🤝 Contributing
-Contributions, issues, and feature requests are welcome! Feel free to check the [issues page](https://github.com/hariharavk/career-agent/issues). Please refer to our [Roadmap](ROADMAP.md) for upcoming features!
+We welcome contributions from the community! Check out our [Contributing Guide](CONTRIBUTING.md) to get started. See what we're working on in the [Roadmap](ROADMAP.md).
 
 ## 📄 License
-This project is [MIT](https://opensource.org/licenses/MIT) licensed.
+This project is open-source under the [MIT License](https://opensource.org/licenses/MIT).

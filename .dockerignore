@@ -1,0 +1,39 @@
+# Applies to the backend build context (backend/Dockerfile uses context: ./).
+# COPY backend/ ./backend/ copies everything under backend/ verbatim — without
+# these excludes, secrets and personal data sitting in a dirty local working
+# tree get baked permanently into an image layer (and this repo's CI pushes
+# images to a public registry).
+
+# Version control / CI
+.git
+.github
+
+# Python virtualenvs / caches
+venv/
+.venv/
+**/__pycache__/
+**/*.py[cod]
+
+# Node (frontend has its own build, not part of this context anyway)
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# Secrets & local runtime state
+.env
+.env.local
+.env.*.local
+backend/.encryption_key
+**/.encryption_key
+*.db
+*.db-journal
+*.log
+*.log.*
+backend/uploads/
+backend/dump/
+tests/dump/
+
+# Editor / OS cruft
+.vscode/
+.idea/
+.DS_Store

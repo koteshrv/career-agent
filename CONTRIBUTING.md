@@ -16,8 +16,15 @@ The project is split into a **FastAPI backend** and a **Vite + React frontend**.
 1. `cd` into the project root.
 2. Create a virtual environment: `python -m venv venv`
 3. Activate it: `source venv/bin/activate`
-4. Install dependencies: `pip install -r requirements.txt`
+4. Install dependencies: `pip install -r requirements.txt -r requirements-dev.txt`
 5. Start the server: `python -m uvicorn backend.main:app --reload`
+
+### Running the Backend Tests
+The backend has a `pytest` suite covering core scraper/AI/CRUD logic (`tests/`). It runs
+automatically in CI on every push and PR, and must pass before a Docker image is published.
+```bash
+pytest
+```
 
 ### Running the Frontend
 1. `cd frontend`
@@ -28,7 +35,8 @@ Alternatively, you can just run `./start.sh` from the root directory to spin up 
 
 ## Pull Request Process
 1. Fork the repo and create your branch from `main`.
-2. Make sure your code lints and builds successfully.
+2. Make sure your code lints and builds successfully, and `pytest` passes locally — CI runs
+   the same test suite and blocks the Docker image build on failure.
 3. If you've changed any APIs, please update the relevant documentation.
 4. Issue that pull request!
 

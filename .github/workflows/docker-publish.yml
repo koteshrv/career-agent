@@ -3,6 +3,8 @@ name: Build and Publish Docker Images
 on:
   push:
     branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
   # Allow manual trigger
   workflow_dispatch:
 
@@ -12,7 +14,28 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run tests
+        run: pytest
+
   build-and-push:
+    needs: test
+    # Only publish images on an actual push to main — not on PRs, which only need
+    # the test job above to run.
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read

@@ -68,4 +68,4 @@ class ScraperLog(Base):
     error_message = Column(Text, nullable=True)
     trigger_source = Column(String, default="MANUAL") # "MANUAL", "CRON"
     detailed_logs = Column(Text, nullable=True) # JSON string of company logs
-    raw_logs = Column(Text, nullable=True) # Full console output for this runutcomes
+    raw_logs = Column(Text, nullable=True) # Full console output for this run
