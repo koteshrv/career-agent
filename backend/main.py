@@ -521,6 +521,7 @@ def generate_application_materials_for_job(job_id: int, req: schemas.GenerationR
     )
     
     if "error" in result:
+        logger.error(f"Generate on-demand failed: {result['error']}")
         raise HTTPException(status_code=400, detail=result["error"])
 
     db_job = crud.update_job_status(db, job_id, schemas.JobUpdate(
@@ -543,24 +544,20 @@ def generate_on_demand(req: schemas.OnDemandRequest, db: Session = Depends(get_d
     # Pre-clean the description in case it's huge or has HTML
     clean_desc = ai_agent.sanitize_job_description(req.description, api_key)
 
+    result = ai_agent.generate_application_materials(
+        req.title, req.company, "", clean_desc,
+        api_key=api_key, model_name=model_name, resume_name=req.resume,
+        generation_mode=req.generation_mode
+    )
+    
+    if "error" in result:
+        logger.error(f"Generate on-demand failed: {result['error']}")
+        raise HTTPException(status_code=400, detail=result["error"])
+
     if req.type == "cover_letter":
-        result = ai_agent.generate_cover_letter(
-            req.title, req.company, "", clean_desc,
-            api_key=api_key, model_name=model_name, resume_name=req.resume,
-            generation_mode=req.generation_mode
-        )
-        if result.startswith("Error"):
-            raise HTTPException(status_code=400, detail=result)
-        return {"content": result}
+        return {"content": result.get("cover_letter", "")}
     elif req.type == "resume":
-        result = ai_agent.generate_tailored_resume(
-            req.title, req.company, "", clean_desc,
-            api_key=api_key, model_name=model_name, resume_name=req.resume,
-            generation_mode=req.generation_mode
-        )
-        if result.startswith("Error"):
-            raise HTTPException(status_code=400, detail=result)
-        return {"content": result}
+        return {"content": result.get("tailored_resume", "")}
     else:
         raise HTTPException(status_code=400, detail="Invalid generation type")
 

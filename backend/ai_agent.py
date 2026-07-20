@@ -538,7 +538,7 @@ You MUST output your response exactly in the following format with the exact del
     
     if not cl and not tr and not em:
         # Fallback if delimiters failed
-        return {"error": "Failed to parse AI output. AI did not use the requested delimiters. Raw output: " + result[:100]}
+        logger.error(f"AI Parse Error. Output: {result[:500]}"); return {"error": "Failed to parse AI output. AI did not use the requested delimiters. Raw output: " + result[:100]}
         
     return {"cover_letter": cl, "cold_email": em, "tailored_resume": tr}
 

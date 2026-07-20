@@ -11,8 +11,8 @@ export LOG_LEVEL=DEBUG
 mkdir -p backend/dump
 TS=$(date +%s)
 
-# Run uvicorn in the background, keep output in console AND save to dump/
-python3 -m uvicorn backend.main:app --port 8000 2>&1 | tee "backend/dump/run_$TS.log" &
+# Run uvicorn in the background with reload, keep output in console AND save to dump/
+python3 -m uvicorn backend.main:app --reload --port 8000 2>&1 | tee "backend/dump/run_$TS.log" &
 BACKEND_PID=$!
 
 # Wait until the health endpoint answers

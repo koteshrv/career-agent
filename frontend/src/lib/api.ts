@@ -57,7 +57,8 @@ if (IS_DEMO) {
     if (url.startsWith("/api/resumes"))                    return respond({ ok: true })
     if (url.startsWith("/api/auth/validate-token"))        return respond(MOCK_TOKEN_VALIDATE)
     if (url.startsWith("/api/auth/login"))                 return respond({ access_token: "demo-token" })
-    if (url.startsWith("/api/generate"))                   return respond({ latex_source: "% Demo mode — backend not available", cover_letter: "Demo mode cover letter." })
+    if (url.startsWith("/api/generate/on-demand/pdf")) return respond(new Blob(["% PDF Dummy Data"]), 200)
+    if (url.startsWith("/api/generate"))                   return respond({ content: "Demo mode — backend not available. This is a placeholder for the generated material.", latex_source: "% Demo mode — backend not available", cover_letter: "Demo mode cover letter." })
     if (url.startsWith("/api/scrape"))                     return respond({ status: "queued" })
 
     return config

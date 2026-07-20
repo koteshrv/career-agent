@@ -11,11 +11,11 @@ import { Zap, LayoutDashboard, Settings, History, LineChart, LogOut } from "luci
 import type { ReactNode } from "react"
 
 const NAV = [
-  { to: "/app/applications", label: "Job Applications", title: "Application Dashboard", icon: LayoutDashboard },
-  { to: "/app/history", label: "Run History", title: "Run History", icon: History },
-  { to: "/app/quick-generate", label: "Quick Generate", title: "On-Demand Parsing", icon: Zap },
-  { to: "/app/analytics", label: "Analytics", title: "Analytics", icon: LineChart },
-  { to: "/app/settings", label: "Settings", title: "Settings", icon: Settings },
+  { to: "/app/applications", label: "Job Applications", title: "Application Dashboard", subtitle: "Track and manage your automated job matches.", icon: LayoutDashboard },
+  { to: "/app/history", label: "Run History", title: "Run History", subtitle: "View the status and logs of your background scraping tasks.", icon: History },
+  { to: "/app/quick-generate", label: "Quick Generate", title: "Quick Generate", subtitle: "Instantly generate a tailored resume or cover letter without tracking the job in your Kanban board.", icon: Zap },
+  { to: "/app/analytics", label: "Analytics", title: "Analytics", subtitle: "Insights and metrics on your job search progress.", icon: LineChart },
+  { to: "/app/settings", label: "Settings", title: "Settings", subtitle: "Manage your API keys, resume templates, and preferences.", icon: Settings },
 ]
 
 function RequireAuth({ children }: { children: ReactNode }) {
@@ -29,6 +29,7 @@ function Layout() {
   const navigate = useNavigate()
   const current = NAV.find(n => location.pathname.startsWith(n.to))
   const title = current?.title || "Dashboard"
+  const subtitle = current?.subtitle || ""
 
   const handleLogout = () => {
     clearToken()
@@ -107,7 +108,7 @@ function Layout() {
           <header className="h-20 border-b border-white/5 bg-black/20 flex items-center justify-between px-8 z-30 sticky top-0">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-white">{title}</h2>
-              <p className="text-sm text-zinc-400 mt-1">Track and manage your automated job matches.</p>
+              {subtitle && <p className="text-sm text-zinc-400 mt-1">{subtitle}</p>}
             </div>
           </header>
 

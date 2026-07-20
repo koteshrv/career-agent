@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Download, Copy, Check, Sparkles, AlertCircle, FilePlus, PenTool, Zap } from "lucide-react"
+import { Download, Copy, Check, Sparkles, AlertCircle, FilePlus, PenTool } from "lucide-react"
 
 export function QuickGeneratePage() {
   const [company, setCompany] = useState("")
@@ -103,15 +103,7 @@ export function QuickGeneratePage() {
     <div className="flex h-full animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Left Panel: Form */}
       <div className="w-1/2 flex flex-col border-r border-white/5 bg-[#0f1115] p-6 overflow-y-auto custom-scrollbar">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Zap className="w-5 h-5 text-yellow-400" />
-            Quick Generate
-          </h2>
-          <p className="text-sm text-zinc-400 mt-1">
-            Instantly generate a tailored resume or cover letter without tracking the job in your Kanban board.
-          </p>
-        </div>
+        {/* The internal header has been removed; it is now managed dynamically by the global layout header */}
 
         {error && (
           <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3">
