@@ -37,3 +37,4 @@ tests/dump/
 .vscode/
 .idea/
 .DS_Store
+backend/vector_store/
