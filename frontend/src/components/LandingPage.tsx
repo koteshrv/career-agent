@@ -165,21 +165,7 @@ export function LandingPage() {
               </div>
             </motion.div>
           </div>
-          
-          {/* Massive Kanban Screenshot */}
-          <motion.div 
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-            className="relative max-w-5xl mx-auto"
-          >
-            <div className="rounded-xl border border-white/10 bg-[#0c0d12] shadow-2xl overflow-hidden group">
-              <img src="/screenshots/kanban.png" alt="Kanban Pipeline" className="w-full h-auto object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-500" />
-            </div>
-            
-            {/* Ambient glow behind screenshot */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl blur-2xl opacity-20 -z-10 pointer-events-none"></div>
-          </motion.div>
+
         </div>
       </div>
 
