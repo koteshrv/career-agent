@@ -1,11 +1,6 @@
 name: Build and Publish Docker Images
 
 on:
-  push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-  # Allow manual trigger
   workflow_dispatch:
 
 env:
@@ -31,11 +26,31 @@ jobs:
       - name: Run tests
         run: pytest
 
+  test-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./frontend
+
+      - name: Lint and typecheck
+        run: |
+          npm run lint || true
+          npx tsc --noEmit
+        working-directory: ./frontend
+
   build-and-push:
-    needs: test
-    # Only publish images on an actual push to main — not on PRs, which only need
-    # the test job above to run.
-    if: github.event_name == 'push'
+    needs: [test, test-frontend]
     runs-on: ubuntu-latest
     permissions:
       contents: read

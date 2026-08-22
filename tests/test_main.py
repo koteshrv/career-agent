@@ -1,4 +1,4 @@
-from backend.main import _extension_location_tag
+from backend.routers.extension import _extension_location_tag
 
 
 def test_extension_location_tag_strips_www_and_capitalizes():

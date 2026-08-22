@@ -1,11 +1,7 @@
 name: Deploy Demo to GitHub Pages
 
 on:
-  push:
-    branches: [main]          # Auto-deploy on every push to main
-    paths:
-      - 'frontend/**'         # Only when frontend changes
-  workflow_dispatch:           # Also allow manual trigger
+  workflow_dispatch:
 
 permissions:
   contents: read
