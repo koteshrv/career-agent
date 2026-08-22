@@ -22,7 +22,7 @@ This document tracks upcoming features, infrastructure improvements, and product
 ## 4. Architectural & Codebase Health
 - ~~**Scraper module split**~~ ✅ Done — `backend/scraper_core.py` was a 1,470-line file mixing pure link-filtering logic, five per-vendor scrapers, and the Playwright engine. Split into `backend/sources/{common,greenhouse,lever,api_post,tech_mahindra,zwayam,playwright_engine}.py`, with `scraper_core.py` now a slim orchestrator that re-exports the public API for backward compatibility.
 - ~~**Concurrent scrape runs**~~ ✅ Partially done — a manual trigger or cron tick now checks for an already-`RUNNING` scrape and skips/rejects instead of overlapping, which was the main practical trigger for SQLite write contention. The `WAL` item below is still open for true concurrent reads+writes.
-- **Database Concurrency (SQLite WAL)**: Enable `PRAGMA journal_mode=WAL;` to allow simultaneous reads and writes from the API, APScheduler, and Playwright scrapers without hitting database locks.
+- ~~**Database Concurrency (SQLite WAL)**~~ ✅ Done — Enabled `PRAGMA journal_mode=WAL;` and `synchronous=NORMAL` via SQLAlchemy connection events to allow simultaneous reads and writes from the API, APScheduler, and Playwright scrapers without hitting database locks.
 - **Robust Rate Limit Handling**: Implement exponential backoff and a dead-letter queue for AI evaluations. If a strict `429 Too Many Requests` is hit, the job should be gracefully queued for retry rather than failing completely.
 - **LaTeX Compilation Safety**: Build a robust sanitization pipeline to escape special LaTeX characters (like `%`, `&`, `_`, `$`) from the AI-generated text before injecting it into the `.tex` file to prevent `pdflatex` compilation crashes.
 
