@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { api } from "@/lib/api"
+import { useState, useEffect, useRef } from "react"
+import { api, generateMaterialsStream } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Download, Copy, Check, Sparkles, AlertCircle, FilePlus, PenTool } from "lucide-react"
 
@@ -11,7 +11,7 @@ export function QuickGeneratePage() {
   const [resumes, setResumes] = useState<string[]>([])
   const [selectedResume, setSelectedResume] = useState<string>("")
   
-  const [activeTab, setActiveTab] = useState<"cover_letter" | "resume">("cover_letter")
+  const [activeTab, setActiveTab] = useState<"cover_letter" | "resume" | "logs">("cover_letter")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   
@@ -21,6 +21,15 @@ export function QuickGeneratePage() {
   const [copiedCL, setCopiedCL] = useState(false)
   const [copiedResume, setCopiedResume] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  
+  const [logs, setLogs] = useState<string[]>([])
+  const logsEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (logsEndRef.current) {
+      logsEndRef.current.scrollIntoView({ behavior: "smooth" })
+    }
+  }, [logs])
 
   useEffect(() => {
     api.get("/api/resumes").then(res => {
@@ -39,28 +48,38 @@ export function QuickGeneratePage() {
     setError("")
     setLoading(true)
     setActiveTab(type)
+    setLogs([])
+    setGeneratedCL("")
+    setGeneratedResume("")
     
     try {
       const mode = localStorage.getItem("generation_mode") || "gemini"
       
-      const res = await api.post("/api/generate/on-demand", {
+      const payload = {
         company: company.trim() || "Unknown Company",
         title: title.trim() || "Applicant",
         description,
         resume: selectedResume || undefined,
         generation_mode: mode,
         type: type
+      }
+      
+      await generateMaterialsStream("/api/generate/on-demand", payload, (msg) => {
+        if (msg.status === "progress") {
+          setLogs(prev => [...prev, msg.message])
+        } else if (msg.status === "error") {
+          setError(msg.message)
+        } else if (msg.status === "success" && msg.data) {
+          setGeneratedCL(msg.data.cover_letter || "")
+          setGeneratedResume(msg.data.tailored_resume || "")
+        }
       })
       
-      if (type === "cover_letter") {
-        setGeneratedCL(res.data.content)
-      } else {
-        setGeneratedResume(res.data.content)
-      }
     } catch (e: any) {
-      setError(e.response?.data?.detail || `Failed to generate ${type.replace("_", " ")}`)
+      setError(e.message || `Failed to generate ${type.replace("_", " ")}`)
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const copyToClipboard = async (text: string, type: "cover_letter" | "resume") => {
@@ -208,13 +227,42 @@ export function QuickGeneratePage() {
           >
             Tailored Resume
           </button>
+          {logs.length > 0 && (
+            <button
+              onClick={() => setActiveTab("logs")}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                activeTab === "logs" 
+                  ? "border-blue-500 text-blue-400" 
+                  : "border-transparent text-zinc-400 hover:text-zinc-200 hover:border-white/20"
+              }`}
+            >
+              AI Logs
+            </button>
+          )}
         </div>
 
         <div className="flex-1 p-6 overflow-y-auto custom-scrollbar relative group">
-          {loading ? (
-            <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-4">
-              <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
-              <p className="text-sm font-medium animate-pulse text-blue-400">AI is crafting your {activeTab.replace("_", " ")}...</p>
+          {loading || (activeTab === "logs" && logs.length > 0) ? (
+            <div className="h-full flex flex-col bg-[#0a0c10] text-zinc-300 font-mono text-sm">
+              <div className="flex items-center space-x-3 mb-6">
+                {loading ? (
+                  <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                ) : (
+                  <Check className="w-5 h-5 text-emerald-500" />
+                )}
+                <span className="text-blue-400 font-semibold">
+                  {loading ? `AI is crafting your ${activeTab === 'logs' ? 'materials' : activeTab.replace("_", " ")}...` : "AI Generation Complete"}
+                </span>
+              </div>
+              <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pb-4">
+                {logs.map((log, i) => (
+                  <div key={i} className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex gap-3 items-start">
+                    <span className="text-zinc-600 shrink-0">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
+                    <span className="text-zinc-300 whitespace-pre-wrap">{log}</span>
+                  </div>
+                ))}
+                <div ref={logsEndRef} />
+              </div>
             </div>
           ) : activeTab === "cover_letter" && generatedCL ? (
             <>

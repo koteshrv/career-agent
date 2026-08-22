@@ -7,13 +7,15 @@ import { Login } from "./components/Login"
 import { LandingPage } from "./components/LandingPage"
 import { getToken, clearToken, IS_DEMO } from "@/lib/api"
 import { QuickGeneratePage } from "./components/QuickGeneratePage"
-import { Zap, LayoutDashboard, Settings, History, LineChart, LogOut } from "lucide-react"
+import { KnowledgeBasePage } from "./components/KnowledgeBasePage"
+import { Zap, LayoutDashboard, Settings, History, LineChart, LogOut, Database } from "lucide-react"
 import type { ReactNode } from "react"
 
 const NAV = [
   { to: "/app/applications", label: "Job Applications", title: "Application Dashboard", subtitle: "Track and manage your automated job matches.", icon: LayoutDashboard },
   { to: "/app/history", label: "Run History", title: "Run History", subtitle: "View the status and logs of your background scraping tasks.", icon: History },
   { to: "/app/quick-generate", label: "Quick Generate", title: "Quick Generate", subtitle: "Instantly generate a tailored resume or cover letter without tracking the job in your Kanban board.", icon: Zap },
+  { to: "/app/knowledge", label: "Knowledge Base", title: "Career Knowledge Base", subtitle: "Manage your career history for RAG generation.", icon: Database },
   { to: "/app/analytics", label: "Analytics", title: "Analytics", subtitle: "Insights and metrics on your job search progress.", icon: LineChart },
   { to: "/app/settings", label: "Settings", title: "Settings", subtitle: "Manage your API keys, resume templates, and preferences.", icon: Settings },
 ]
@@ -131,6 +133,7 @@ function App() {
         <Route path="analytics" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><AnalyticsPage /></div>} />
         <Route path="history" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><HistoryPage /></div>} />
         <Route path="quick-generate" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><QuickGeneratePage /></div>} />
+        <Route path="knowledge" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><KnowledgeBasePage /></div>} />
         <Route path="settings" element={<div className="flex-1 overflow-y-auto custom-scrollbar"><SettingsPage /></div>} />
         <Route path="*" element={<Navigate to="/app/applications" replace />} />
       </Route>

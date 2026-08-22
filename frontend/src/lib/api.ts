@@ -78,3 +78,68 @@ if (!IS_DEMO) {
     }
   )
 }
+
+export async function generateMaterialsStream(
+  url: string,
+  payload: any,
+  onMessage: (message: any) => void
+) {
+  if (IS_DEMO) {
+    onMessage({ status: "progress", message: "Fetching RAG Context (Mock)..." })
+    await new Promise(r => setTimeout(r, 1000))
+    onMessage({ status: "progress", message: "Drafting materials (Mock)..." })
+    await new Promise(r => setTimeout(r, 1000))
+    onMessage({ status: "success", data: { cover_letter: "Demo mode cover letter.", tailored_resume: "Demo mode resume." } })
+    return
+  }
+
+  const token = getToken()
+  const res = await fetch(`${API_BASE}${url}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    },
+    body: JSON.stringify(payload)
+  })
+
+  if (!res.ok) {
+    let errText = "Unknown error"
+    try {
+      const errJson = await res.json()
+      errText = errJson.detail || JSON.stringify(errJson)
+    } catch (e) {
+      errText = await res.text()
+    }
+    throw new Error(errText || res.statusText)
+  }
+
+  const reader = res.body?.getReader()
+  if (!reader) throw new Error("No reader available")
+
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    
+    buffer += decoder.decode(value, { stream: true })
+    
+    let boundary = buffer.indexOf('\n')
+    while (boundary !== -1) {
+      const line = buffer.slice(0, boundary).trim()
+      buffer = buffer.slice(boundary + 1)
+      
+      if (line) {
+        try {
+          const data = JSON.parse(line)
+          onMessage(data)
+        } catch (e) {
+          console.error("Failed to parse SSE chunk:", line, e)
+        }
+      }
+      boundary = buffer.indexOf('\n')
+    }
+  }
+}

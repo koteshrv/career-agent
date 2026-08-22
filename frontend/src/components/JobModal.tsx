@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import type { Job } from "./KanbanBoard"
 import { Button } from "@/components/ui/button"
-import { Sparkles, MapPin, Calendar, ExternalLink, X, FileText, Trash2, Download, Globe, MessageSquare } from "lucide-react"
+import { Sparkles, MapPin, Calendar, ExternalLink, X, FileText, Trash2, Download, Globe, MessageSquare, Check } from "lucide-react"
 import { formatISTDate } from "@/lib/datetime"
-import { api } from "@/lib/api"
+import { api, generateMaterialsStream } from "@/lib/api"
 import { useToast } from "./Toast"
 import { ConfirmDialog } from "./ConfirmDialog"
 
@@ -30,6 +30,13 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
   const [selectedResume, setSelectedResume] = useState<string>("")
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  
+  const [logs, setLogs] = useState<string[]>([])
+  const logsEndRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (logsEndRef.current) logsEndRef.current.scrollIntoView({ behavior: "smooth" })
+  }, [logs])
   useEffect(() => {
     api.get("/api/resumes").then(res => {
       const list = res.data.resumes || []
@@ -76,17 +83,26 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
   const handleGenerateMaterials = async () => {
     setGeneratingMaterials(true)
     setMaterialsError(null)
+    setLogs([])
     try {
-      const res = await api.post(`/api/jobs/${job.id}/application-materials`, {
+      await generateMaterialsStream(`/api/jobs/${job.id}/application-materials`, {
         resume: selectedResume || null,
         generation_mode: localStorage.getItem("generation_mode") || "gemini"
+      }, (msg) => {
+        if (msg.status === "progress") {
+          setLogs(prev => [...prev, msg.message])
+        } else if (msg.status === "error") {
+          setMaterialsError(msg.message)
+        } else if (msg.status === "success" && msg.data) {
+          setTailoredResume(msg.data.tailored_resume)
+          onUpdate({...job, cover_letter: msg.data.cover_letter, cold_email: msg.data.cold_email, tailored_resume: msg.data.tailored_resume})
+        }
       })
-      setTailoredResume(res.data.tailored_resume)
-      onUpdate({...job, cover_letter: res.data.cover_letter, cold_email: res.data.cold_email, tailored_resume: res.data.tailored_resume})
     } catch (e: any) {
-      setMaterialsError(e.response?.data?.detail || "Error generating materials. Make sure you uploaded a resume and configured a Gemini API key.")
+      setMaterialsError(e.message || "Error generating materials. Make sure you uploaded a resume and configured a Gemini API key.")
+    } finally {
+      setGeneratingMaterials(false)
     }
-    setGeneratingMaterials(false)
   }
 
   const handleCopyResume = () => {
@@ -339,6 +355,30 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
               <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-sm text-red-300 flex items-start gap-2">
                 <span className="font-semibold shrink-0">Error:</span>
                 <span className="break-words">{materialsError}</span>
+              </div>
+            )}
+            
+            {logs.length > 0 && (
+              <div className="bg-[#0a0c10] border border-white/5 rounded-xl p-4 text-sm text-zinc-300 font-mono h-[200px] flex flex-col">
+                <div className="flex items-center space-x-3 mb-4 shrink-0">
+                  {generatingMaterials ? (
+                    <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4 text-emerald-500" />
+                  )}
+                  <span className="text-blue-400 font-semibold">
+                    {generatingMaterials ? "AI Drafter is running..." : "AI Generation Complete"}
+                  </span>
+                </div>
+                <div className="space-y-2 overflow-y-auto custom-scrollbar flex-1">
+                  {logs.map((log, i) => (
+                    <div key={i} className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex gap-3 items-start text-xs">
+                      <span className="text-zinc-600 shrink-0">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
+                      <span className="text-zinc-300 whitespace-pre-wrap">{log}</span>
+                    </div>
+                  ))}
+                  <div ref={logsEndRef} />
+                </div>
               </div>
             )}
 

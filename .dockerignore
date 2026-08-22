@@ -31,6 +31,7 @@ backend/.encryption_key
 *.log.*
 backend/uploads/
 backend/dump/
+backend/vector_store/
 tests/dump/
 
 # Editor / OS cruft

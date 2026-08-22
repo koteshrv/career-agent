@@ -7,6 +7,9 @@ source venv/bin/activate
 # LOG_LEVEL controls verbosity: DEBUG=verbose (testing), INFO=default (production)
 export LOG_LEVEL=DEBUG
 
+# Suppress ChromaDB telemetry logs
+export ANONYMIZED_TELEMETRY=False
+
 # Create dump directory if it doesn't exist
 mkdir -p backend/dump
 TS=$(date +%s)

@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel
 import httpx
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, StreamingResponse
 import subprocess
 import tempfile
 import os
@@ -514,26 +514,32 @@ def generate_application_materials_for_job(job_id: int, req: schemas.GenerationR
         raise HTTPException(status_code=404, detail="Job not found")
 
     settings = crud.get_settings(db)
-    result = ai_agent.generate_application_materials(
-        db_job.title, db_job.company, db_job.location or "", db_job.description or "",
-        api_key=settings.gemini_api_key, model_name=settings.gemini_model, resume_name=req.resume,
-        generation_mode=req.generation_mode
-    )
     
-    if "error" in result:
-        logger.error(f"Generate on-demand failed: {result['error']}")
-        raise HTTPException(status_code=400, detail=result["error"])
-
-    db_job = crud.update_job_status(db, job_id, schemas.JobUpdate(
-        cover_letter=result["cover_letter"],
-        cold_email=result["cold_email"],
-        tailored_resume=result["tailored_resume"]
-    ))
-    return {
-        "cover_letter": result["cover_letter"],
-        "cold_email": result["cold_email"],
-        "tailored_resume": result["tailored_resume"]
-    }
+    # We want to stream the response, but we also need to save the final result to the DB
+    # when it completes. We can wrap the generator to intercept the final success data.
+    async def stream_and_save():
+        gen = ai_agent.generate_application_materials(
+            db_job.title, db_job.company, db_job.location or "", db_job.description or "",
+            api_key=settings.gemini_api_key, model_name=settings.gemini_model, resume_name=req.resume,
+            generation_mode=req.generation_mode
+        )
+        async for chunk in gen:
+            yield chunk
+            # Parse the chunk to see if it's the final success payload
+            try:
+                data = json.loads(chunk.strip())
+                if data.get("status") == "success":
+                    # Save to DB
+                    materials = data.get("data", {})
+                    crud.update_job_status(db, job_id, schemas.JobUpdate(
+                        cover_letter=materials.get("cover_letter", ""),
+                        cold_email=materials.get("cold_email", ""),
+                        tailored_resume=materials.get("tailored_resume", "")
+                    ))
+            except Exception:
+                pass
+                
+    return StreamingResponse(stream_and_save(), media_type="application/x-ndjson")
 
 @app.post("/api/generate/on-demand")
 def generate_on_demand(req: schemas.OnDemandRequest, db: Session = Depends(get_db)):
@@ -544,22 +550,13 @@ def generate_on_demand(req: schemas.OnDemandRequest, db: Session = Depends(get_d
     # Pre-clean the description in case it's huge or has HTML
     clean_desc = ai_agent.sanitize_job_description(req.description, api_key)
 
-    result = ai_agent.generate_application_materials(
+    gen = ai_agent.generate_application_materials(
         req.title, req.company, "", clean_desc,
         api_key=api_key, model_name=model_name, resume_name=req.resume,
         generation_mode=req.generation_mode
     )
     
-    if "error" in result:
-        logger.error(f"Generate on-demand failed: {result['error']}")
-        raise HTTPException(status_code=400, detail=result["error"])
-
-    if req.type == "cover_letter":
-        return {"content": result.get("cover_letter", "")}
-    elif req.type == "resume":
-        return {"content": result.get("tailored_resume", "")}
-    else:
-        raise HTTPException(status_code=400, detail="Invalid generation type")
+    return StreamingResponse(gen, media_type="application/x-ndjson")
 
 class OnDemandPdfRequest(BaseModel):
     latex_content: str
@@ -640,3 +637,43 @@ async def fetch_jd(job_id: int, db: Session = Depends(get_db)):
         
     db_job = crud.update_job_status(db, job_id, schemas.JobUpdate(description=clean_desc))
     return {"description": clean_desc}
+
+class KnowledgeRequest(BaseModel):
+    text: str
+
+@app.get("/api/knowledge")
+def list_knowledge():
+    from . import rag_engine
+    return rag_engine.list_context()
+
+@app.post("/api/knowledge")
+def add_knowledge(req: KnowledgeRequest, db: Session = Depends(get_db)):
+    settings = crud.get_settings(db)
+    api_key = settings.gemini_api_key if settings else None
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Gemini API key is required to add knowledge")
+        
+    from . import rag_engine
+    try:
+        # Automatically split massive pasted documents into chunks by double newlines
+        chunks = [chunk.strip() for chunk in req.text.split("\n\n") if chunk.strip()]
+        
+        doc_ids = []
+        for chunk in chunks:
+            # Skip chunks that are suspiciously small (like single random characters)
+            if len(chunk) > 10:
+                doc_id = rag_engine.ingest_context(chunk, api_key)
+                doc_ids.append(doc_id)
+                
+        return {"ids": doc_ids, "count": len(doc_ids), "text": req.text}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/knowledge/{doc_id}")
+def delete_knowledge(doc_id: str):
+    from . import rag_engine
+    try:
+        rag_engine.remove_context(doc_id)
+        return {"success": True}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi import HTTPException
 import time
+import asyncio
 
 try:
     from ollama import Client as OllamaClient
@@ -447,10 +448,20 @@ def _get_custom_guidelines() -> str:
         db.close()
     return ""
 
-def generate_application_materials(job_title: str, company: str, location: str = "", description: str = "", api_key: str = None, model_name: str = None, resume_name: str = None, generation_mode: str = "cloud_free") -> dict:
-    resume_text = extract_resume_text(resume_name)
-    if not resume_text:
-        return {"error": "Error: Could not read resume. Please upload your resume first."}
+async def generate_application_materials(job_title: str, company: str, location: str = "", description: str = "", api_key: str = None, model_name: str = None, resume_name: str = None, generation_mode: str = "cloud_free"):
+    yield json.dumps({"status": "progress", "message": "Fetching RAG Context and initializing..."}) + "\n"
+    await asyncio.sleep(0)
+    
+    from . import rag_engine
+    try:
+        relevant_experience = await asyncio.to_thread(rag_engine.retrieve_relevant_experience, description, 6, api_key)
+    except Exception as e:
+        yield json.dumps({"status": "error", "message": f"Error accessing Knowledge Base: {str(e)}"}) + "\n"
+        return
+        
+    if not relevant_experience:
+        yield json.dumps({"status": "error", "message": "No career context found. Please add your career history to the Knowledge Base first."}) + "\n"
+        return
         
     from .database import SessionLocal
     from . import models
@@ -461,7 +472,22 @@ def generate_application_materials(job_title: str, company: str, location: str =
     path = _resume_path(resume_name)
     is_tex = bool(path) and path.suffix.lower() == ".tex"
 
+    preamble = ""
+    resume_text = ""
+    if path and path.exists():
+        resume_text = extract_resume_text(resume_name)
+        if is_tex:
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    tex_content = f.read()
+                if r"\begin{document}" in tex_content:
+                    preamble = tex_content.split(r"\begin{document}")[0] + r"\begin{document}"
+            except Exception:
+                pass
+
     jd_context = f"\n\nJob Description Context:\n---\n{description}\n---\n" if description else ""
+    tex_context = f"\n\nOriginal LaTeX Preamble (YOU MUST USE THIS):\n---\n{preamble}\n---\n" if preamble else ""
+    resume_template = f"\n\nOriginal Resume (USE THIS STRICTLY AS A FORMATTING TEMPLATE):\n---\n{resume_text}\n---\n" if resume_text else ""
 
     escape_directive = (
         "\nCRITICAL LATEX REQUIREMENT for the Resume:\n"
@@ -480,10 +506,13 @@ I need you to generate THREE things for the role of {job_title} at {company} {f'
 2. A short, punchy Cold Email / LinkedIn DM to a recruiter or hiring manager.
 3. A tailored version of my original Resume.
 {jd_context}
-Original resume:
+
+Relevant Career Experiences Context (USE THIS FOR FACTUAL CONTENT & BULLET POINTS):
 ---
-{resume_text}
+{relevant_experience}
 ---
+{resume_template}
+{tex_context}
 
 Rules for Cover Letter:
 - Do NOT use generic placeholders like [Company Name] or [Your Name]. Sign off as "Hari Karri" or "Hari".
@@ -497,10 +526,11 @@ Rules for Cold Email / LinkedIn DM:
 - Sign off as "Hari Karri" or "Hari".
 
 Rules for Tailored Resume:
-- Keep ONLY truthful information from the original resume. Do NOT invent experience or dates.
-- CRITICAL: Do NOT inflate or escalate job titles. Keep the original job titles exactly as they are.
-- Reorder, reword, and emphasize the bullet points and skills most relevant to the role.
-- Rewrite the professional summary to target this specific role.
+- DO NOT add any skills, keywords, or technologies to the resume unless they are explicitly supported by the provided Relevant Career Experiences context. DO NOT hallucinate experience.
+- Rewrite the professional summary to target this specific role based ONLY on the provided context.
+- Write new bullet points that align exactly with the Job Description Context, but draw factual backing strictly from the Relevant Career Experiences.
+- CRITICAL FORMATTING: You must keep the EXACT SAME structural formatting and custom macros (e.g. custom LaTeX commands) as the Original Resume template. Do not invent a new layout.
+- CRITICAL: Do NOT inflate or escalate job titles. Keep any original job titles as they appear in the context.
 {custom_directive}
 {escape_directive}
 {
@@ -522,25 +552,130 @@ You MUST output your response exactly in the following format with the exact del
 [TAILORED_RESUME_END]
 """
 
-    result = _route_generation(prompt, generation_mode, settings, is_tex=False, is_cl=False)
+    # --- PHASE 1: DRAFT GENERATION ---
+    yield json.dumps({"status": "progress", "message": "Phase 1: Generating drafts based on Knowledge Base..."}) + "\n"
+    await asyncio.sleep(0)
+    draft_result = await asyncio.to_thread(_route_generation, prompt, generation_mode, settings, False, False)
     
-    if result.startswith("Error"):
-        return {"error": result}
+    if draft_result.startswith("Error"):
+        yield json.dumps({"status": "error", "message": draft_result}) + "\n"
+        return
         
     import re
-    cl_match = re.search(r"\[COVER_LETTER_START\](.*?)\[COVER_LETTER_END\]", result, re.DOTALL)
-    em_match = re.search(r"\[COLD_EMAIL_START\](.*?)\[COLD_EMAIL_END\]", result, re.DOTALL)
-    tr_match = re.search(r"\[TAILORED_RESUME_START\](.*?)\[TAILORED_RESUME_END\]", result, re.DOTALL)
+    cl_match = re.search(r"\[COVER_LETTER_START\](.*?)\[COVER_LETTER_END\]", draft_result, re.DOTALL)
+    em_match = re.search(r"\[COLD_EMAIL_START\](.*?)\[COLD_EMAIL_END\]", draft_result, re.DOTALL)
+    tr_match = re.search(r"\[TAILORED_RESUME_START\](.*?)\[TAILORED_RESUME_END\]", draft_result, re.DOTALL)
     
     cl = cl_match.group(1).strip() if cl_match else ""
     em = em_match.group(1).strip() if em_match else ""
     tr = tr_match.group(1).strip() if tr_match else ""
     
     if not cl and not tr and not em:
-        # Fallback if delimiters failed
-        logger.error(f"AI Parse Error. Output: {result[:500]}"); return {"error": "Failed to parse AI output. AI did not use the requested delimiters. Raw output: " + result[:100]}
+        logger.error(f"AI Parse Error. Output: {draft_result[:500]}")
+        yield json.dumps({"status": "error", "message": "Failed to parse AI output. AI did not use the requested delimiters."}) + "\n"
+        return
+
+    # --- PHASE 2: REVIEWER (CRITIC) ---
+    yield json.dumps({"status": "progress", "message": "Phase 2: Critic is reviewing drafts for hallucinations and formatting..."}) + "\n"
+    await asyncio.sleep(0)
+    reviewer_prompt = f"""
+You are an ultra-strict Principal Engineer and Hiring Manager reviewing drafted application materials for a {job_title} role.
+Your job is to ruthlessly critique the draft based on the following strict rules.
+
+Rules to enforce:
+1. NO HALLUCINATIONS: The drafted resume MUST NOT contain any technical skills, numbers, or experiences that are not explicitly stated in the "Relevant Career Experiences Context".
+2. LATEX FORMATTING: If the original resume is a LaTeX template, the drafted resume MUST perfectly preserve the LaTeX macros (e.g. \\resumeSingleItem) and document structure. If it hallucinates a generic \\section layout instead of using the template's structure, it FAILS.
+3. JD ALIGNMENT: Does the resume effectively target the Job Description without overclaiming?
+
+Relevant Career Experiences Context:
+---
+{relevant_experience}
+---
+Original Formatting Template (First 2000 chars):
+---
+{resume_text[:2000] if resume_text else "None"}
+---
+Drafted Cover Letter:
+{cl}
+Drafted Resume:
+{tr[:4000]}
+
+Output a detailed critique pointing out specific flaws.
+Finally, conclude your response with EXACTLY one of these two tags on a new line:
+[APPROVED]
+or
+[REVISION_REQUIRED]
+"""
+    logger.info("[AI] Running Phase 2: Reviewer Pass")
+    review_result = await asyncio.to_thread(_route_generation, reviewer_prompt, generation_mode, settings, False, False)
+    
+    yield json.dumps({"status": "progress", "message": f"Critic Feedback:\\n{review_result}"}) + "\n"
+    await asyncio.sleep(0)
+    
+    if "[REVISION_REQUIRED]" in review_result:
+        # --- PHASE 3: REFINEMENT ---
+        logger.info("[AI] Reviewer requested revisions. Running Phase 3: Refinement Pass")
+        yield json.dumps({"status": "progress", "message": "Phase 3: Refinement pass fixing Critic issues..."}) + "\n"
+        await asyncio.sleep(0)
+        refinement_prompt = f"""
+You are the master editor. I am providing you with draft application materials and a strict Reviewer's critique.
+You must fix ALL the issues pointed out by the Reviewer.
+
+Reviewer Critique:
+---
+{review_result}
+---
+
+Original Drafts:
+---
+COVER LETTER:
+{cl}
+
+RESUME:
+{tr}
+---
+
+Original Formatting Template (YOU MUST USE THIS STRUCTURE EXACTLY):
+---
+{resume_text}
+---
+
+Relevant Career Experiences (USE FOR FACTUAL CORRECTIONS ONLY):
+---
+{relevant_experience}
+---
+
+        Output the FINAL, corrected versions using the exact same delimiters:
+[COVER_LETTER_START]
+<cover letter text here>
+[COVER_LETTER_END]
+
+[COLD_EMAIL_START]
+{em}
+[COLD_EMAIL_END]
+
+[TAILORED_RESUME_START]
+<tailored resume text here>
+[TAILORED_RESUME_END]
+"""
+        final_result = await asyncio.to_thread(_route_generation, refinement_prompt, generation_mode, settings, False, False)
         
-    return {"cover_letter": cl, "cold_email": em, "tailored_resume": tr}
+        cl_match_f = re.search(r"\[COVER_LETTER_START\](.*?)\[COVER_LETTER_END\]", final_result, re.DOTALL)
+        em_match_f = re.search(r"\[COLD_EMAIL_START\](.*?)\[COLD_EMAIL_END\]", final_result, re.DOTALL)
+        tr_match_f = re.search(r"\[TAILORED_RESUME_START\](.*?)\[TAILORED_RESUME_END\]", final_result, re.DOTALL)
+        
+        if cl_match_f: cl = cl_match_f.group(1).strip()
+        if em_match_f: em = em_match_f.group(1).strip()
+        if tr_match_f: tr = tr_match_f.group(1).strip()
+
+    yield json.dumps({
+        "status": "success",
+        "data": {
+            "cover_letter": cl,
+            "cold_email": em,
+            "tailored_resume": tr
+        }
+    }) + "\n"
 
 def extract_resume_keywords(resume_text: str, api_key: str = None, model_name: str = None) -> str:
     """Extracts a JSON array of up to 30 technical keywords from the resume text."""

@@ -5,6 +5,7 @@
 
 # Database & scraper data
 *.db
+/backend/vector_store/
 
 # Uploaded resumes
 /backend/uploads/*
