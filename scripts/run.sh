@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change to the project root directory
+cd "$(dirname "$0")/.."
+
 # Start FastAPI Backend first
 echo "🚀 Starting FastAPI Backend..."
 source venv/bin/activate

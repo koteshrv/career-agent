@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change to the project root directory
+cd "$(dirname "$0")/.."
+
 echo "✨ Starting CareerAgent in Demo Mode..."
 echo "Note: The backend is not required for Demo Mode."
 echo "==================================================="
