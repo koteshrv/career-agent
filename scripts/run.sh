@@ -8,17 +8,18 @@ echo "🚀 Starting FastAPI Backend..."
 source venv/bin/activate
 
 # LOG_LEVEL controls verbosity: DEBUG=verbose (testing), INFO=default (production)
-export LOG_LEVEL=DEBUG
+export LOG_LEVEL=INFO
 
 # Suppress ChromaDB telemetry logs
-export ANONYMIZED_TELEMETRY=False
+export ANONYMIZED_TELEMETRY=True
 
 # Create dump directory if it doesn't exist
 mkdir -p backend/dump
 TS=$(date +%s)
 
 # Run uvicorn in the background with reload, keep output in console AND save to dump/
-python3 -m uvicorn backend.main:app --reload --port 8000 2>&1 | tee "backend/dump/run_$TS.log" &
+# Exclude log and db files from triggering reloads to prevent an infinite reload loop!
+python3 -m uvicorn backend.main:app --reload --reload-dir backend --reload-exclude "dump" --reload-exclude "*.log" --reload-exclude "*.db*" --port 8000 2>&1 | tee "backend/dump/run_$TS.log" &
 BACKEND_PID=$!
 
 # Wait until the health endpoint answers
