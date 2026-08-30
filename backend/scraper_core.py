@@ -129,6 +129,10 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
             if db_job:
                 db_job.match_score = score
                 db_job.match_reason = reason
+                db_job.score_tech_stack = res.get("score_tech_stack")
+                db_job.score_experience = res.get("score_experience")
+                db_job.score_domain = res.get("score_domain")
+                db_job.score_culture = res.get("score_culture")
 
                 if score is not None and score < min_match_score:
                     db_job.status = "IGNORED"
