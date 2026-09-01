@@ -6,15 +6,13 @@ from ..database import get_db
 from ..models import ScraperHealth
 from ..schemas import ScraperHealth as ScraperHealthSchema
 from ..scraper_core import run_scraper
-from ..auth import get_current_user
 import logging
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/api/v1/system",
-    tags=["system_health"],
-    dependencies=[Depends(get_current_user)]
+    tags=["system_health"]
 )
 
 @router.get("/scraper-health", response_model=List[ScraperHealthSchema])

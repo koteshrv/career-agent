@@ -97,4 +97,3 @@ def is_provider_blocked(db: Session, provider_name: str) -> bool:
             return True
             
     return False
-
