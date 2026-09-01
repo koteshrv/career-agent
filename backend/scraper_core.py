@@ -176,6 +176,19 @@ def run_scraper(db: Session):
     else:
         logger.info(f"Scraping all {len(targets)} companies (no filter set)")
 
+    # Filter out BLOCKED targets for cooldown
+    from .health_manager import is_provider_blocked, update_health
+    filtered_targets = []
+    for t in targets:
+        company = t.get("company")
+        if is_provider_blocked(db, company):
+            logger.warning(f"[{company}] Skipping target due to 24-hour BLOCKED cooldown.")
+            company_logs.append({"company": company, "status": "FAILED", "jobs_found": 0, "message": "BLOCKED (Cooldown active)"})
+        else:
+            filtered_targets.append(t)
+            
+    targets = filtered_targets
+
     for target in targets:
         t_type = target.get("type", "")
         company = target.get("company", "Unknown")
@@ -237,4 +250,10 @@ def run_scraper(db: Session):
         logger.error(f"Error during bulk AI evaluation: {e}")
 
     logger.info("=" * 60)
+    try:
+        from .health_manager import update_health
+        update_health(db, company_logs)
+    except Exception as e:
+        logger.error(f"Error updating health status: {e}")
+        
     return all_new_jobs, company_logs

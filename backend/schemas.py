@@ -132,3 +132,15 @@ class ScraperLog(ScraperLogBase):
     timestamp: datetime
     class Config:
         from_attributes = True
+
+class ScraperHealthBase(BaseModel):
+    provider_name: str
+    status: str
+    error_message: Optional[str] = None
+    last_run_at: Optional[datetime] = None
+    last_success_at: Optional[datetime] = None
+    consecutive_failures: int = 0
+
+class ScraperHealth(ScraperHealthBase):
+    class Config:
+        from_attributes = True

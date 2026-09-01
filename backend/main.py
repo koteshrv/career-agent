@@ -219,3 +219,5 @@ app.include_router(history.router)
 app.include_router(resumes.router)
 app.include_router(extension.router)
 app.include_router(knowledge.router)
+from .routers import health
+app.include_router(health.router)
