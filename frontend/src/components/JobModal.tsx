@@ -299,6 +299,27 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
                   <div className={`w-2.5 h-2.5 rounded-full ${job.match_score >= 80 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : job.match_score >= 50 ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`} />
                   <span className="font-bold text-white text-sm">AI Match Score: {job.match_score}%</span>
                 </div>
+                
+                {(job.score_tech_stack || job.score_experience || job.score_domain || job.score_culture) && (
+                  <div className="flex flex-wrap gap-2 mt-3 mb-3">
+                    {[
+                      { label: "Tech", val: job.score_tech_stack },
+                      { label: "Experience", val: job.score_experience },
+                      { label: "Domain", val: job.score_domain },
+                      { label: "Culture", val: job.score_culture }
+                    ].map(s => s.val ? (
+                      <div key={s.label} className={`px-2 py-1 rounded-md border text-xs font-semibold flex gap-1.5 items-center ${
+                        ['A', 'B'].includes(s.val.toUpperCase()) ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                        s.val.toUpperCase() === 'C' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                        'bg-red-500/10 text-red-400 border-red-500/20'
+                      }`}>
+                        <span className="text-white/60 font-medium">{s.label}:</span> 
+                        <span>{s.val.toUpperCase()}</span>
+                      </div>
+                    ) : null)}
+                  </div>
+                )}
+
                 {job.match_reason && (
                   <p className="text-sm text-zinc-400 leading-relaxed">{job.match_reason}</p>
                 )}

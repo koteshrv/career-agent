@@ -37,6 +37,10 @@ class JobUpdate(BaseModel):
     match_reason: Optional[str] = None
     external_id: Optional[str] = None
     yoe: Optional[str] = None
+    score_tech_stack: Optional[str] = None
+    score_experience: Optional[str] = None
+    score_domain: Optional[str] = None
+    score_culture: Optional[str] = None
     applied_at: Optional[datetime] = None
 
 class Job(JobBase):
@@ -50,6 +54,10 @@ class Job(JobBase):
     match_reason: Optional[str] = None
     external_id: Optional[str] = None
     yoe: Optional[str] = None
+    score_tech_stack: Optional[str] = None
+    score_experience: Optional[str] = None
+    score_domain: Optional[str] = None
+    score_culture: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     applied_at: Optional[datetime] = None

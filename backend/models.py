@@ -23,6 +23,11 @@ class Job(Base):
     external_id = Column(String, nullable=True)
     yoe = Column(String, nullable=True)
     
+    score_tech_stack = Column(String, nullable=True)
+    score_experience = Column(String, nullable=True)
+    score_domain = Column(String, nullable=True)
+    score_culture = Column(String, nullable=True)
+    
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     applied_at = Column(DateTime(timezone=True), nullable=True)

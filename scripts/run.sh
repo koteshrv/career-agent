@@ -19,7 +19,7 @@ TS=$(date +%s)
 
 # Run uvicorn in the background with reload, keep output in console AND save to dump/
 # Exclude log and db files from triggering reloads to prevent an infinite reload loop!
-python3 -m uvicorn backend.main:app --reload --reload-dir backend --reload-exclude "dump" --reload-exclude "*.log" --reload-exclude "*.db*" --port 8000 2>&1 | tee "backend/dump/run_$TS.log" &
+venv/bin/python3 -m uvicorn backend.main:app --reload --reload-dir backend --reload-exclude "dump" --reload-exclude "*.log" --reload-exclude "*.db*" --port 8000 2>&1 | tee "backend/dump/run_$TS.log" &
 BACKEND_PID=$!
 
 # Wait until the health endpoint answers

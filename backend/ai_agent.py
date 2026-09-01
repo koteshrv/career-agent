@@ -683,11 +683,15 @@ def batch_evaluate_jobs(jobs_data: list, resume_text: str, api_key: str = None, 
 You are an expert technical recruiter and ATS.
 Evaluate the following batch of job postings against the provided candidate resume.
 For each job, determine:
-1. match_score (0-100)
-2. match_reason (1-2 sentences)
-3. external_id (Extract the external job ID/requisition ID from the JD, if present. If not, return null.)
-4. yoe (Extract the expected years of experience from the JD, if present, e.g. "3-5 years" or "5+". If not, return null.)
-5. cleaned_job_description (Extract ONLY the core job description from the raw text, removing cookies, headers, footers, etc. Structure it nicely in Markdown).
+1. match_score (0-100 overall score)
+2. score_tech_stack (A, B, C, D, E, or F)
+3. score_experience (A, B, C, D, E, or F)
+4. score_domain (A, B, C, D, E, or F)
+5. score_culture (A, B, C, D, E, or F)
+6. match_reason (1-2 sentences explaining the overall score)
+7. external_id (Extract the external job ID/requisition ID from the JD, if present. If not, return null.)
+8. yoe (Extract the expected years of experience from the JD, if present, e.g. "3-5 years" or "5+". If not, return null.)
+9. cleaned_job_description (Extract ONLY the core job description from the raw text, removing cookies, headers, footers, etc. Structure it nicely in Markdown).
 
 Return ONLY a valid JSON array of objects. Do not use markdown backticks.
 
@@ -703,8 +707,8 @@ Jobs Batch:
 
 Expected JSON format:
 [
-  {{"id": 0, "match_score": 85, "match_reason": "Strong match with Python.", "external_id": "REQ-1234", "yoe": "3-5 years", "cleaned_job_description": "## Role\\n..."}},
-  {{"id": 1, "match_score": 20, "match_reason": "Missing Java.", "external_id": null, "yoe": "8+", "cleaned_job_description": "## Role\\n..."}}
+  {{"id": 0, "match_score": 85, "score_tech_stack": "A", "score_experience": "B", "score_domain": "C", "score_culture": "A", "match_reason": "Strong match with Python.", "external_id": "REQ-1234", "yoe": "3-5 years", "cleaned_job_description": "## Role\\n..."}},
+  {{"id": 1, "match_score": 20, "score_tech_stack": "F", "score_experience": "D", "score_domain": "F", "score_culture": "C", "match_reason": "Missing Java.", "external_id": null, "yoe": "8+", "cleaned_job_description": "## Role\\n..."}}
 ]
 """
     try:
