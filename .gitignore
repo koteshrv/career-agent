@@ -25,7 +25,7 @@ dist/
 # Logs & OS cruft
 *.log
 *.log*
-/backend/dump/
+/dump/
 /tests/dump/
 /gemini_free_tier_limits.md
 .DS_Store

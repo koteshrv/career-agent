@@ -16,7 +16,8 @@ export interface ScraperHealth {
 export function SystemHealth() {
   const [healthData, setHealthData] = useState<ScraperHealth[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshingAll, setRefreshingAll] = useState(false);
+  const [refreshingProvider, setRefreshingProvider] = useState<string | null>(null);
   const { toast } = useToast();
 
   const fetchHealth = async () => {
@@ -35,15 +36,20 @@ export function SystemHealth() {
   }, []);
 
   const handleCheck = async (provider?: string) => {
-    setRefreshing(true);
+    if (provider) setRefreshingProvider(provider);
+    else setRefreshingAll(true);
+    
     try {
       await api.post('/api/v1/system/scraper-health/check', provider ? { provider_name: provider } : {});
-      toast(`On-demand health check started for ${provider || 'all providers'}.`, "success");
+      toast(`Health check started for ${provider || 'all integrations'}.`, "success");
     } catch (e) {
       console.error(e);
       toast("Failed to start health check.", "error");
     } finally {
-      setTimeout(() => setRefreshing(false), 1000);
+      setTimeout(() => {
+        setRefreshingProvider(null);
+        setRefreshingAll(false);
+      }, 1000);
     }
   };
 
@@ -76,11 +82,11 @@ export function SystemHealth() {
         
         <button
           onClick={() => handleCheck()}
-          disabled={refreshing}
+          disabled={refreshingAll || refreshingProvider !== null}
           className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Run Health Check
+          <RefreshCw className={`w-4 h-4 ${refreshingAll ? 'animate-spin' : ''}`} />
+          Test All Targets
         </button>
       </div>
 
@@ -93,6 +99,9 @@ export function SystemHealth() {
           healthData.map((item) => {
             const config = getStatusConfig(item.status);
             const domain = item.provider_name.toLowerCase().replace(/\s+/g, '') + '.com';
+            
+            const isThisSpinning = refreshingProvider === item.provider_name;
+            const isAnySpinning = refreshingAll || refreshingProvider !== null;
             
             return (
               <motion.div
@@ -107,9 +116,9 @@ export function SystemHealth() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
                       <img 
-                        src={`https://logo.clearbit.com/${domain}`}
+                        src={`https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${domain}&size=128`}
                         alt={item.provider_name}
-                        className="w-full h-full object-cover"
+                        className="w-8 h-8 object-contain rounded-md"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
                           e.currentTarget.parentElement!.innerHTML = `<span class="text-xs text-zinc-500 font-bold">${item.provider_name.substring(0, 2).toUpperCase()}</span>`;
@@ -119,7 +128,7 @@ export function SystemHealth() {
                     <div>
                       <h3 className="font-semibold text-lg text-zinc-200 leading-tight">{item.provider_name}</h3>
                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${config.bg} ${config.text} border ${config.border} mt-1 inline-block`}>
-                        {item.status}
+                        {item.status === 'UNKNOWN' ? 'UNTESTED' : item.status}
                       </span>
                     </div>
                   </div>
@@ -158,10 +167,10 @@ export function SystemHealth() {
                 <div className="mt-4 pt-4 border-t border-white/5 flex justify-end">
                   <button
                     onClick={() => handleCheck(item.provider_name)}
-                    disabled={refreshing}
+                    disabled={isAnySpinning}
                     className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded transition-colors text-zinc-300 flex items-center gap-2 disabled:opacity-50"
                   >
-                    <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3 h-3 ${isThisSpinning ? 'animate-spin' : ''}`} />
                     Test Specific Target
                   </button>
                 </div>

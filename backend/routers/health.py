@@ -18,7 +18,6 @@ router = APIRouter(
 @router.get("/scraper-health", response_model=List[ScraperHealthSchema])
 def get_scraper_health(db: Session = Depends(get_db)):
     """Fetch health data for all scraper integrations."""
-    return db.query(ScraperHealth).all()
     from ..sources.common import load_targets
     db_health = {h.provider_name: h for h in db.query(ScraperHealth).all()}
     all_targets = load_targets()
