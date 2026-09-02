@@ -157,7 +157,7 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
         db.commit()
 
 
-def run_scraper(db: Session):
+def run_scraper(db: Session, target_name: str = None):
     logger.info("=" * 60)
     logger.info("Starting Backend Scraper Engine...")
     targets = load_targets()
@@ -169,19 +169,23 @@ def run_scraper(db: Session):
     company_logs = []
     playwright_targets = []
 
-    active = get_active_companies(db)
-    if active:
-        targets = [t for t in targets if t.get("company") in active]
-        logger.info(f"Scraping {len(targets)} selected companies: {active}")
+    if target_name:
+        targets = [t for t in targets if t.get("company") == target_name]
+        logger.info(f"Scraping SINGLE requested company: {target_name}")
     else:
-        logger.info(f"Scraping all {len(targets)} companies (no filter set)")
+        active = get_active_companies(db)
+        if active:
+            targets = [t for t in targets if t.get("company") in active]
+            logger.info(f"Scraping {len(targets)} selected companies: {active}")
+        else:
+            logger.info(f"Scraping all {len(targets)} companies (no filter set)")
 
     # Filter out BLOCKED targets for cooldown
     from .health_manager import is_provider_blocked, update_health
     filtered_targets = []
     for t in targets:
         company = t.get("company")
-        if is_provider_blocked(db, company):
+        if not target_name and is_provider_blocked(db, company):
             logger.warning(f"[{company}] Skipping target due to 24-hour BLOCKED cooldown.")
             company_logs.append({"company": company, "status": "FAILED", "jobs_found": 0, "message": "BLOCKED (Cooldown active)"})
         else:
