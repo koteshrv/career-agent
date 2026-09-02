@@ -158,6 +158,7 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
 
 
 def run_scraper(db: Session, target_name: str = None):
+def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool = False):
     logger.info("=" * 60)
     logger.info("Starting Backend Scraper Engine...")
     targets = load_targets()
@@ -172,6 +173,8 @@ def run_scraper(db: Session, target_name: str = None):
     if target_name:
         targets = [t for t in targets if t.get("company") == target_name]
         logger.info(f"Scraping SINGLE requested company: {target_name}")
+    elif ignore_active_filter:
+        logger.info("Health Check mode: Scraping ALL companies, bypassing active company filter.")
     else:
         active = get_active_companies(db)
         if active:

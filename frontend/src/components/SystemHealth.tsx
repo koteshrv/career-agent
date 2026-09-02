@@ -98,7 +98,7 @@ export function SystemHealth() {
         ) : (
           healthData.map((item) => {
             const config = getStatusConfig(item.status);
-            const domain = item.provider_name.toLowerCase().replace(/\s+/g, '') + '.com';
+            const base_filename = item.provider_name.toLowerCase().replace(/\s+/g, '');
             
             const isThisSpinning = refreshingProvider === item.provider_name;
             const isAnySpinning = refreshingAll || refreshingProvider !== null;
@@ -116,12 +116,13 @@ export function SystemHealth() {
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
                       <img 
-                        src={`https://t2.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://${domain}&size=128`}
+                        src={`/logos/${base_filename}.png`}
                         alt={item.provider_name}
-                        className="w-8 h-8 object-contain rounded-md"
+                        className="w-full h-full object-cover"
                         onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement!.innerHTML = `<span class="text-xs text-zinc-500 font-bold">${item.provider_name.substring(0, 2).toUpperCase()}</span>`;
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = `/logos/${base_filename}.svg`;
+                          e.currentTarget.className = "w-8 h-8 object-contain rounded-md";
                         }}
                       />
                     </div>
@@ -171,7 +172,7 @@ export function SystemHealth() {
                     className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded transition-colors text-zinc-300 flex items-center gap-2 disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3 h-3 ${isThisSpinning ? 'animate-spin' : ''}`} />
-                    Test Specific Target
+                    Test Now
                   </button>
                 </div>
               </motion.div>
