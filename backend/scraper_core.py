@@ -157,7 +157,6 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
         db.commit()
 
 
-def run_scraper(db: Session, target_name: str = None):
 def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool = False):
     logger.info("=" * 60)
     logger.info("Starting Backend Scraper Engine...")

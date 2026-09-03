@@ -18,6 +18,7 @@ export function SystemHealth() {
   const [loading, setLoading] = useState(true);
   const [refreshingAll, setRefreshingAll] = useState(false);
   const [refreshingProvider, setRefreshingProvider] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>('ALL');
   const { toast } = useToast();
 
   const fetchHealth = async () => {
@@ -68,13 +69,26 @@ export function SystemHealth() {
     }
   };
 
+  const stats = healthData.reduce((acc, curr) => {
+    const s = curr.status === 'UNKNOWN' ? 'UNTESTED' : curr.status;
+    acc[s] = (acc[s] || 0) + 1;
+    acc['ALL'] = (acc['ALL'] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const filteredData = healthData.filter(item => {
+    if (filter === 'ALL') return true;
+    const s = item.status === 'UNKNOWN' ? 'UNTESTED' : item.status;
+    return s === filter;
+  });
+
   if (loading) {
     return <div className="flex justify-center items-center h-full"><RefreshCw className="w-6 h-6 animate-spin text-zinc-400" /></div>;
   }
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div className="flex justify-between items-center bg-black/20 border border-white/5 rounded-xl p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-black/20 border border-white/5 rounded-xl p-6 gap-4">
         <div>
           <h2 className="text-xl font-bold text-white mb-2">ATS Integrations Health</h2>
           <p className="text-sm text-zinc-400">Monitor the operational status of all background job scrapers.</p>
@@ -83,20 +97,39 @@ export function SystemHealth() {
         <button
           onClick={() => handleCheck()}
           disabled={refreshingAll || refreshingProvider !== null}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-500/20 transition-colors disabled:opacity-50 whitespace-nowrap"
         >
           <RefreshCw className={`w-4 h-4 ${refreshingAll ? 'animate-spin' : ''}`} />
           Test All Targets
         </button>
       </div>
 
+      <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        {['ALL', 'OPERATIONAL', 'DEGRADED', 'BROKEN', 'BLOCKED', 'UNTESTED'].map(f => {
+          if (!stats[f] && f !== 'ALL') return null;
+          return (
+            <button 
+              key={f} 
+              onClick={() => setFilter(f)}
+              className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap ${
+                filter === f 
+                  ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' 
+                  : 'bg-black/20 border-white/5 text-zinc-400 hover:bg-white/10 hover:text-zinc-200'
+              }`}
+            >
+              {f} ({stats[f] || 0})
+            </button>
+          )
+        })}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {healthData.length === 0 ? (
+        {filteredData.length === 0 ? (
           <div className="col-span-full p-8 text-center text-zinc-500">
-            No health data available yet.
+            No health data matches this filter.
           </div>
         ) : (
-          healthData.map((item) => {
+          filteredData.map((item) => {
             const config = getStatusConfig(item.status);
             const base_filename = item.provider_name.toLowerCase().replace(/\s+/g, '');
             

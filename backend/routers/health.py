@@ -55,7 +55,6 @@ def run_health_check_background(db: Session, target_name: str = None):
     """
     logger.info(f"Running On-Demand Health Check. Target: {target_name if target_name else 'ALL'}")
     try:
-        run_scraper(db, target_name=target_name)
         run_scraper(db, target_name=target_name, ignore_active_filter=True)
     except Exception as e:
         logger.error(f"On-Demand check failed: {e}")
