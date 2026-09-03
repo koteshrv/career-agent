@@ -19,10 +19,7 @@ const NAV = [
   { to: "/app/analytics", label: "Analytics", title: "Analytics", subtitle: "Insights and metrics on your job search progress.", icon: LineChart },
   { to: "/app/knowledge", label: "Knowledge Base", title: "Career Knowledge Base", subtitle: "Manage your career history for RAG generation.", icon: Database },
   { to: "/app/history", label: "Run History", title: "Run History", subtitle: "View the status and logs of your background scraping tasks.", icon: History },
-  { to: "/app/quick-generate", label: "Quick Generate", title: "Quick Generate", subtitle: "Instantly generate a tailored resume or cover letter without tracking the job in your Kanban board.", icon: Zap },
   { to: "/app/integrations", label: "System Health", title: "Integrations & Health", subtitle: "Monitor the operational status of ATS integrations.", icon: Activity },
-  { to: "/app/knowledge", label: "Knowledge Base", title: "Career Knowledge Base", subtitle: "Manage your career history for RAG generation.", icon: Database },
-  { to: "/app/analytics", label: "Analytics", title: "Analytics", subtitle: "Insights and metrics on your job search progress.", icon: LineChart },
   { to: "/app/settings", label: "Settings", title: "Settings", subtitle: "Manage your API keys, resume templates, and preferences.", icon: Settings },
 ]
 
