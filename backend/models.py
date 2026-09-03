@@ -74,3 +74,13 @@ class ScraperLog(Base):
     trigger_source = Column(String, default="MANUAL") # "MANUAL", "CRON"
     detailed_logs = Column(Text, nullable=True) # JSON string of company logs
     raw_logs = Column(Text, nullable=True) # Full console output for this run
+
+class ScraperHealth(Base):
+    __tablename__ = "scraper_health"
+    
+    provider_name = Column(String, primary_key=True, index=True)
+    status = Column(String, default="OPERATIONAL") # OPERATIONAL, DEGRADED, BLOCKED, BROKEN
+    error_message = Column(Text, nullable=True)
+    last_run_at = Column(DateTime(timezone=True), nullable=True)
+    last_success_at = Column(DateTime(timezone=True), nullable=True)
+    consecutive_failures = Column(Integer, default=0)

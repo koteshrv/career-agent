@@ -157,7 +157,7 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
         db.commit()
 
 
-def run_scraper(db: Session):
+def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool = False):
     logger.info("=" * 60)
     logger.info("Starting Backend Scraper Engine...")
     targets = load_targets()
@@ -169,12 +169,31 @@ def run_scraper(db: Session):
     company_logs = []
     playwright_targets = []
 
-    active = get_active_companies(db)
-    if active:
-        targets = [t for t in targets if t.get("company") in active]
-        logger.info(f"Scraping {len(targets)} selected companies: {active}")
+    if target_name:
+        targets = [t for t in targets if t.get("company") == target_name]
+        logger.info(f"Scraping SINGLE requested company: {target_name}")
+    elif ignore_active_filter:
+        logger.info("Health Check mode: Scraping ALL companies, bypassing active company filter.")
     else:
-        logger.info(f"Scraping all {len(targets)} companies (no filter set)")
+        active = get_active_companies(db)
+        if active:
+            targets = [t for t in targets if t.get("company") in active]
+            logger.info(f"Scraping {len(targets)} selected companies: {active}")
+        else:
+            logger.info(f"Scraping all {len(targets)} companies (no filter set)")
+
+    # Filter out BLOCKED targets for cooldown
+    from .health_manager import is_provider_blocked, update_health
+    filtered_targets = []
+    for t in targets:
+        company = t.get("company")
+        if not target_name and is_provider_blocked(db, company):
+            logger.warning(f"[{company}] Skipping target due to 24-hour BLOCKED cooldown.")
+            company_logs.append({"company": company, "status": "FAILED", "jobs_found": 0, "message": "BLOCKED (Cooldown active)"})
+        else:
+            filtered_targets.append(t)
+            
+    targets = filtered_targets
 
     for target in targets:
         t_type = target.get("type", "")
@@ -237,4 +256,10 @@ def run_scraper(db: Session):
         logger.error(f"Error during bulk AI evaluation: {e}")
 
     logger.info("=" * 60)
+    try:
+        from .health_manager import update_health
+        update_health(db, company_logs)
+    except Exception as e:
+        logger.error(f"Error updating health status: {e}")
+        
     return all_new_jobs, company_logs

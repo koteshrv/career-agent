@@ -25,7 +25,7 @@ dist/
 # Logs & OS cruft
 *.log
 *.log*
-/backend/dump/
+/dump/
 /tests/dump/
 /gemini_free_tier_limits.md
 .DS_Store
@@ -36,3 +36,5 @@ Thumbs.db
 .vscode/
 .idea/
 backend/vector_store/
+*.db-wal
+*.db-shm
