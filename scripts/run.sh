@@ -1,5 +1,7 @@
 #!/bin/bash
 
+lsof -t -i:8000 -i:5173 | xargs kill -9
+
 # Change to the project root directory
 cd "$(dirname "$0")/.."
 

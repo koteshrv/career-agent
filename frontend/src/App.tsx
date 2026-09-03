@@ -10,7 +10,7 @@ import { QuickGeneratePage } from "./components/QuickGeneratePage"
 import { KnowledgeBasePage } from "./components/KnowledgeBasePage"
 import { SystemHealth } from "./components/SystemHealth"
 import { Activity } from "lucide-react"
-import { Zap, LayoutDashboard, Settings, History, LineChart, LogOut, Database } from "lucide-react"
+import { Zap, LayoutDashboard, Settings, History, LogOut } from "lucide-react"
 import type { ReactNode } from "react"
 
 const NAV = [

@@ -134,7 +134,7 @@ app = FastAPI(title="Job Scraper ATS API", lifespan=lifespan)
 def health_check():
     return {"status": "ok"}
 
-PUBLIC_PATHS = {"/api/login", "/api/ws/logs", "/healthz"}
+PUBLIC_PATHS = {"/api/login", "/api/ws/logs", "/healthz", "/api/auth/sso"}
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -157,6 +157,26 @@ app.add_middleware(
 )
 
 @app.post("/api/login")
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
+from pydantic import BaseModel
+
+class SSOLoginRequest(BaseModel):
+    idp_token: str
+    sso_provider: str
+
+@app.post("/api/auth/sso")
+def sso_login(req: SSOLoginRequest):
+    if req.sso_provider != "google":
+        raise HTTPException(status_code=400, detail="Unsupported provider")
+    try:
+        idinfo = id_token.verify_oauth2_token(req.idp_token, google_requests.Request())
+        email = idinfo.get("email")
+        if not email:
+            raise ValueError("No email in token")
+        return {"token": auth.create_token(email)}
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
 def login(creds: schemas.LoginRequest):
     if not auth.check_credentials(creds.username, creds.password):
         raise HTTPException(status_code=401, detail="Invalid username or password")
