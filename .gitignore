@@ -36,3 +36,5 @@ Thumbs.db
 .vscode/
 .idea/
 backend/vector_store/
+*.db-wal
+*.db-shm

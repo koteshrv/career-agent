@@ -134,7 +134,6 @@ export function SystemHealth() {
             const base_filename = item.provider_name.toLowerCase().replace(/\s+/g, '');
             
             const isThisSpinning = refreshingProvider === item.provider_name;
-            const isAnySpinning = refreshingAll || refreshingProvider !== null;
             
             return (
               <motion.div
@@ -201,7 +200,7 @@ export function SystemHealth() {
                 <div className="mt-4 pt-4 border-t border-white/5 flex justify-end">
                   <button
                     onClick={() => handleCheck(item.provider_name)}
-                    disabled={isAnySpinning}
+                    disabled={isThisSpinning || refreshingAll}
                     className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded transition-colors text-zinc-300 flex items-center gap-2 disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3 h-3 ${isThisSpinning ? 'animate-spin' : ''}`} />
