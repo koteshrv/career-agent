@@ -27,9 +27,14 @@ export const CLOUD_TOKEN_KEY = "cloudToken"
 // encrypted at rest) so the backend's 10-minute push/pull schedule can use it independent
 // of whether a browser tab is open. This is scoped ONLY to the crowdsourcing API — it must
 // never be treated as local dashboard auth (see backend/crowdsourcing.py).
+//
+// Uses the dedicated public /api/crowdsource/connect endpoint, NOT PUT /api/settings —
+// connecting crowdsourcing happens from the Login page, before there's a local dashboard
+// session, so there's no local bearer token yet for the request interceptor to attach.
+// PUT /api/settings requires one and would 401 here.
 export async function setCloudToken(token: string) {
   localStorage.setItem(CLOUD_TOKEN_KEY, token)
-  await api.put("/api/settings", { career_agent_cloud_token: token })
+  await api.post("/api/crowdsource/connect", { token })
 }
 
 // Attach the auth token to every request.

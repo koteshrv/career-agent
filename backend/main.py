@@ -134,7 +134,7 @@ app = FastAPI(title="Job Scraper ATS API", lifespan=lifespan)
 def health_check():
     return {"status": "ok"}
 
-PUBLIC_PATHS = {"/api/login", "/api/ws/logs", "/healthz", "/api/auth/sso"}
+PUBLIC_PATHS = {"/api/login", "/api/ws/logs", "/healthz", "/api/auth/sso", "/api/crowdsource/connect"}
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
