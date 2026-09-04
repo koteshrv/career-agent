@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatISTDate } from "@/lib/datetime"
 import { api } from "@/lib/api"
-import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X, Globe } from "lucide-react"
+import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X, Globe, UploadCloud, DownloadCloud } from "lucide-react"
 import { JobModal } from "./JobModal"
 import { useToast } from "./Toast"
 import { ConfirmDialog } from "./ConfirmDialog"
@@ -58,6 +58,8 @@ export function KanbanBoard() {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
+  const [crowdsourcePushing, setCrowdsourcePushing] = useState(false)
+  const [crowdsourcePulling, setCrowdsourcePulling] = useState(false)
 
   useEffect(() => {
     fetchJobs()
@@ -143,6 +145,37 @@ export function KanbanBoard() {
     } catch (e) {
       console.error(e)
     }
+  }
+
+  // TEMP — manual triggers for the 10-minute crowdsourcing push/pull background schedule,
+  // for testing without waiting on the interval. Remove once the sync is confirmed working.
+  const handleCrowdsourcePush = async () => {
+    setCrowdsourcePushing(true)
+    try {
+      const { data } = await api.post("/api/crowdsource/push")
+      if (data.skipped) toast(data.reason, "error")
+      else if (!data.success) toast(data.reason || "Push failed", "error")
+      else toast(`Pushed ${data.jobs_sent ?? 0} jobs — earned ${data.credits_earned ?? 0} credits`, "success")
+    } catch (e) {
+      toast("Push failed", "error")
+    }
+    setCrowdsourcePushing(false)
+  }
+
+  const handleCrowdsourcePull = async () => {
+    setCrowdsourcePulling(true)
+    try {
+      const { data } = await api.post("/api/crowdsource/pull")
+      if (data.skipped) toast(data.reason, "error")
+      else if (!data.success) toast(data.reason || "Pull failed", "error")
+      else {
+        toast(`Pulled ${data.jobs_received ?? 0} jobs (${data.jobs_added ?? 0} new)`, "success")
+        if (data.jobs_added > 0) fetchJobs()
+      }
+    } catch (e) {
+      toast("Pull failed", "error")
+    }
+    setCrowdsourcePulling(false)
   }
 
   const toggleCompany = (company: string) => {
@@ -331,6 +364,26 @@ export function KanbanBoard() {
           >
             <Trash2 className="w-3.5 h-3.5" />
             {clearing ? 'Clearing...' : 'Clear All'}
+          </button>
+
+          {/* TEMP — manual crowdsourcing push/pull triggers for testing. See handleCrowdsourcePush/Pull. */}
+          <button
+            onClick={handleCrowdsourcePush}
+            disabled={crowdsourcePushing}
+            title="Temporary test button — manually triggers the crowdsourcing push cycle"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <UploadCloud className="w-3.5 h-3.5" />
+            {crowdsourcePushing ? 'Pushing...' : 'Push (temp)'}
+          </button>
+          <button
+            onClick={handleCrowdsourcePull}
+            disabled={crowdsourcePulling}
+            title="Temporary test button — manually triggers the crowdsourcing pull cycle"
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <DownloadCloud className="w-3.5 h-3.5" />
+            {crowdsourcePulling ? 'Pulling...' : 'Pull (temp)'}
           </button>
         </div>
       </div>

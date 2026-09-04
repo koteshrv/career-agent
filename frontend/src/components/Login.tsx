@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
-import { api, setToken } from "@/lib/api"
+import { api, setToken, setCloudToken } from "@/lib/api"
 import { Zap, User } from "lucide-react"
 import { GoogleLogin } from '@react-oauth/google'
 import { useToast } from "./Toast"
@@ -22,7 +22,7 @@ export function Login() {
         idp_token: credentialResponse.credential,
         sso_provider: "google"
       })
-      localStorage.setItem("cloudToken", cloudRes.data.token || cloudRes.data.access_token)
+      await setCloudToken(cloudRes.data.token || cloudRes.data.access_token)
       toast("Crowdsourcing account connected!", "success")
     } catch (err: any) {
       console.error(err)

@@ -114,6 +114,8 @@ class SettingsBase(BaseModel):
     ollama_url: Optional[str] = "http://localhost:11434"
     ollama_model: Optional[str] = "llama3"
 
+    career_agent_cloud_token: Optional[str] = None
+
 class Settings(SettingsBase):
     id: int
     class Config:

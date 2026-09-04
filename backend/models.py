@@ -27,10 +27,15 @@ class Job(Base):
     score_experience = Column(String, nullable=True)
     score_domain = Column(String, nullable=True)
     score_culture = Column(String, nullable=True)
-    
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     applied_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Set once this job has been successfully pushed to the crowdsourcing API
+    # (career-agent-api). NULL means "never pushed" — the crowdsource push cycle only
+    # sends unpushed jobs, so the same backlog isn't resubmitted every 10 minutes forever.
+    crowdsource_pushed_at = Column(DateTime(timezone=True), nullable=True)
 
 class Settings(Base):
     __tablename__ = "settings"
@@ -62,6 +67,10 @@ class Settings(Base):
     grok_api_key = Column(String, nullable=True)
     ollama_url = Column(String, default="http://localhost:11434")
     ollama_model = Column(String, default="llama3")
+
+    # Crowdsourcing (career-agent-api) — the JWT obtained via Google/GitHub SSO, used only
+    # to push/pull the shared job pool. Encrypted at rest like the other secrets below.
+    career_agent_cloud_token = Column(String, nullable=True)
 
 class ScraperLog(Base):
     __tablename__ = "scraper_logs"

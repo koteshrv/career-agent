@@ -79,6 +79,7 @@ def bulk_delete_jobs(db: Session, ids: list) -> int:
 ENCRYPTED_FIELDS = {
     "telegram_bot_token", "gemini_api_key",
     "openai_api_key", "anthropic_api_key", "grok_api_key",
+    "career_agent_cloud_token",
 }
 
 def get_settings(db: Session):
@@ -115,6 +116,24 @@ def update_settings(db: Session, settings: schemas.SettingsBase):
     db.commit()
     db.refresh(db_settings)
     return get_settings(db)
+
+def get_unpushed_jobs(db: Session, limit: int = 1000) -> list:
+    """Jobs never yet pushed to the crowdsourcing API. Ordered oldest-first so the backlog
+    drains in order across successive push cycles rather than the same newest N repeating."""
+    return (
+        db.query(models.Job)
+        .filter(models.Job.crowdsource_pushed_at.is_(None))
+        .order_by(models.Job.created_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+def mark_jobs_crowdsource_pushed(db: Session, job_ids: list) -> None:
+    if not job_ids:
+        return
+    db.query(models.Job).filter(models.Job.id.in_(job_ids)).update(
+        {models.Job.crowdsource_pushed_at: datetime.now(timezone.utc)}, synchronize_session=False)
+    db.commit()
 
 def has_running_scrape(db: Session) -> bool:
     """True if a scraper run is already in flight (cron and manual can otherwise overlap)."""

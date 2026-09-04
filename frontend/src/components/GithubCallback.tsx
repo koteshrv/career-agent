@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { api } from "@/lib/api"
+import { api, setCloudToken } from "@/lib/api"
 import { Zap, CheckCircle2 } from "lucide-react"
 
 // Connects a GitHub account to the crowdsourcing credit economy (career-agent-api).
@@ -33,7 +33,7 @@ export function GithubCallback() {
           idp_token: githubAccessToken,
           sso_provider: "github"
         })
-        localStorage.setItem("cloudToken", cloudRes.data.token || cloudRes.data.access_token)
+        await setCloudToken(cloudRes.data.token || cloudRes.data.access_token)
 
         setDone(true)
 

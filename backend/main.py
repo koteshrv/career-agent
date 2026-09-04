@@ -276,3 +276,5 @@ app.include_router(extension.router)
 app.include_router(knowledge.router)
 from .routers import health
 app.include_router(health.router)
+from .routers import crowdsourcing as crowdsourcing_router
+app.include_router(crowdsourcing_router.router)
