@@ -22,8 +22,8 @@ components:
       required:
         - company
         - title
-        - location
         - url
+      description: Entries missing company, title, or url are silently skipped (see invalid_skipped in the push response); location is optional.
       properties:
         company:
           type: string
@@ -105,7 +105,10 @@ paths:
   /api/jobs/push:
     post:
       summary: Push Scraped Jobs
-      description: Upload newly scraped jobs to the database. Earns 1 API credit per unique job successfully inserted. Maximum 1000 jobs per request.
+      description: >
+        Upload newly scraped jobs to the database. Earns 1 API credit per unique job successfully inserted,
+        up to a daily cap of 500 earned credits per user. Entries whose `url` is not a valid http(s) URL, or
+        whose fields exceed the length limits, are skipped rather than failing the batch. Maximum 1000 jobs per request.
       requestBody:
         required: true
         content:
@@ -136,18 +139,36 @@ paths:
                     example: Pushed 5 jobs.
                   credits_earned:
                     type: integer
+                    description: Credits actually awarded (may be less than jobs_accepted if the daily cap was hit).
                     example: 5
+                  jobs_accepted:
+                    type: integer
+                    description: Unique jobs actually stored from this request.
+                    example: 5
+                  invalid_skipped:
+                    type: integer
+                    description: Number of submitted entries skipped for missing/invalid fields or an invalid URL.
+                    example: 0
+                  failed:
+                    type: integer
+                    description: Number of entries that could not be inserted due to an unexpected database error.
+                    example: 0
+                  warning:
+                    type: string
+                    description: Present when the daily push credit cap was reached.
         '400':
-          description: Invalid payload
+          description: Invalid payload or malformed JSON body
         '401':
           description: Unauthorized (Missing or Invalid JWT)
         '413':
           description: Payload Too Large (Exceeds 1000 jobs)
+        '429':
+          description: Too Many Requests (rate limited)
 
   /api/jobs/pull:
     get:
       summary: Pull Jobs
-      description: Consume jobs from the database. Deducts 1 API credit per job. Falls back to a strict daily quota (50 jobs/day) if credits are 0.
+      description: Consume jobs from the database. Deducts 1 API credit per job. Falls back to a strict daily quota (50 jobs/day) if credits are 0. Each user is only ever served a given job once — already-pulled jobs are excluded from future pulls.
       parameters:
         - in: query
           name: limit
@@ -185,4 +206,118 @@ paths:
           description: Unauthorized (Missing or Invalid JWT)
         '403':
           description: Forbidden (Daily free quota exhausted)
+        '409':
+          description: Conflict (lost a race with a concurrent pull request from the same user); safe to retry
+
+  /api/me:
+    get:
+      summary: Get Account Info
+      description: Returns the authenticated user's current Give-to-Get economy balance and stats.
+      responses:
+        '200':
+          description: Account info retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  email:
+                    type: string
+                  current_credits:
+                    type: integer
+                  total_pushed:
+                    type: integer
+                  total_pulled:
+                    type: integer
+                  daily_quota_remaining:
+                    type: integer
+                    description: Remaining free-tier jobs pullable today (resets daily; only relevant once credits reach 0).
+                  daily_push_credits_remaining:
+                    type: integer
+                    description: Credits still earnable from pushing today before the daily cap is reached.
+                  flagged_count:
+                    type: integer
+                    description: Number of this user's contributed jobs the community has flagged as fake or dead.
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+
+  /api/jobs/report:
+    post:
+      summary: Report a Job
+      description: >
+        Community quality control. Report a job as fake, dead, or spam. You may only report a job you have
+        actually pulled, and only once per job. Once 3 distinct users report the same job it is flagged and
+        withdrawn from circulation, the contributor loses the credit earned for it and receives a strike;
+        at 5 strikes the contributor is automatically banned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - job_id
+              properties:
+                job_id:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+                  example: dead_link
+      responses:
+        '200':
+          description: Report recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  report_count:
+                    type: integer
+                    description: Distinct users who have now reported this job.
+                  reports_needed_to_flag:
+                    type: integer
+                  job_flagged:
+                    type: boolean
+                    description: True if this report crossed the threshold and withdrew the job.
+                  contributor_banned:
+                    type: boolean
+                  message:
+                    type: string
+                    description: Present when this user had already reported the job.
+        '400':
+          description: Missing or invalid job_id, or malformed JSON body
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '403':
+          description: Forbidden (you can only report a job you have pulled)
+        '404':
+          description: Job not found
+
+  /health:
+    get:
+      summary: Health Check
+      description: Unauthenticated liveness probe; also verifies the D1 binding responds.
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  database:
+                    type: string
+                    example: ok
+        '503':
+          description: Database unreachable
 
