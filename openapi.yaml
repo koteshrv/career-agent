@@ -1,0 +1,188 @@
+openapi: 3.0.3
+info:
+  title: Career Agent API
+  description: A centralized crowdsourcing API for an open-source job scraping tool featuring a Give-to-Get credit economy.
+  version: 1.0.0
+servers:
+  - url: https://career-agent-api.kotesh-rv.workers.dev
+    description: Production Server
+  - url: http://localhost:8787
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    JobInput:
+      type: object
+      required:
+        - company
+        - title
+        - location
+        - url
+      properties:
+        company:
+          type: string
+          example: TechCorp
+        title:
+          type: string
+          example: Software Engineer
+        location:
+          type: string
+          example: Remote
+        url:
+          type: string
+          example: https://techcorp.com/jobs/1
+          
+    JobOutput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company:
+          type: string
+        title:
+          type: string
+        location:
+          type: string
+        url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/auth/login:
+    post:
+      summary: SSO Login
+      description: Exchanges a Google or GitHub Identity Provider (IdP) token for an internal API JWT.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idp_token
+                - sso_provider
+              properties:
+                idp_token:
+                  type: string
+                  description: The JWT (for Google) or Access Token (for GitHub) provided by the IdP.
+                sso_provider:
+                  type: string
+                  enum: [google, github]
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  token_type:
+                    type: string
+                    example: bearer
+                  expires_in:
+                    type: integer
+                    example: 604800
+        '400':
+          description: Missing parameters
+        '401':
+          description: Invalid IdP token
+
+  /api/jobs/push:
+    post:
+      summary: Push Scraped Jobs
+      description: Upload newly scraped jobs to the database. Earns 1 API credit per unique job successfully inserted. Maximum 1000 jobs per request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - jobs
+              properties:
+                jobs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/JobInput'
+                  maxItems: 1000
+      responses:
+        '200':
+          description: Jobs processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Pushed 5 jobs.
+                  credits_earned:
+                    type: integer
+                    example: 5
+        '400':
+          description: Invalid payload
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '413':
+          description: Payload Too Large (Exceeds 1000 jobs)
+
+  /api/jobs/pull:
+    get:
+      summary: Pull Jobs
+      description: Consume jobs from the database. Deducts 1 API credit per job. Falls back to a strict daily quota (50 jobs/day) if credits are 0.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Maximum number of jobs to return.
+      responses:
+        '200':
+          description: Jobs retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  warning:
+                    type: string
+                    description: Warning message if the requested limit was capped.
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JobOutput'
+                  deducted:
+                    type: integer
+                    description: Number of credits deducted from balance.
+                  quota_used:
+                    type: integer
+                    description: Number of free quota jobs used if user has 0 credits.
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '403':
+          description: Forbidden (Daily free quota exhausted)
+

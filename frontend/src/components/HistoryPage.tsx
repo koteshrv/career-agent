@@ -232,11 +232,13 @@ export function HistoryPage() {
                           <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider font-semibold">Per-Company Results</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {filteredDetails.map((d: any, i: number) => (
-                              <div key={i} className={`p-3 rounded-lg border ${d.status === 'SUCCESS' ? 'bg-emerald-500/5 border-emerald-500/10' : 'bg-red-500/5 border-red-500/10'}`}>
+                              <div key={i} className={`p-3 rounded-lg border ${d.status === 'SUCCESS' ? 'bg-emerald-500/5 border-emerald-500/10' : d.status === 'SKIPPED' ? 'bg-amber-500/5 border-amber-500/10' : 'bg-red-500/5 border-red-500/10'}`}>
                                 <div className="flex justify-between items-start mb-1">
                                   <span className="font-semibold text-white text-sm">{d.company}</span>
                                   {d.status === 'SUCCESS' ? (
                                     <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">{d.jobs_found} jobs</span>
+                                  ) : d.status === 'SKIPPED' ? (
+                                    <span className="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">Skipped</span>
                                   ) : (
                                     <span className="text-xs font-medium text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">Failed</span>
                                   )}

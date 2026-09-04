@@ -1,11 +1,13 @@
 import logging
 import json
+import os
 import subprocess
 import shutil
 import tempfile
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, StreamingResponse
+from starlette.background import BackgroundTask
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas, ai_agent
@@ -61,7 +63,12 @@ def generate_on_demand(req: schemas.OnDemandRequest, db: Session = Depends(get_d
     
     return StreamingResponse(gen, media_type="application/x-ndjson")
 
-def _compile_latex_to_pdf(latex_content: str, out_basename: str, download_name: str) -> FileResponse:
+# A hallucinated runaway macro can spin pdflatex forever. -interaction=nonstopmode stops
+# it waiting on input, but not a genuine infinite loop, which would pin a worker thread.
+LATEX_TIMEOUT_SECONDS = 60
+
+
+def _compile_latex_to_pdf(latex_content: str, download_name: str) -> FileResponse:
     if not latex_content or not latex_content.strip():
         raise HTTPException(status_code=400, detail="No LaTeX content provided")
 
@@ -74,9 +81,16 @@ def _compile_latex_to_pdf(latex_content: str, out_basename: str, download_name: 
                 ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "resume.tex"],
                 cwd=tmpdir, check=True,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=LATEX_TIMEOUT_SECONDS,
             )
         except FileNotFoundError:
             raise HTTPException(status_code=500, detail="pdflatex is not installed on the server.")
+        except subprocess.TimeoutExpired:
+            logger.error(f"LaTeX compilation timed out after {LATEX_TIMEOUT_SECONDS}s.")
+            raise HTTPException(
+                status_code=500,
+                detail=f"PDF compilation timed out after {LATEX_TIMEOUT_SECONDS}s — the generated LaTeX is likely malformed.",
+            )
         except subprocess.CalledProcessError as e:
             logger.error(f"LaTeX compilation failed: {e.stdout.decode(errors='ignore')} {e.stderr.decode(errors='ignore')}")
             # ENHANCEMENT: Returning the raw latex output to help users debug
@@ -86,10 +100,20 @@ def _compile_latex_to_pdf(latex_content: str, out_basename: str, download_name: 
         if not pdf_path.exists():
             raise HTTPException(status_code=500, detail="PDF file was not generated")
 
-        out_path = Path(tempfile.gettempdir()) / out_basename
+        # The PDF has to outlive this TemporaryDirectory to be streamed back, so it's copied
+        # to a uniquely-named file that a BackgroundTask deletes once the response is sent.
+        # A fixed name here would both collide between concurrent requests and leave every
+        # generated resume sitting in a world-readable /tmp forever.
+        fd, out_path = tempfile.mkstemp(prefix="careeragent_resume_", suffix=".pdf")
+        os.close(fd)
         shutil.copy(pdf_path, out_path)
 
-    return FileResponse(path=out_path, media_type="application/pdf", filename=download_name)
+    return FileResponse(
+        path=out_path,
+        media_type="application/pdf",
+        filename=download_name,
+        background=BackgroundTask(os.remove, out_path),
+    )
 
 from pydantic import BaseModel
 class OnDemandPdfRequest(BaseModel):
@@ -100,7 +124,6 @@ class OnDemandPdfRequest(BaseModel):
 def generate_on_demand_pdf(req: OnDemandPdfRequest):
     return _compile_latex_to_pdf(
         req.latex_content,
-        f"resume_ondemand_{abs(hash(req.company))}.pdf",
         f"{req.company}_Resume.pdf",
     )
 
@@ -112,6 +135,5 @@ def get_resume_pdf(job_id: int, db: Session = Depends(get_db)):
 
     return _compile_latex_to_pdf(
         db_job.tailored_resume,
-        f"resume_{job_id}.pdf",
         f"{db_job.company}_Resume.pdf",
     )

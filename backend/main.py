@@ -156,27 +156,62 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.post("/api/login")
-from google.oauth2 import id_token
-from google.auth.transport import requests as google_requests
 from pydantic import BaseModel
 
 class SSOLoginRequest(BaseModel):
-    idp_token: str
+    auth_code: str | None = None
     sso_provider: str
 
 @app.post("/api/auth/sso")
 def sso_login(req: SSOLoginRequest):
-    if req.sso_provider != "google":
+    """Exchanges a GitHub OAuth code for an access token, for the frontend to forward to
+    the crowdsourcing API (career-agent-api). Does NOT grant local dashboard access —
+    that stays gated by /api/login. Google SSO talks to career-agent-api directly from the
+    browser and never reaches this endpoint."""
+    if req.sso_provider == "github":
+        if not req.auth_code:
+            raise HTTPException(status_code=400, detail="auth_code required for GitHub SSO")
+            
+        client_id = os.getenv("GITHUB_CLIENT_ID")
+        client_secret = os.getenv("GITHUB_CLIENT_SECRET")
+        if not client_id or not client_secret:
+            raise HTTPException(status_code=500, detail="GitHub SSO is not configured on the server")
+            
+        token_res = requests.post(
+            "https://github.com/login/oauth/access_token",
+            headers={"Accept": "application/json"},
+            data={
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "code": req.auth_code,
+            }
+        )
+        token_data = token_res.json()
+        if "error" in token_data:
+            raise HTTPException(status_code=401, detail=token_data.get("error_description", "Failed to exchange code"))
+            
+        access_token = token_data.get("access_token")
+        
+        user_res = requests.get(
+            "https://api.github.com/user/emails",
+            headers={"Authorization": f"Bearer {access_token}"}
+        )
+        if user_res.status_code != 200:
+            raise HTTPException(status_code=401, detail="Failed to fetch GitHub profile")
+            
+        emails = user_res.json()
+        primary_email = next((e["email"] for e in emails if e.get("primary")), None)
+        if not primary_email:
+            if emails:
+                primary_email = emails[0]["email"]
+            else:
+                raise ValueError("No primary email found")
+                
+        return {"github_access_token": access_token, "email": primary_email}
+
+    else:
         raise HTTPException(status_code=400, detail="Unsupported provider")
-    try:
-        idinfo = id_token.verify_oauth2_token(req.idp_token, google_requests.Request())
-        email = idinfo.get("email")
-        if not email:
-            raise ValueError("No email in token")
-        return {"token": auth.create_token(email)}
-    except ValueError as e:
-        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
+@app.post("/api/login")
 def login(creds: schemas.LoginRequest):
     if not auth.check_credentials(creds.username, creds.password):
         raise HTTPException(status_code=401, detail="Invalid username or password")

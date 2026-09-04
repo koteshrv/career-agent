@@ -1,51 +1,47 @@
 import logging
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
-from .models import ScraperHealth, Settings
-import urllib.parse
-import urllib.request
-import json
+from .models import ScraperHealth
+from .notifications import send_telegram_message, escape_md
 
 logger = logging.getLogger(__name__)
-
-def _send_telegram_notification(token: str, chat_id: str, message: str):
-    if not token or not chat_id:
-        return
-    url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {
-        "chat_id": chat_id,
-        "text": message,
-        "parse_mode": "Markdown"
-    }
-    try:
-        req = urllib.request.Request(url, data=json.dumps(payload).encode(), headers={'Content-Type': 'application/json'})
-        with urllib.request.urlopen(req, timeout=10) as response:
-            pass
-    except Exception as e:
-        logger.error(f"Failed to send Telegram notification: {e}")
 
 def update_health(db: Session, company_logs: list):
     """
     Parses the company_logs from a scraper run and updates the scraper_health table.
     Sends Telegram notifications if a provider transitions to BLOCKED or BROKEN.
-    """
-    settings = db.query(Settings).first()
-    telegram_token = settings.telegram_bot_token if settings else None
-    telegram_chat_id = settings.telegram_chat_id if settings else None
 
+    Alerts go through notifications.send_telegram_message so they get the decrypted bot
+    token (Settings.telegram_bot_token is Fernet-encrypted at rest) and honour the
+    telegram_alerts_enabled toggle. Reading the model column directly here would send the
+    ciphertext as the bot token and every alert would 404.
+    """
     for log in company_logs:
         company = log.get("company")
         if not company or company == "Database commit":
             continue
-        
+
         status = log.get("status")
         message = log.get("message", "")
-        
+
+        # A target skipped by the BLOCKED cooldown never ran, so it must not touch health
+        # state. Recording it would refresh last_run_at (restarting the 24h window on a
+        # non-run), inflate consecutive_failures, and — since "BLOCKED (Cooldown active)"
+        # matches none of the BLOCKED keywords below — flip the status to BROKEN, which
+        # makes is_provider_blocked() stop matching and ends the cooldown after one cycle.
+        if status == "SKIPPED":
+            continue
+
         health = db.query(ScraperHealth).filter(ScraperHealth.provider_name == company).first()
         if not health:
-            health = ScraperHealth(provider_name=company)
+            # Column defaults are applied at INSERT, so a not-yet-flushed row reads back None
+            # for every unset field. Without these explicit values the first failure a
+            # provider ever records raises TypeError on `consecutive_failures += 1` (aborting
+            # health updates for every remaining company in the run), and previous_status
+            # would be None rather than "OPERATIONAL", suppressing the first-failure alert.
+            health = ScraperHealth(provider_name=company, status="OPERATIONAL", consecutive_failures=0)
             db.add(health)
-            
+
         previous_status = health.status
         health.last_run_at = datetime.now(timezone.utc)
         
@@ -62,14 +58,19 @@ def update_health(db: Session, company_logs: list):
             else:
                 health.status = "BROKEN"
                 
-            health.consecutive_failures += 1
+            # `or 0` also repairs any pre-existing row that was persisted with a NULL count.
+            health.consecutive_failures = (health.consecutive_failures or 0) + 1
             health.error_message = message
             
             # Send notification if it just started failing, or every 5 consecutive failures
             if previous_status == "OPERATIONAL" or health.consecutive_failures % 5 == 0:
-                if telegram_token and telegram_chat_id:
-                    alert_msg = f"🚨 *CareerAgent Alert* 🚨\n\nATS Provider *{company}* is currently `{health.status}`.\n\n*Error:* {message}\n*Consecutive Failures:* {health.consecutive_failures}"
-                    _send_telegram_notification(telegram_token, telegram_chat_id, alert_msg)
+                alert_msg = (
+                    f"🚨 *CareerAgent Alert* 🚨\n\n"
+                    f"ATS Provider *{escape_md(company)}* is currently `{health.status}`.\n\n"
+                    f"*Error:* {escape_md(message)}\n"
+                    f"*Consecutive Failures:* {health.consecutive_failures}"
+                )
+                send_telegram_message(db, alert_msg)
                     
     try:
         db.commit()

@@ -18,6 +18,21 @@ logger = logging.getLogger(__name__)
 
 TELEGRAM_API_URL = "https://api.telegram.org/bot{token}/sendMessage"
 
+# Telegram's legacy Markdown parser rejects the whole message (HTTP 400 "can't parse
+# entities") on an unbalanced _ * ` or [. Scraper errors routinely contain all of these —
+# selectors, file paths, config keys like no_results_text — so any interpolated dynamic
+# value MUST go through escape_md(), or the alert silently never arrives.
+_MARKDOWN_SPECIALS = ("_", "*", "`", "[")
+
+
+def escape_md(text: str) -> str:
+    """Escape Telegram legacy-Markdown control characters in dynamic content."""
+    if not text:
+        return ""
+    for ch in _MARKDOWN_SPECIALS:
+        text = text.replace(ch, "\\" + ch)
+    return text
+
 # Falls back to env vars if not set in Settings — mirrors GEMINI_API_KEY's
 # `resolved_key = api_key or ENV_API_KEY` pattern in ai_agent.py. Read at call time
 # (not module import time) so it works regardless of import order / .env load timing.
@@ -50,16 +65,28 @@ def send_telegram_message(db: Session, text: str) -> bool:
     if not token or not chat_id:
         return False
 
+    url = TELEGRAM_API_URL.format(token=token)
     try:
         resp = requests.post(
-            TELEGRAM_API_URL.format(token=token),
+            url,
             json={"chat_id": chat_id, "text": text, "parse_mode": "Markdown"},
             timeout=10,
         )
-        if resp.status_code != 200:
-            logger.warning(f"[Telegram] Send failed ({resp.status_code}): {resp.text[:200]}")
+        if resp.status_code == 200:
+            return True
+
+        # A 400 here is almost always a Markdown parse failure on interpolated content.
+        # Delivering the alert as plain text beats dropping it, so retry unformatted.
+        if resp.status_code == 400:
+            logger.warning(f"[Telegram] Markdown rejected ({resp.text[:200]}); retrying as plain text.")
+            retry = requests.post(url, json={"chat_id": chat_id, "text": text}, timeout=10)
+            if retry.status_code == 200:
+                return True
+            logger.warning(f"[Telegram] Plain-text retry failed ({retry.status_code}): {retry.text[:200]}")
             return False
-        return True
+
+        logger.warning(f"[Telegram] Send failed ({resp.status_code}): {resp.text[:200]}")
+        return False
     except Exception as e:
         logger.warning(f"[Telegram] Send failed: {e}")
         return False
@@ -69,8 +96,8 @@ def notify_scrape_run_failed(db: Session, error_message: str, trigger_source: st
     """Alert on a full scrape-run crash (an exception that escaped run_scraper entirely) —
     the "cron silently died" failure mode, which per-target health can't detect."""
     text = (
-        f"🚨 *CareerAgent — Scrape Run Failed* ({trigger_source})\n\n"
-        f"`{error_message[:500]}`"
+        f"🚨 *CareerAgent — Scrape Run Failed* ({escape_md(trigger_source)})\n\n"
+        f"`{escape_md(error_message[:500])}`"
     )
     send_telegram_message(db, text)
 
@@ -101,12 +128,12 @@ def notify_broken_targets(db: Session) -> None:
         return
 
     lines = [
-        f"• *{h['company']}*: {h['consecutive_failures']} runs failed in a row"
-        + (f"\n  _{h['last_message'][:150]}_" if h.get("last_message") else "")
+        f"• *{escape_md(h['company'])}*: {h['consecutive_failures']} runs failed in a row"
+        + (f"\n  _{escape_md(h['last_message'][:150])}_" if h.get("last_message") else "")
         for h in failed
     ]
     lines += [
-        f"• *{h['company']}*: {h['zero_streak']} runs in a row found 0 jobs "
+        f"• *{escape_md(h['company'])}*: {h['zero_streak']} runs in a row found 0 jobs "
         f"(normally averages {h['historical_avg_jobs_found']}) — likely a broken selector, not a real dry spell"
         for h in silently_broken
     ]

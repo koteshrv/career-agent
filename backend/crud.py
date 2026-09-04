@@ -50,10 +50,12 @@ def empty_trash(db: Session) -> int:
     return count
 
 def clean_old_trash(db: Session, retention_days: int) -> int:
-    from datetime import datetime, timedelta
     from sqlalchemy import func
-    
-    cutoff = datetime.now() - timedelta(days=retention_days)
+
+    # created_at/updated_at are written by func.now(), which SQLite records in UTC — a naive
+    # local datetime.now() here would shift the cutoff by the server's UTC offset and delete
+    # trash early (or late). Matches delete_old_scraper_logs below.
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
     count = db.query(models.Job).filter(
         models.Job.status == "TRASH",
         # Fallback to created_at if updated_at is null (for older items)
@@ -205,6 +207,10 @@ def get_target_health(db: Session, run_limit: int = 20) -> list:
         for entry in entries:
             company = entry.get("company")
             if not company:
+                continue
+            # A target skipped by the BLOCKED cooldown never ran — counting it would drag
+            # down success_rate and break zero_streak on a run that never happened.
+            if entry.get("status") == "SKIPPED":
                 continue
             history.setdefault(company, []).append({
                 "timestamp": log.timestamp,
