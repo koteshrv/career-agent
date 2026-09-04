@@ -6,8 +6,8 @@
   **Your personal AI-powered job search automation platform.**  
   Quietly scrape job boards, evaluate match scores, and programmatically compile ATS-friendly LaTeX resumes and cold emails.
 
-  [![GitHub Stars](https://img.shields.io/github/stars/hariharavk/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/hariharavk/career-agent/stargazers)
-  [![GitHub Forks](https://img.shields.io/github/forks/hariharavk/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/hariharavk/career-agent/network/members)
+  [![GitHub Stars](https://img.shields.io/github/stars/koteshrv/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/koteshrv/career-agent/stargazers)
+  [![GitHub Forks](https://img.shields.io/github/forks/koteshrv/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/koteshrv/career-agent/network/members)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
   [![React](https://img.shields.io/badge/React-19-blue.svg?style=for-the-badge&logo=react)](https://react.dev/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.138-green.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -85,6 +85,43 @@ graph TD
     API <-->|Extracts Competencies &<br>Scores Match| LLM
 ```
 
+## 📸 Screenshots
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="frontend/public/screenshots/analytics.png" alt="Analytics dashboard" />
+      <p align="center"><em>Analytics — application funnel, pipeline breakdown, and weekly sourcing velocity at a glance.</em></p>
+    </td>
+    <td width="50%">
+      <img src="frontend/public/screenshots/generation.png" alt="AI application materials generation" />
+      <p align="center"><em>AI match scoring plus a generated cover letter, tailored to the job description.</em></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="frontend/public/screenshots/history.png" alt="Scraper run history" />
+      <p align="center"><em>Run History — every scraper run logged, with per-run job counts and failure details.</em></p>
+    </td>
+    <td width="50%">
+      <img src="frontend/public/screenshots/settings.png" alt="Settings page" />
+      <p align="center"><em>Settings — search keywords, target companies, resumes, and AI model configuration.</em></p>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="frontend/public/screenshots/extension.png" alt="Chrome extension on LinkedIn" />
+      <p align="center"><em>Chrome Extension — injects a one-click Save button directly into LinkedIn's feed.</em></p>
+    </td>
+    <td width="50%">
+      <img src="frontend/public/screenshots/queue.png" alt="Chrome extension batch queue" />
+      <p align="center"><em>Batch up jobs from a search page in the extension queue, then process them all at once.</em></p>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## 🚀 Getting Started
 
 ### Method 1: Docker (Recommended)
@@ -92,7 +129,7 @@ The easiest way to run CareerAgent is using our pre-built GitHub Container Regis
 
 ```bash
 # 1. Download the docker-compose file
-curl -O https://raw.githubusercontent.com/hariharavk/career-agent/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/koteshrv/career-agent/main/docker-compose.yml
 
 # 2. Start the application in the background
 docker compose up -d
@@ -121,7 +158,7 @@ npm install
 cd ..
 
 # 3. Run the full application (Frontend + Backend APIs)
-./start.sh
+./scripts/run.sh
 ```
 
 ## 🤝 Contributing

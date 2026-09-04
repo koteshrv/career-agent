@@ -30,7 +30,7 @@ npm run build     # tsc -b && vite build
 npm run lint       # eslint .
 ```
 
-**Both at once:** `./start.sh` from repo root.
+**Both at once:** `./scripts/run.sh` from repo root.
 
 **Docker:** `docker compose up -d` (pulls prebuilt GHCR images; see `docker-compose.yml`). Backend build context uses `.dockerignore` to keep secrets/`.env`/`*.db` out of published image layers — check it before adding new root-level files with local state.
 

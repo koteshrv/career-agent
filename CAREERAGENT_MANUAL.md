@@ -32,8 +32,9 @@
 14. [Real-Time Logging](#14-real-time-logging)
 15. [On-Demand Generation](#15-on-demand-generation)
 16. [Resume Management](#16-resume-management)
-17. [Deployment](#17-deployment)
-18. [Known Limitations](#18-known-limitations)
+17. [Crowdsourcing Sync](#17-crowdsourcing-sync-backendcrowdsourcingpy)
+18. [Deployment](#18-deployment)
+19. [Known Limitations](#19-known-limitations)
 
 ---
 
@@ -50,6 +51,7 @@
 | **Application Materials** | Generates a cover letter, cold email/LinkedIn DM, and a tailored LaTeX-compiled PDF resume via a 3-phase Actor→Critic→Fixer AI pipeline grounded by a personal RAG knowledge base. |
 | **Pipeline Tracking** | Kanban board UI to manage the full job application lifecycle (`NEW` → `APPLIED` → `INTERVIEWING` → `REJECTED`). |
 | **Chrome Extension** | Companion browser extension for manually saving jobs from LinkedIn, Naukri, and other bot-protected sites. |
+| **Crowdsourcing** | Optional Google/GitHub-authenticated sync with `career-agent-api`'s community job pool — push scraped jobs to earn credits, pull others' contributions to spend them. |
 
 ### Tech Stack
 
@@ -61,7 +63,7 @@
 | Security | Fernet symmetric encryption, HMAC-SHA256 bearer tokens |
 | Frontend | React 19, TypeScript, Tailwind CSS, Vite |
 | Extension | Vanilla JS, Chrome Manifest V3 |
-| Deployment | Docker Compose (GHCR images) or `start.sh` |
+| Deployment | Docker Compose (GHCR images) or `scripts/run.sh` |
 
 ---
 
@@ -122,7 +124,8 @@ job-scraper/
 ├── keywords.json                   # Default search keyword list
 ├── jobs.db                         # SQLite database (auto-created)
 ├── docker-compose.yml              # Docker Compose: backend + frontend services
-└── start.sh                        # Local dev startup script
+├── scripts/run.sh                  # Local dev startup script (backend + frontend)
+└── scripts/demo.sh                 # Frontend-only demo mode (no backend needed)
 ```
 
 ---
@@ -687,8 +690,36 @@ Applied as a Starlette `BaseHTTPMiddleware` **before** CORS (so CORS headers app
 - `POST /api/login`
 - `GET /api/ws/logs`
 - `GET /healthz`
+- `POST /api/auth/sso` — GitHub OAuth code exchange for the crowdsourcing connect flow (see below)
+- `POST /api/crowdsource/connect` — stores a crowdsourcing token; deliberately narrow, see below
 
 All other `/api/*` routes require `Authorization: Bearer {token}`.
+
+### Crowdsourcing SSO — two separate trust boundaries
+
+Signing in with Google or GitHub (Login page) connects this instance to the "Give-to-Get"
+crowdsourcing credit economy in the sibling `career-agent-api` project. This is **not** the
+same thing as local dashboard access, and the two must not be conflated:
+
+1. **Local dashboard access** — the HMAC bearer token above, from `POST /api/login` only.
+2. **Crowdsourcing identity** — a JWT issued by `career-agent-api`, used only to push/pull
+   the shared job pool.
+
+`POST /api/auth/sso` exists solely to exchange a GitHub OAuth `code` for a GitHub access
+token server-side (the `client_secret` must never reach the browser); the frontend then
+forwards that access token to `career-agent-api` itself. Google sign-in skips the local
+backend entirely — the browser talks to `career-agent-api` directly with the Google
+credential. **Neither path mints a local session.** An earlier version of this endpoint did,
+for any Google/GitHub account holder with no allowlist — that was removed as a security fix,
+not a design choice to preserve.
+
+`POST /api/crowdsource/connect` persists the resulting `career-agent-api` JWT server-side
+(`Settings.career_agent_cloud_token`, encrypted) so the scheduled push/pull sync (§ Crowdsourcing
+Sync, below) can run headless without a browser tab open. It's public because connecting
+happens *before* a local session exists — but it accepts only a bare `{token: string}`, never
+the general Settings schema, so an unauthenticated caller can change which crowdsourcing
+account this instance syncs as, but cannot touch any other setting (Gemini/Telegram/OpenAI
+keys, etc. still require local auth).
 
 ### Fernet Encryption (`crypto.py`)
 
@@ -744,7 +775,7 @@ The **Quick Generate** page (`QuickGeneratePage.tsx`) and its backend (`POST /ap
 
 ### Upload & Storage
 
-- **Endpoint**: `POST /api/upload-resume` (multipart form: `file`, optional `name`)
+- **Endpoint**: `POST /api/resumes/upload` (multipart form: `file`, optional `name`)
 - **Accepted types**: `.pdf` and `.tex` only (enforced server-side)
 - **Storage path**: `backend/uploads/resumes/{filename}`
 - **Custom naming**: If `name` param is provided, the file is saved under that name (with original extension preserved if not included in the name).
@@ -764,13 +795,46 @@ The **Quick Generate** page (`QuickGeneratePage.tsx`) and its backend (`POST /ap
 
 ---
 
-## 17. Deployment
+## 17. Crowdsourcing Sync (`backend/crowdsourcing.py`)
+
+Syncs with **career-agent-api** — a sibling project (a Cloudflare Worker, not part of this
+backend) running a "Give-to-Get" credit economy: push jobs you've scraped to earn credits,
+pull jobs other users have contributed to spend them. See § 13 for how the crowdsourcing
+JWT differs from local dashboard auth.
+
+**Two directions, both dedupe against the local `jobs` table by `url`:**
+
+| Function | Direction | Notes |
+|---|---|---|
+| `push_jobs(db)` | local → shared pool | Sends only jobs where `Job.crowdsource_pushed_at IS NULL` (capped at 1000/request, `career-agent-api`'s limit). Marks them pushed **only** on a confirmed `200` — a network failure or non-200 leaves them eligible for the next cycle instead of silently dropping them from the backlog. |
+| `pull_jobs(db, limit)` | shared pool → local | Inserts via `sources.common.record_job()`, the same dedup-by-URL path scrapers and the Chrome extension use. |
+
+**Scheduling (`backend/scheduler.py`):** both run on a fixed 10-minute `IntervalTrigger`
+(not user-configurable, unlike the scrape cron), installed in `scheduler.start()` alongside
+the scrape job. Each opens its own DB session and swallows its own exceptions — a
+crowdsourcing hiccup must never affect the scrape schedule or vice versa.
+
+**On-demand triggers (`backend/routers/crowdsourcing.py`):**
+- `POST /api/crowdsource/connect` — stores the token (public; see § 13).
+- `POST /api/crowdsource/push` / `POST /api/crowdsource/pull` — manually run one cycle now,
+  behind normal local auth. Currently wired to temporary test buttons on the Job
+  Applications page (`KanbanBoard.tsx`) — see § 19, Known Limitations.
+
+**No token refresh.** The `career-agent-api` JWT expires 7 days after connecting
+(`expires_in: 604800`); there's no refresh-token flow, so push/pull silently starts failing
+with 401 a week after connecting until the user reconnects via the Login page. Both
+functions return `{"success": false, ...}` rather than raising in that case — check
+`backend.log` for `[Crowdsource]`-prefixed warnings if the sync appears to have stopped.
+
+---
+
+## 18. Deployment
 
 ### Docker Compose (Recommended)
 
 ```bash
 # Download compose file and start
-curl -O https://raw.githubusercontent.com/hariharavk/career-agent/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/koteshrv/career-agent/main/docker-compose.yml
 docker compose up -d
 ```
 
@@ -788,7 +852,7 @@ Access at `http://localhost:5173`. Data persisted via Docker volumes.
 python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cd frontend && npm install && cd ..
-./start.sh
+./scripts/run.sh
 ```
 
 ### Environment Variables
@@ -804,14 +868,17 @@ cd frontend && npm install && cd ..
 | `TELEGRAM_BOT_TOKEN` | No | *(from DB Settings)* | Telegram bot token fallback |
 | `TELEGRAM_CHAT_ID` | No | *(from DB Settings)* | Telegram chat ID fallback |
 | `HEALTHCHECK_PING_URL` | No | — | healthchecks.io ping URL |
+| `GITHUB_CLIENT_ID` | No | — | GitHub OAuth App client ID — enables the "Sign in with GitHub" crowdsourcing connect button (§13) |
+| `GITHUB_CLIENT_SECRET` | No | — | GitHub OAuth App client secret (server-side only, used to exchange the OAuth code) |
+| `CROWDSOURCE_API_URL` | No | `https://career-agent-api.kotesh-rv.workers.dev` | Override to point at a local/self-hosted `career-agent-api` instance |
 
 ---
 
-## 18. Known Limitations
+## 19. Known Limitations
 
 > These are documented gaps in the current implementation — not bugs.
 
-1. **No automatic DB schema migration.** Adding a new `Settings` column requires a manual SQL `ALTER TABLE` on the existing `jobs.db`. See `backend/migrate_v4.py` as a reference template.
+1. **No automatic DB schema migration.** Adding a new `Settings` column requires a manual SQL `ALTER TABLE` on the existing `jobs.db`. See `backend/migrate_v5.py` as a reference template.
 
 2. **OpenAI / Anthropic / Grok are stubs.** API key fields exist in Settings and are encrypted/stored correctly. The `_route_generation()` router dispatches to `_generate_cloud_private()`, which currently returns an error string. Not yet implemented.
 
@@ -822,6 +889,10 @@ cd frontend && npm install && cd ..
 5. **Chrome Extension `allowedSites`** defaults to `linkedin.com, naukri.com, indeed.com` but the content script only has actual injection logic for LinkedIn and Naukri. Indeed support would require additional `injectIndeed*()` functions.
 
 6. **`max_pages` setting** applies globally to all Playwright targets. Some targets may need target-specific overrides (not currently supported in `targets.json` schema).
+
+7. **Crowdsourcing push/pull triggers are temporary test UI.** The "Push (temp)" / "Pull (temp)" buttons on the Job Applications page (§17) call the same on-demand endpoints used for manual testing during development. They work, but weren't designed as permanent UI — remove or redesign once the 10-minute background schedule is confirmed reliable in normal use.
+
+8. **Crowdsourcing JWT has no refresh.** It's a snapshot from whenever the user last connected via SSO, expiring 7 days later. Push/pull silently start failing (logged, not raised) until the user reconnects from the Login page. No in-app indicator surfaces this yet.
 
 ---
 

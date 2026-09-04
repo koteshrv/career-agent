@@ -31,7 +31,7 @@ pytest
 2. Install dependencies: `npm install`
 3. Start the dev server: `npm run dev`
 
-Alternatively, you can just run `./start.sh` from the root directory to spin up both!
+Alternatively, you can just run `./scripts/run.sh` from the root directory to spin up both!
 
 ## Pull Request Process
 1. Fork the repo and create your branch from `main`.
