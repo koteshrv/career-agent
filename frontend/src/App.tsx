@@ -4,7 +4,6 @@ import { SettingsPage } from "./components/SettingsPage"
 import { HistoryPage } from "./components/HistoryPage"
 import { AnalyticsPage } from "./components/AnalyticsPage"
 import { Login } from "./components/Login"
-import { GithubCallback } from "./components/GithubCallback"
 import { LandingPage } from "./components/LandingPage"
 import { getToken, clearToken, IS_DEMO, api } from "@/lib/api"
 import { QuickGeneratePage } from "./components/QuickGeneratePage"
@@ -187,7 +186,6 @@ function App() {
     <Routes>
       <Route path="/" element={IS_DEMO ? <LandingPage /> : <Navigate to="/app/applications" replace />} />
       <Route path="/login" element={<Login />} />
-        <Route path="/auth/github/callback" element={<GithubCallback />} />
       <Route path="/app" element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index element={<Navigate to="/app/applications" replace />} />
         <Route path="applications" element={<div className="flex-1 overflow-x-auto overflow-y-hidden p-8 custom-scrollbar"><KanbanBoard /></div>} />

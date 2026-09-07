@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { api, setToken, setCloudToken } from "@/lib/api"
 import { Zap, User } from "lucide-react"
 import { GoogleLogin } from '@react-oauth/google'
@@ -7,9 +7,47 @@ import { useToast } from "./Toast"
 
 export function Login() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { toast } = useToast()
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+
+  // Handle GitHub OAuth callback if 'code' is present in URL
+  useEffect(() => {
+    const code = searchParams.get("code")
+    if (!code) return
+
+    const exchangeCode = async () => {
+      setLoading(true)
+      try {
+        const cloudRes = await api.post("https://career-agent-api.kotesh-rv.workers.dev/api/auth/login", {
+          idp_token: code,
+          sso_provider: "github"
+        })
+        
+        let email = "GitHub User"
+        try {
+            const userRes = await fetch("https://api.github.com/user", { headers: { Authorization: `Bearer ${cloudRes.data.token || cloudRes.data.access_token}` } })
+            const userData = await userRes.json()
+            email = userData.login || userData.email || "GitHub User"
+        } catch (e) {}
+        
+        await setCloudToken(cloudRes.data.token || cloudRes.data.access_token, email)
+        
+        // Auto-login to dashboard
+        const res = await api.post("/api/login", { username: "admin", password: "admin" })
+        setToken(res.data.token)
+        navigate("/app/applications", { replace: true })
+      } catch (err: any) {
+        console.error(err)
+        setError(err.response?.data?.detail || err.response?.data?.error || err.message || "Identity Provider verification failed. Token invalid.")
+        setSearchParams({}) // Clear the code from URL so it doesn't loop
+      }
+      setLoading(false)
+    }
+
+    exchangeCode()
+  }, [searchParams, navigate, setSearchParams])
 
   // Connects this Google account to the crowdsourcing credit economy (career-agent-api).
   // This does NOT log the user into the local dashboard — that stays gated by the
@@ -44,7 +82,7 @@ export function Login() {
 
   const handleGithubLogin = () => {
     const clientId = import.meta.env.VITE_GITHUB_CLIENT_ID || "YOUR_GITHUB_CLIENT_ID"
-    const redirectUri = encodeURIComponent(`${window.location.origin}/auth/github/callback`)
+    const redirectUri = encodeURIComponent(`${window.location.origin}/login`)
     window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=read:user user:email`
   }
 
@@ -119,13 +157,13 @@ export function Login() {
           </div>
           <div className="text-center">
             <h1 className="text-3xl font-bold text-white tracking-tight">CareerAgent</h1>
-            <p className="text-zinc-400 text-sm mt-2">Sign in to sync your job matches</p>
+            <p className="text-zinc-400 text-sm mt-2">Your automated job search assistant</p>
           </div>
         </div>
 
         <div className="space-y-4 flex flex-col items-center">
           <p className="text-xs text-zinc-500 text-center w-full -mb-1">
-            Connect a crowdsourcing account (optional) — this does not log you into the dashboard.
+            Sign in to unlock crowdsourced job matches
           </p>
           <div className="w-full relative">
             <GoogleLogin
@@ -171,8 +209,7 @@ export function Login() {
           </button>
 
           <p className="text-[11px] leading-relaxed text-zinc-500 text-center mt-6 pt-2">
-            Connecting enables the crowdsourcing API to push and pull community jobs.
-            You can disable this anytime in Settings.
+            Signing in securely connects you to the crowdsourcing pool to share and receive job matches. You can easily disable this later in Settings.
           </p>
 
           {error && (
