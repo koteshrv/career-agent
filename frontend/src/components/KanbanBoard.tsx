@@ -127,14 +127,14 @@ export function KanbanBoard() {
     setClearing(false)
   }
 
-  const handleDeleteJob = async (jobId: number) => {
+  const handleDeleteJob = async (jobId: number, silent: boolean = false) => {
     try {
       await api.delete(`/api/jobs/${jobId}`)
       setJobs(prev => prev.filter(j => j.id !== jobId))
       setSelectedJob(null)
-      toast("Job deleted", "success")
+      if (!silent) toast("Job deleted", "success")
     } catch (e) {
-      toast("Failed to delete job", "error")
+      if (!silent) toast("Failed to delete job", "error")
     }
   }
   

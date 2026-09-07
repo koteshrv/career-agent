@@ -11,7 +11,7 @@ interface JobModalProps {
   job: Job
   onClose: () => void
   onUpdate: (updatedJob: Job) => void
-  onDelete: (jobId: number) => void // Used for permanent deletion now
+  onDelete: (jobId: number, silent?: boolean) => void // Used for permanent deletion now
 }
 
 export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
@@ -119,7 +119,7 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
       if (res.data.success) {
         toast("Job reported successfully and removed from your board.", "success")
         setReportModalOpen(false)
-        onDelete(job.id) // Automatically remove locally regardless of global threshold
+        onDelete(job.id, true) // Automatically remove locally regardless of global threshold
       } else {
         toast(res.data.reason || res.data.message || "Failed to report.", "error")
         setReportModalOpen(false)
