@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import type { Job } from "./KanbanBoard"
 import { Button } from "@/components/ui/button"
-import { Sparkles, MapPin, Calendar, ExternalLink, X, FileText, Trash2, Download, Globe, MessageSquare, Check } from "lucide-react"
+import { Sparkles, MapPin, Calendar, ExternalLink, X, FileText, Trash2, Download, Globe, MessageSquare, Check, Flag } from "lucide-react"
 import { formatISTDate } from "@/lib/datetime"
 import { api, generateMaterialsStream } from "@/lib/api"
 import { useToast } from "./Toast"
@@ -117,11 +117,9 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
     try {
       const res = await api.post("/api/crowdsource/report", { job_id: job.external_id, reason: "dead_link" })
       if (res.data.success) {
-        toast("Job reported successfully.", "success")
+        toast("Job reported successfully and removed from your board.", "success")
         setReportModalOpen(false)
-        if (res.data.job_flagged) {
-            onDelete(job.id) // Automatically remove locally if it was flagged globally
-        }
+        onDelete(job.id) // Automatically remove locally regardless of global threshold
       } else {
         toast(res.data.reason || res.data.message || "Failed to report.", "error")
         setReportModalOpen(false)
@@ -239,6 +237,15 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
             <a href={job.url} target="_blank" rel="noopener noreferrer" className="p-2 text-zinc-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors">
               <ExternalLink className="w-5 h-5" />
             </a>
+            {job.external_id && (
+              <button
+                onClick={() => setReportModalOpen(true)}
+                className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                title="Report & Delete Community Job"
+              >
+                <Flag className="w-5 h-5" />
+              </button>
+            )}
             {job.status === "TRASH" ? (
               <button
                 onClick={() => setConfirmDeleteOpen(true)}
@@ -526,8 +533,8 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
         open={reportModalOpen}
         danger
         title="Report this community job?"
-        message="If this job is fake, spam, or a dead link, you can report it to the crowdsourcing network. If enough users report it, it will be flagged and removed from the global pool."
-        confirmLabel="Report Job"
+        message="If this job is fake, spam, or a dead link, you can report it to the crowdsourcing network. The job will be instantly deleted from your board, and if enough users report it, it will be removed from the global pool."
+        confirmLabel="Report & Delete"
         onConfirm={handleReportJob}
         onCancel={() => setReportModalOpen(false)}
       />
