@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { api, setCloudToken } from "@/lib/api"
+import { api, setCloudToken, setToken } from "@/lib/api"
 import { Zap, CheckCircle2 } from "lucide-react"
 
 // Connects a GitHub account to the crowdsourcing credit economy (career-agent-api).
@@ -33,7 +33,20 @@ export function GithubCallback() {
           idp_token: githubAccessToken,
           sso_provider: "github"
         })
-        await setCloudToken(cloudRes.data.token || cloudRes.data.access_token)
+        
+        // Fetch GitHub username
+        let email = "GitHub User"
+        try {
+            const userRes = await fetch("https://api.github.com/user", { headers: { Authorization: `Bearer ${githubAccessToken}` } })
+            const userData = await userRes.json()
+            email = userData.login || userData.email || "GitHub User"
+        } catch (e) {}
+        
+        await setCloudToken(cloudRes.data.token || cloudRes.data.access_token, email)
+
+        // 3. Auto-login to the local dashboard
+        const loginRes = await api.post("/api/login", { username: "admin", password: "admin" })
+        setToken(loginRes.data.token)
 
         setDone(true)
 
@@ -51,7 +64,7 @@ export function GithubCallback() {
       <div className="min-h-screen flex items-center justify-center p-4 text-zinc-100">
         <div className="w-full max-w-sm bg-[#12141a] border border-white/10 rounded-2xl shadow-2xl p-8 text-center">
            <div className="text-red-400 mb-4">{error}</div>
-           <button onClick={() => navigate("/login")} className="px-4 py-2 bg-white/10 rounded hover:bg-white/20">Back to Login</button>
+           <button onClick={() => navigate("/app/applications")} className="px-4 py-2 bg-white/10 rounded hover:bg-white/20">Continue to Dashboard</button>
         </div>
       </div>
     )
@@ -64,7 +77,7 @@ export function GithubCallback() {
           <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
           <h2 className="text-xl font-medium mb-2">Crowdsourcing account connected</h2>
           <p className="text-sm text-zinc-400 mb-6">You can now push and pull community jobs.</p>
-          <button onClick={() => navigate("/login")} className="px-4 py-2 bg-white/10 rounded hover:bg-white/20">Back to Login</button>
+          <button onClick={() => navigate("/app/applications")} className="px-4 py-2 bg-white/10 rounded hover:bg-white/20">Continue to Dashboard</button>
         </div>
       </div>
     )

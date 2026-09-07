@@ -22,12 +22,25 @@ from ..database import get_db
 router = APIRouter(prefix="/api/crowdsource", tags=["Crowdsourcing"])
 
 class CloudTokenRequest(BaseModel):
-    token: str
+    token: str | None = None
+    email: str | None = None
 
 @router.post("/connect")
 def connect(req: CloudTokenRequest, db: Session = Depends(get_db)):
-    crud.update_settings(db, schemas.SettingsBase(career_agent_cloud_token=req.token))
-    return {"success": True}
+    email = req.email or ""
+    if req.token and not email:
+        import jwt
+        try:
+            decoded = jwt.decode(req.token, options={"verify_signature": False})
+            email = decoded.get("email") or ""
+        except Exception:
+            pass
+    
+    crud.update_settings(db, schemas.SettingsBase(
+        career_agent_cloud_token=req.token or "",
+        career_agent_account_email=email
+    ))
+    return {"success": True, "email": email}
 
 @router.post("/push")
 def trigger_push(db: Session = Depends(get_db)):

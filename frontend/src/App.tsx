@@ -6,12 +6,13 @@ import { AnalyticsPage } from "./components/AnalyticsPage"
 import { Login } from "./components/Login"
 import { GithubCallback } from "./components/GithubCallback"
 import { LandingPage } from "./components/LandingPage"
-import { getToken, clearToken, IS_DEMO } from "@/lib/api"
+import { getToken, clearToken, IS_DEMO, api } from "@/lib/api"
 import { QuickGeneratePage } from "./components/QuickGeneratePage"
 import { KnowledgeBasePage } from "./components/KnowledgeBasePage"
 import { SystemHealth } from "./components/SystemHealth"
 import { Activity } from "lucide-react"
-import { Zap, LayoutDashboard, Settings, History, LogOut, LineChart, Database } from "lucide-react"
+import { Zap, LayoutDashboard, Settings, History, LogOut, LineChart, Database, User } from "lucide-react"
+import { useState, useEffect } from "react"
 import type { ReactNode } from "react"
 
 const NAV = [
@@ -37,7 +38,23 @@ function Layout() {
   const title = current?.title || "Dashboard"
   const subtitle = current?.subtitle || ""
 
-  const handleLogout = () => {
+  const [accountEmail, setAccountEmail] = useState<string | null>(null)
+  const [confirmLogout, setConfirmLogout] = useState(false)
+  
+  useEffect(() => {
+    if (!IS_DEMO) {
+      api.get("/api/settings").then(res => {
+        setAccountEmail(res.data.career_agent_account_email)
+      }).catch(() => {})
+    }
+  }, [])
+
+  const handleLogoutClick = () => {
+    setConfirmLogout(true)
+  }
+
+  const executeLogout = () => {
+    setConfirmLogout(false)
     clearToken()
     navigate("/login", { replace: true })
   }
@@ -98,11 +115,19 @@ function Layout() {
           {!IS_DEMO && (
             <div className="px-4 pb-6">
               <button
-                onClick={handleLogout}
-                className="w-full px-3 py-2.5 rounded-lg flex items-center gap-3 font-medium text-zinc-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent transition-colors"
+                onClick={handleLogoutClick}
+                className="w-full px-3 py-2.5 rounded-lg flex items-center justify-between font-medium text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent group transition-colors text-left"
+                title="Logout"
               >
-                <LogOut className="w-4 h-4" />
-                Logout
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-6 h-6 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 border border-blue-500/20">
+                    <User className="w-3.5 h-3.5 text-blue-400" />
+                  </div>
+                  <span className="truncate">
+                    {accountEmail ? accountEmail.split("@")[0] : "Local User"}
+                  </span>
+                </div>
+                <LogOut className="w-4 h-4 text-zinc-500 group-hover:text-red-400 shrink-0 transition-colors" />
               </button>
             </div>
           )}
@@ -122,6 +147,37 @@ function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Logout Confirmation Modal */}
+      {confirmLogout && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-[#12141a] border border-white/10 rounded-2xl p-6 shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-200">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center shrink-0 border border-red-500/20">
+                <LogOut className="w-6 h-6 text-red-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Log out</h3>
+                <p className="text-sm text-zinc-400">Are you sure you want to log out?</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 mt-6">
+              <button
+                onClick={() => setConfirmLogout(false)}
+                className="flex-1 px-4 py-2 bg-zinc-800 text-zinc-200 rounded-lg hover:bg-zinc-700 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={executeLogout}
+                className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors shadow-lg shadow-red-500/20"
+              >
+                Log out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

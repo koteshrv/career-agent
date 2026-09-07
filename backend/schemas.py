@@ -115,6 +115,7 @@ class SettingsBase(BaseModel):
     ollama_model: Optional[str] = "llama3"
 
     career_agent_cloud_token: Optional[str] = None
+    career_agent_account_email: Optional[str] = None
 
 class Settings(SettingsBase):
     id: int

@@ -32,9 +32,9 @@ export const CLOUD_TOKEN_KEY = "cloudToken"
 // connecting crowdsourcing happens from the Login page, before there's a local dashboard
 // session, so there's no local bearer token yet for the request interceptor to attach.
 // PUT /api/settings requires one and would 401 here.
-export async function setCloudToken(token: string) {
+export async function setCloudToken(token: string, email?: string) {
   localStorage.setItem(CLOUD_TOKEN_KEY, token)
-  await api.post("/api/crowdsource/connect", { token })
+  await api.post("/api/crowdsource/connect", { token, email })
 }
 
 // Attach the auth token to every request.

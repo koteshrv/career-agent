@@ -22,8 +22,19 @@ export function Login() {
         idp_token: credentialResponse.credential,
         sso_provider: "google"
       })
-      await setCloudToken(cloudRes.data.token || cloudRes.data.access_token)
+      let email = ""
+      try {
+        const payload = JSON.parse(atob(credentialResponse.credential.split('.')[1]))
+        email = payload.email || ""
+      } catch (e) {}
+      
+      await setCloudToken(cloudRes.data.token || cloudRes.data.access_token, email)
       toast("Crowdsourcing account connected!", "success")
+      
+      // Auto-login to the dashboard
+      const res = await api.post("/api/login", { username: "admin", password: "admin" })
+      setToken(res.data.token)
+      navigate("/app/applications", { replace: true })
     } catch (err: any) {
       console.error(err)
       toast("Failed to connect crowdsourcing account.", "error")
@@ -41,6 +52,10 @@ export function Login() {
     setError(null)
     setLoading(true)
     try {
+      // Explicitly disable crowdsourcing by clearing any existing cloud token
+      localStorage.removeItem("cloudToken")
+      await api.post("/api/crowdsource/connect", { token: "" })
+
       const res = await api.post("/api/login", { username: "admin", password: "admin" })
       setToken(res.data.token)
       navigate("/app/applications", { replace: true })
@@ -152,7 +167,7 @@ export function Login() {
             <div style={iconBoxStyle}>
               <User className="w-[18px] h-[18px] text-black" />
             </div>
-            <span style={fontStyle}>Skip for now (Local Mode)</span>
+            <span style={fontStyle}>Continue as Local User</span>
           </button>
 
           <p className="text-[11px] leading-relaxed text-zinc-500 text-center mt-6 pt-2">

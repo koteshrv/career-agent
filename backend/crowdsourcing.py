@@ -35,7 +35,9 @@ REQUEST_TIMEOUT_SECONDS = 30
 
 def _get_cloud_token(db: Session) -> str:
     settings = crud.get_settings(db)
-    return settings.career_agent_cloud_token if settings else None
+    if settings and getattr(settings, 'crowdsourcing_enabled', True):
+        return settings.career_agent_cloud_token
+    return None
 
 
 def _not_connected() -> dict:

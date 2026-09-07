@@ -71,6 +71,8 @@ class Settings(Base):
     # Crowdsourcing (career-agent-api) — the JWT obtained via Google/GitHub SSO, used only
     # to push/pull the shared job pool. Encrypted at rest like the other secrets below.
     career_agent_cloud_token = Column(String, nullable=True)
+    career_agent_account_email = Column(String, nullable=True)
+    crowdsourcing_enabled = Column(Boolean, default=True)
 
 class ScraperLog(Base):
     __tablename__ = "scraper_logs"
