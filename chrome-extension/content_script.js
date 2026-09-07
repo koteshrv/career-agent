@@ -76,8 +76,7 @@ function checkQueueState(url, btn) {
         btn.innerText = 'Saved to Queue';
         btn.style.backgroundColor = '#ea580c'; // Vibrant Orange indicating queued/pending
       }
-      btn.style.pointerEvents = 'none';
-      btn.style.opacity = '0.8';
+
     }
   });
 }
@@ -136,7 +135,7 @@ function createFeedNativeButton(dataGetter) {
   btn.style.fontFamily = '"Outfit", "Google Sans", sans-serif';
   
   // Unsaved: Blue
-  btn.style.color = '#0a66c2';
+  btn.style.color = '#666666'; // LinkedIn's default muted icon color
   
   // Standard Bookmark / Save SVG
   const bookmarkSvg = `<svg role="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-supported-dps="24x24" fill="currentColor">
@@ -147,37 +146,45 @@ function createFeedNativeButton(dataGetter) {
     <span class="artdeco-button__text" style="display: flex; align-items: center; color: inherit;">
       ${bookmarkSvg}
       <span aria-hidden="true" class="artdeco-button__text" style="margin-left: 4px; font-weight: 600;">
-          Save
+          CareerAgent
       </span>
     </span>
   `;
 
-  btn.addEventListener('click', (e) => {
+  btn.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Queuing state (Orange)
-    btn.style.color = '#ea580c';
-    btn.style.pointerEvents = 'none';
-    btn.style.opacity = '0.8';
-    
     const textSpan = btn.querySelector('span > span');
-    if (textSpan) textSpan.innerText = 'Queued';
-    
-    showToast('✅ Saved to CareerAgent Queue!');
-    
-    const jobData = typeof dataGetter === 'function' ? dataGetter() : dataGetter;
+    let jobData = typeof dataGetter === 'function' ? dataGetter() : dataGetter;
+    if (jobData && typeof jobData.then === 'function') {
+      if (textSpan) textSpan.innerText = 'Queuing...';
+      jobData = await jobData;
+    }
     
     chrome.storage.local.get(['jobQueue'], (result) => {
-      const queue = result.jobQueue || [];
-      if (!queue.find(j => j.url === jobData.url)) {
+      let queue = result.jobQueue || [];
+      const existingIdx = queue.findIndex(j => j.url === jobData.url);
+      
+      if (existingIdx === -1) {
         queue.push({
           url: jobData.url,
           page_title: jobData.page_title,
           description: jobData.description,
           id: Date.now().toString()
         });
-        chrome.storage.local.set({ jobQueue: queue });
+        chrome.storage.local.set({ jobQueue: queue }, () => {
+          btn.style.color = '#ea580c';
+          if (textSpan) textSpan.innerText = 'Queued';
+          showToast('✅ Saved to CareerAgent Queue!');
+        });
+      } else {
+        queue.splice(existingIdx, 1);
+        chrome.storage.local.set({ jobQueue: queue }, () => {
+          btn.style.color = '#666666'; // Muted native color
+          if (textSpan) textSpan.innerText = 'CareerAgent';
+          showToast('🛑 Removed from Queue');
+        });
       }
     });
   });
@@ -383,20 +390,19 @@ function cloneNaukriNativeButton(nativeSaveNode, dataGetter) {
     e.preventDefault();
     e.stopPropagation();
     
-    btn.style.pointerEvents = 'none';
     const textSpan = btn.querySelector('.ca-dynamic-text, .saveSpn, span > span');
-    if (textSpan) textSpan.innerText = 'Queuing...';
     
     let jobData = typeof dataGetter === 'function' ? dataGetter() : dataGetter;
     if (jobData && typeof jobData.then === 'function') {
+      if (textSpan) textSpan.innerText = 'Queuing...';
       jobData = await jobData;
     }
     
-    showToast('✅ Saved to CareerAgent Queue!');
-    
     chrome.storage.local.get(['jobQueue'], (result) => {
-      const queue = result.jobQueue || [];
-      if (!queue.find(j => j.url === jobData.url)) {
+      let queue = result.jobQueue || [];
+      const existingIdx = queue.findIndex(j => j.url === jobData.url);
+      
+      if (existingIdx === -1) {
         queue.push({
           url: jobData.url,
           page_title: jobData.page_title,
@@ -406,10 +412,15 @@ function cloneNaukriNativeButton(nativeSaveNode, dataGetter) {
         chrome.storage.local.set({ jobQueue: queue }, () => {
           btn.style.color = '#ea580c';
           if (textSpan) textSpan.innerText = 'Queued';
+          showToast('✅ Saved to CareerAgent Queue!');
         });
       } else {
-        btn.style.color = '#ea580c';
-        if (textSpan) textSpan.innerText = 'Queued';
+        queue.splice(existingIdx, 1);
+        chrome.storage.local.set({ jobQueue: queue }, () => {
+          btn.style.color = 'inherit';
+          if (textSpan) textSpan.innerText = 'Agent Save';
+          showToast('🛑 Removed from Queue');
+        });
       }
     });
   });
@@ -445,22 +456,18 @@ function createSaveButton(text, dataGetter, unstyled = false) {
     e.preventDefault();
     e.stopPropagation();
     
-    btn.innerText = 'Queuing...';
-    btn.style.pointerEvents = 'none';
-    btn.style.opacity = '0.8';
-    
-    showToast('✅ Saved to CareerAgent Queue!');
-    
     let jobData = typeof dataGetter === 'function' ? dataGetter() : dataGetter;
-    
-    // If it's a promise (e.g. from a background fetch), wait for it
     if (jobData && typeof jobData.then === 'function') {
+      btn.innerText = 'Queuing...';
       jobData = await jobData;
     }
     
     chrome.storage.local.get(['jobQueue'], (result) => {
-      const queue = result.jobQueue || [];
-      if (!queue.find(j => j.url === jobData.url)) {
+      let queue = result.jobQueue || [];
+      const existingIdx = queue.findIndex(j => j.url === jobData.url);
+      
+      if (existingIdx === -1) {
+        // ADD
         queue.push({
           url: jobData.url,
           page_title: jobData.page_title,
@@ -470,10 +477,16 @@ function createSaveButton(text, dataGetter, unstyled = false) {
         chrome.storage.local.set({ jobQueue: queue }, () => {
           btn.innerText = 'Saved to Queue';
           btn.style.backgroundColor = '#ea580c'; // Vibrant Orange
+          showToast('✅ Saved to CareerAgent Queue!');
         });
       } else {
-        btn.innerText = 'Saved to Queue';
-        btn.style.backgroundColor = '#ea580c'; // Vibrant Orange
+        // REMOVE
+        queue.splice(existingIdx, 1);
+        chrome.storage.local.set({ jobQueue: queue }, () => {
+          btn.innerText = 'Save to CareerAgent';
+          btn.style.backgroundColor = '#2563eb'; // Blue back to normal
+          showToast('🛑 Removed from Queue');
+        });
       }
     });
   });
