@@ -27,10 +27,14 @@ export function Login() {
         
         let email = "GitHub User"
         try {
-            const userRes = await fetch("https://api.github.com/user", { headers: { Authorization: `Bearer ${cloudRes.data.token || cloudRes.data.access_token}` } })
-            const userData = await userRes.json()
-            email = userData.login || userData.email || "GitHub User"
-        } catch (e) {}
+            const tokenToDecode = cloudRes.data.token || cloudRes.data.access_token
+            if (tokenToDecode) {
+                const payload = JSON.parse(atob(tokenToDecode.split('.')[1]))
+                email = payload.email || payload.login || "GitHub User"
+            }
+        } catch (e) {
+            console.error("Failed to decode JWT for email", e)
+        }
         
         await setCloudToken(cloudRes.data.token || cloudRes.data.access_token, email)
         

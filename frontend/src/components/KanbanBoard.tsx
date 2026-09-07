@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatISTDate } from "@/lib/datetime"
 import { api } from "@/lib/api"
-import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X, Globe, UploadCloud, DownloadCloud, Database, RefreshCw, Filter } from "lucide-react"
+import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X, Globe, DownloadCloud, Database, RefreshCw, Filter } from "lucide-react"
 import { JobModal } from "./JobModal"
 import { useToast } from "./Toast"
 import { ConfirmDialog } from "./ConfirmDialog"
@@ -232,8 +232,12 @@ export function KanbanBoard() {
               >
                 {isSelected && <Check className="w-3 h-3 text-white" />}
               </button>
-              <div className="w-6 h-6 rounded bg-white/10 flex items-center justify-center shrink-0">
-                <BriefcaseBusiness className="w-3 h-3 text-zinc-400" />
+              <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${job.external_id ? 'bg-blue-500/10' : 'bg-white/10'}`}>
+                {job.external_id ? (
+                  <Globe className="w-3.5 h-3.5 text-blue-400" />
+                ) : (
+                  <BriefcaseBusiness className="w-3.5 h-3.5 text-zinc-400" />
+                )}
               </div>
               <span className="truncate" title={job.company}>{job.company}</span>
             </div>
@@ -292,7 +296,6 @@ export function KanbanBoard() {
     return j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q)
   })
 
-  const archivedCount = filteredJobs.filter(j => ARCHIVED_STATUSES.includes(j.status)).length
   const columnsToRender = COLUMNS.filter(c => showArchived || !ARCHIVED_STATUSES.includes(c.id))
 
   return (
@@ -312,90 +315,97 @@ export function KanbanBoard() {
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-3">
-          <div className="flex items-center gap-2 shrink-0 mr-2">
-            <span className="text-xs text-zinc-500 font-medium hidden sm:inline">Group:</span>
-            <button
-              onClick={() => setGroupByCompany(!groupByCompany)}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold transition-all ${
-                groupByCompany 
-                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' 
-                : 'bg-zinc-800/50 text-zinc-400 border border-white/10 hover:bg-zinc-800'
-              }`}
-            >
-              {groupByCompany ? 'Company' : 'None'}
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0 mr-2">
-            <span className="text-xs text-zinc-500 font-medium hidden sm:inline">Sort:</span>
-            <select 
-              value={`${sortBy}-${sortOrder}`}
-              onChange={(e) => {
-                const [s, o] = e.target.value.split("-")
-                setSortBy(s as any)
-                setSortOrder(o as any)
-              }}
-              className="bg-zinc-800/50 border border-white/10 rounded-md text-xs text-zinc-300 py-1.5 px-2 focus:outline-none focus:border-blue-500/50 [&>option]:bg-zinc-900 [&>option]:text-zinc-200"
-            >
-              <option value="priority-desc">Priority (High ➔ Low)</option>
-              <option value="priority-asc">Priority (Low ➔ High)</option>
-              <option value="date-desc">Newly Added (Newest ➔ Oldest)</option>
-              <option value="date-asc">Newly Added (Oldest ➔ Newest)</option>
-            </select>
-          </div>
-
-          <button
-            onClick={() => setShowArchived(!showArchived)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
-              showArchived
-              ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-              : 'bg-zinc-800/50 text-zinc-400 border border-white/5 hover:bg-zinc-800'
-            }`}
-          >
-            {showArchived ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            {showArchived ? 'Hide Closed' : 'Show Closed'}
-            {archivedCount > 0 && (
-              <span className="bg-white/10 px-1.5 py-0.5 rounded-md ml-1">{archivedCount} jobs</span>
-            )}
-          </button>
-
+          
           <button
             onClick={() => setConfirmClearOpen(true)}
             disabled={clearing || jobs.length === 0}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-zinc-800/50 text-zinc-400 border border-white/5 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
+            title="Clear All Jobs"
           >
-            <Trash2 className="w-3.5 h-3.5" />
-            {clearing ? 'Clearing...' : 'Clear All'}
+            <Trash2 className="w-4 h-4" />
           </button>
 
-          {/* TEMP — manual crowdsourcing push/pull triggers for testing. See handleCrowdsourcePush/Pull. */}
+          <div className="relative z-50">
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border transition-colors ${showFilters ? 'bg-white/10 text-white border-white/20' : 'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10'}`}
+            >
+              <Filter className="w-3.5 h-3.5" /> View Options
+            </button>
+            
+            {showFilters && (
+              <div className="absolute top-full right-0 mt-2 w-72 bg-[#1a1d24] border border-white/10 rounded-xl shadow-2xl p-5 z-50 flex flex-col gap-5">
+                
+                <div className="flex items-center justify-between gap-4 text-sm text-zinc-300">
+                  <span className="font-medium whitespace-nowrap">Group By</span>
+                  <select
+                    value={groupByCompany.toString()}
+                    onChange={(e) => setGroupByCompany(e.target.value === "true")}
+                    className="bg-black/60 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none w-full"
+                  >
+                    <option value="true">Company</option>
+                    <option value="false">None</option>
+                  </select>
+                </div>
+                
+                <div className="flex items-center justify-between gap-4 text-sm text-zinc-300">
+                  <span className="font-medium whitespace-nowrap">Sort By</span>
+                  <select
+                    value={`${sortBy}-${sortOrder}`}
+                    onChange={(e) => {
+                      const [s, o] = e.target.value.split("-")
+                      setSortBy(s as any)
+                      setSortOrder(o as any)
+                    }}
+                    className="bg-black/60 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none w-full"
+                  >
+                    <option value="priority-desc">Priority (High &rarr; Low)</option>
+                    <option value="priority-asc">Priority (Low &rarr; High)</option>
+                    <option value="date-desc">Newest First</option>
+                    <option value="date-asc">Oldest First</option>
+                  </select>
+                </div>
+                
+                <div className="border-t border-white/10 pt-4">
+                  <button
+                    onClick={() => setShowArchived(!showArchived)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-white/5 text-zinc-300 border border-white/10 hover:bg-white/10 transition-colors"
+                  >
+                    {showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showArchived ? 'Hide Closed Jobs' : 'Show Closed Jobs'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {stats && (
-            <div className="flex items-center bg-black/40 border border-white/5 rounded-full px-4 py-2 text-xs font-semibold text-zinc-300 gap-3">
-              <span className="flex items-center gap-1.5" title="Community Credits">
-                <Database className="w-3.5 h-3.5 text-blue-400" /> {stats.current_credits}
+            <div className="flex items-center bg-black/40 border border-white/5 rounded-full px-5 py-2 text-xs font-semibold gap-3">
+              <span className="flex items-center gap-1.5 text-blue-400" title="Community Credits">
+                <Database className="w-3.5 h-3.5" /> <span className="text-zinc-300">{stats.current_credits} Credits</span>
               </span>
-              <span className="w-px h-3 bg-white/10" />
-              <span className="flex items-center gap-1.5" title="Push Credits Remaining Today">
-                <UploadCloud className="w-3.5 h-3.5 text-emerald-400" /> {stats.daily_push_credits_remaining}
-              </span>
-              <span className="w-px h-3 bg-white/10" />
-              <span className="flex items-center gap-1.5" title="Free Quota Remaining Today">
-                <DownloadCloud className="w-3.5 h-3.5 text-purple-400" /> {stats.daily_quota_remaining}
-              </span>
+              {stats.current_credits === 0 && (
+                <>
+                  <span className="w-px h-3 bg-white/10" />
+                  <span className="flex items-center gap-1.5 text-purple-400" title="Free Daily Quota">
+                    <DownloadCloud className="w-3.5 h-3.5" /> <span className="text-zinc-300">{stats.daily_quota_remaining} Free Pulls</span>
+                  </span>
+                </>
+              )}
             </div>
           )}
           
           <button
             onClick={handleSync}
             disabled={isSyncing}
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {isSyncing ? (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              <RefreshCw className="w-4 h-4 animate-spin" />
             ) : (
-              <RefreshCw className="w-3.5 h-3.5" />
+              <RefreshCw className="w-4 h-4" />
             )}
-            {isSyncing ? 'Syncing...' : 'Sync Community Jobs'}
+            {isSyncing ? 'Syncing...' : 'Sync Jobs'}
           </button>
         </div>
       </div>

@@ -93,7 +93,7 @@ def push_jobs(db: Session) -> dict:
     return {"success": True, "skipped": False, "jobs_sent": len(unpushed), **data}
 
 
-def pull_jobs(db: Session, limit: int = 20) -> dict:
+def pull_jobs(db: Session, limit: int = 100) -> dict:
     """Pull jobs from the shared pool and insert them locally via the same dedup-by-URL
     path (sources.common.record_job) the scrapers and Chrome extension use."""
     token = _get_cloud_token(db)
