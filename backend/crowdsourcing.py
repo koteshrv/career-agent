@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 
 from . import crud, models
 from .sources.common import record_job
+from .scraper_core import bulk_evaluate_jobs
 
 logger = logging.getLogger(__name__)
 
@@ -126,14 +127,21 @@ def pull_jobs(db: Session, limit: int = 100) -> dict:
         row[0] for row in db.query(models.Job.url).filter(models.Job.url.in_(pulled_urls)).all()
     }
 
+    newly_added_jobs = []
     for job in pulled:
         db_job = record_job(db, job["company"], job["title"], job["url"], job.get("location") or "")
         if job.get("id"):
             db_job.external_id = job["id"]
+        if job["url"] not in already_known:
+            newly_added_jobs.append(job)
 
     db.commit()
-    jobs_added = len(pulled_urls) - len(already_known)
+    jobs_added = len(newly_added_jobs)
     logger.info(f"[Crowdsource] Pulled {len(pulled)} jobs from the shared pool ({jobs_added} new).")
+
+    if newly_added_jobs:
+        logger.info(f"[Crowdsource] Passing {jobs_added} new jobs to AI for evaluation...")
+        bulk_evaluate_jobs(db, newly_added_jobs)
     return {
         "success": True, "skipped": False,
         "jobs_received": len(pulled), "jobs_added": jobs_added,
