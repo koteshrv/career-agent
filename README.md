@@ -27,23 +27,23 @@
 
 **CareerAgent** is a sophisticated, 100% free automation platform built for ambitious software engineers and IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, evaluates your precise fit using your choice of AI, and compiles professionally formatted LaTeX PDFs designed to bypass corporate Applicant Tracking Systems.
 
-<div align="center">
-  <img src="frontend/public/screenshots/kanban.png" alt="Kanban Pipeline Screenshot" width="800" />
-  <p><em>Track your job applications in a beautiful, dynamic Kanban pipeline.</em></p>
-</div>
+
 
 ---
 
 ## 🚀 Why CareerAgent?
 
 Unlike generic AI job wrappers that spam "Easy Apply" buttons, **CareerAgent focuses on quality and precision.** It acts as your personal career agent, ensuring your resume mathematically aligns with the raw Job Description and generating personalized outreach materials that recruiters actually read.
+
 ## ✨ Features
 
+- 🌐 **[NEW] Global Crowdsourced Network**: Opt-in to the community job pool to sync and share jobs with other users. Features a decentralized credit economy to prevent spam, automatic local deduplication, and community-driven reporting to instantly flag and remove dead or fake job links.
 - **Automated Job Discovery**: A powerful hybrid approach. Uses Playwright backend scrapers for standard ATS platforms, and a companion Chrome Extension to directly scrape heavily protected sites (LinkedIn, Indeed) completely bypassing IP bans.
 - **Kanban Pipeline**: Organize your job search visually. Drag and drop jobs across columns (New, Applied, Interviewing, Rejected) to track your pipeline at a glance.
 - **AI Match Scoring**: Instantly evaluates your exact profile against the raw job description, providing a definitive 0-100 match score.
 - **1-Click Application Materials**: Dynamically injects missing keywords into your base resume and natively compiles a pristine ATS-friendly PDF using LaTeX. Also generates tailored cover letters and cold emails.
 - **Bring Your Own Keys**: Bring your own OpenAI/Anthropic keys, or use Google AI Studio for 100% free AI processing. Natively manages API rate limits. For complete privacy, it supports executing fully locally via **Ollama**.
+
 ## 🏗 Architecture
 
 CareerAgent uses an elegant, decoupled microservice architecture:
@@ -131,6 +131,15 @@ cd ..
 # 3. Run the full application (Frontend + Backend APIs)
 ./scripts/run.sh
 ```
+
+### 🧩 Installing the Chrome Extension
+To scrape highly protected sites like LinkedIn, load the companion extension:
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable **Developer mode** (top right corner).
+3. Click **Load unpacked** and select the `chrome-extension` folder from this repository.
+4. Pin the extension to your browser bar for 1-click job saving!
+
+---
 
 ## 🤝 Contributing
 We welcome contributions from the community! Check out our [Contributing Guide](CONTRIBUTING.md) to get started. See what we're working on in the [Roadmap](ROADMAP.md).
