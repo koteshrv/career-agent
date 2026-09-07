@@ -18,6 +18,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Analytics page, so a scraper broken by a site markup change doesn't just silently return 0 jobs.
 - **Docker hardening**: `.dockerignore` (root + `frontend/`), `HEALTHCHECK` on both Dockerfiles, and
   `docker-compose.yml`'s frontend now waits for the backend's healthcheck instead of just its start.
+- **Crowdsourcing sync** (`backend/crowdsourcing.py`): pushes locally scraped jobs to and pulls
+  community-contributed jobs from `career-agent-api`, a sibling project's Give-to-Get credit
+  economy. Runs on a 10-minute background schedule (`backend/scheduler.py`) so it works without a
+  browser tab open; `POST /api/crowdsource/push`/`/pull` trigger a cycle on demand. Connecting an
+  account is Google/GitHub SSO on the Login page, kept deliberately separate from local dashboard
+  auth (see Security, below).
+- **GitHub OAuth login** (`GithubCallback.tsx`) alongside the existing Google Sign-In, both used only
+  to connect the crowdsourcing account above.
+- `tests/test_health_manager.py` and `tests/test_crowdsourcing.py` — regression coverage for the
+  fixes and feature described below.
+- **README Screenshots gallery**: eight product screenshots (analytics, generation, run history,
+  settings, extension, queue) were sitting in `frontend/public/screenshots/` unreferenced by any
+  doc — added a proper gallery section instead of leaving them unused.
 
 ### Changed
 - Split the 1,470-line `backend/scraper_core.py` into `backend/scraper_core.py` (slim orchestrator)
@@ -37,12 +50,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   duplicating every log line.
 - The manual "Run Scraper" background task reused the request-scoped DB session, which FastAPI closes
   once the HTTP response is sent — replaced with its own session, matching the scheduled-run path.
+- **Telegram health alerts were silently broken in three independent ways**: `health_manager.py` read
+  the Fernet-encrypted bot-token column directly instead of decrypting it (every alert 404'd),
+  ignored the `telegram_alerts_enabled` toggle, and crashed with `TypeError` on a provider's
+  first-ever recorded failure — which aborted health tracking for every other company in that scrape
+  run. All three fixed; alerts now route through `notifications.send_telegram_message`, and dynamic
+  content (error messages, company names) is Markdown-escaped so Telegram doesn't reject the whole
+  message on a stray `_`/`*`/`` ` ``.
+- The 24-hour `BLOCKED`-provider cooldown actually expired after a single scrape cycle: a cooldown
+  skip was logged as `FAILED`, which reclassified the provider to `BROKEN` and ended the cooldown
+  early. Skips are now logged as `SKIPPED` and excluded from health/cooldown state and target-health
+  stats.
+- Generated resume PDFs were written to a fixed filename under `/tmp` and never deleted — a
+  world-readable file leaked per generation, indefinitely. Now written to a unique temp file cleaned
+  up by a `BackgroundTask` after the response is sent; `pdflatex` also gets a timeout so a
+  hallucinated runaway LaTeX macro can't hang a worker thread forever.
+- `clean_old_trash` compared a naive local `datetime.now()` against UTC-stamped rows, deleting trash
+  early or late depending on the server's timezone.
+- The RAG embedding pipeline could silently fall back to a different Gemini embedding model mid-session
+  with no pinning, mixing incompatible vectors in the same ChromaDB collection and producing
+  meaningless similarity scores. Now pins one model per process and records it per chunk, with a
+  warning if the knowledge base ever ends up mixed.
+- A corrupted/duplicated code block in `backend/main.py`'s Google SSO handler (unterminated string
+  literal, dead code from a bad merge, `PyJWT` used but never installed) left the endpoint unable to
+  even start.
+- README/CONTRIBUTING/manual all pointed at `./start.sh`, which doesn't exist — it was relocated to
+  `scripts/run.sh` in an earlier commit and every reference to it was missed. Fixed across all three.
+- GitHub links, GHCR image references, and the docker-compose curl URL throughout README, CHANGELOG,
+  the manual, and the landing page pointed at the stale `hariharavk` account instead of `koteshrv`.
+
+### Security
+- `POST /api/auth/sso`'s `google` and `career_agent_cloud` branches used to mint a full local
+  dashboard session token for **any** Google or GitHub account holder — no allowlist, and the Google
+  branch never checked the token's `audience` (would accept an ID token issued for any Google
+  OAuth client, not just this app's). Removed both branches entirely: local dashboard access is now
+  exclusively `POST /api/login`, and SSO is scoped only to obtaining a token for the crowdsourcing
+  API (see Added, above). See `CLAUDE.md`'s "two separate trust boundaries" note.
+- `POST /api/crowdsource/connect` is deliberately public (connecting happens before a local session
+  exists) but accepts only a bare `{token}`, never the general Settings schema, so it can't be used
+  to overwrite unrelated secrets (Gemini/Telegram/OpenAI keys, etc.).
 
 ### Removed
 - The orphaned root `Dockerfile`, which built and ran `scraper.py` — a file that doesn't exist anywhere
   in the repo. Unused by both `docker-compose.yml` and CI.
 - Dead code: `ai_agent.filter_job_links`, `main._process_extension_job`,
   `scraper_core.fetch_and_strip_html`, `scraper_core.update_target_selector` — all confirmed zero-caller.
+- `clearbit.png`, `google.png`, `test.png` at repo root — not images at all, but plain-text "not
+  allowed by policy" responses from failed logo-download requests, saved with a `.png` extension.
+  Unreferenced anywhere in the codebase.
+- `chrome-extension/favicon.svg` (an exact duplicate of `frontend/public/favicon.svg`) and
+  `chrome-extension/icon.svg` (a superseded early icon design) — neither referenced by
+  `manifest.json` or `popup.html`; the extension actually uses `icon{16,48,128}.png`.
+- `frontend/public/icons.svg` — an unused social-icon sprite sheet (Bluesky/Discord/X/GitHub symbols)
+  from whatever starter template this project was bootstrapped from; never referenced via `<use>`
+  anywhere, and this app uses `lucide-react` for icons instead.
+- `frontend/public/screenshots/modal.png` — byte-identical duplicate of `generation.png`.
 
 ## [v0.1.0-beta] - Initial Beta Release
 
@@ -62,10 +124,10 @@ We highly recommend running CareerAgent via our pre-built GitHub Container Regis
 
 ```bash
 # 1. Download the docker-compose file
-curl -O https://raw.githubusercontent.com/hariharavk/career-agent/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/koteshrv/career-agent/main/docker-compose.yml
 
 # 2. Start the application in the background
 docker compose up -d
 ```
 
-*For manual developer installation instructions, please refer to the [README](https://github.com/hariharavk/career-agent).*
+*For manual developer installation instructions, please refer to the [README](https://github.com/koteshrv/career-agent).*

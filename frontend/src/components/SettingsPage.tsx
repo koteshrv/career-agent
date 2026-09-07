@@ -629,6 +629,25 @@ export function SettingsPage() {
         </div>
         <p className="text-xs text-zinc-500 mt-0">Enables verbose output for the scraper and AI agent. Logs automatically rotate and delete at 10MB to save disk space.</p>
 
+        <div className="flex items-center gap-3 pt-2">
+          <input
+            type="checkbox"
+            id="crowdsource_toggle"
+            checked={settings.crowdsourcing_enabled !== false}
+            disabled={!settings.career_agent_account_email}
+            onChange={e => setSettings({...settings, crowdsourcing_enabled: e.target.checked})}
+            className="w-4 h-4 rounded bg-black/40 border-white/10 text-blue-500 focus:ring-blue-500 focus:ring-offset-gray-900 disabled:opacity-50 cursor-pointer disabled:cursor-not-allowed"
+          />
+          <label htmlFor="crowdsource_toggle" className={`text-sm font-medium ${settings.career_agent_account_email ? 'text-zinc-300' : 'text-zinc-600'}`}>
+            Enable Crowdsourcing API Sync
+          </label>
+        </div>
+        <p className="text-xs text-zinc-500 mt-0">
+          {settings.career_agent_account_email
+            ? "Sync unpushed jobs and pull new jobs from the community pool every 10 minutes."
+            : "Permanently disabled for local users. Connect a Google/GitHub account to enable."}
+        </p>
+
         <div className="pt-2">
           <label className="block text-sm font-medium text-zinc-400 mb-1">Minimum Match Score (%)</label>
           <input 

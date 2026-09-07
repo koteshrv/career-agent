@@ -4,6 +4,7 @@
  */
 
 export const MOCK_SETTINGS = {
+  career_agent_account_email: "demo@github.com",
   id: 1,
   gemini_api_key: "••••••••••••••••••••••••••••••",
   gemini_model: "gemini-2.5-flash, gemini-1.5-flash",

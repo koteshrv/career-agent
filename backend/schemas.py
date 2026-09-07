@@ -93,7 +93,7 @@ class SettingsBase(BaseModel):
     telegram_alerts_enabled: Optional[bool] = True
     gemini_api_key: Optional[str] = None
     gemini_model: Optional[str] = "gemini-2.5-flash, gemini-flash-latest, gemini-2.5-pro"
-    cron_schedule: Optional[str] = "0 */4 * * *"
+    cron_schedule: Optional[str] = "0 */12 * * *"
     trash_retention_days: Optional[int] = 30
     active_companies: Optional[str] = None
     search_keywords: Optional[str] = None
@@ -113,6 +113,9 @@ class SettingsBase(BaseModel):
     grok_api_key: Optional[str] = None
     ollama_url: Optional[str] = "http://localhost:11434"
     ollama_model: Optional[str] = "llama3"
+
+    career_agent_cloud_token: Optional[str] = None
+    career_agent_account_email: Optional[str] = None
 
 class Settings(SettingsBase):
     id: int

@@ -1,0 +1,330 @@
+openapi: 3.0.3
+info:
+  title: Career Agent API
+  description: A centralized crowdsourcing API for an open-source job scraping tool featuring a Give-to-Get credit economy.
+  version: 1.0.0
+servers:
+  - url: https://career-agent-api.kotesh-rv.workers.dev
+    description: Production Server
+  - url: http://localhost:8787
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    JobInput:
+      type: object
+      required:
+        - company
+        - title
+        - url
+      description: Entries missing company, title, or url are silently skipped (see invalid_skipped in the push response); location is optional.
+      properties:
+        company:
+          type: string
+          example: TechCorp
+        title:
+          type: string
+          example: Software Engineer
+        location:
+          type: string
+          example: Remote
+        url:
+          type: string
+          example: https://techcorp.com/jobs/1
+          
+    JobOutput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company:
+          type: string
+        title:
+          type: string
+        location:
+          type: string
+        url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+paths:
+  /api/auth/login:
+    post:
+      summary: SSO Login
+      description: >
+        Exchanges a Google or GitHub Identity Provider (IdP) token for an internal Asymmetric RS256 API JWT. 
+        The generated RS256 token embeds the user's `email` and can be cryptographically verified offline by local API containers using the central Public Key. 
+        User IP addresses are automatically logged on login to mitigate sybil attacks and track multi-account usage.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idp_token
+                - sso_provider
+              properties:
+                idp_token:
+                  type: string
+                  description: The JWT ID Token (for Google) or the raw OAuth Authorization Code (for GitHub).
+                sso_provider:
+                  type: string
+                  enum: [google, github]
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: The primary RS256 signed JWT.
+                  access_token:
+                    type: string
+                    description: Identical to `token`, kept for backward compatibility.
+                  token_type:
+                    type: string
+                    example: bearer
+                  expires_in:
+                    type: integer
+                    example: 604800
+        '400':
+          description: Missing parameters or failed to extract email from IdP.
+        '401':
+          description: Invalid IdP token or GitHub code exchange failed.
+
+  /api/jobs/push:
+    post:
+      summary: Push Scraped Jobs
+      description: >
+        Upload newly scraped jobs to the database. Earns 1 API credit per unique job successfully inserted,
+        up to a daily cap of 500 earned credits per user. Entries whose `url` is not a valid http(s) URL, or
+        whose fields exceed the length limits, are skipped rather than failing the batch. Maximum 1000 jobs per request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - jobs
+              properties:
+                jobs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/JobInput'
+                  maxItems: 1000
+      responses:
+        '200':
+          description: Jobs processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Pushed 5 jobs.
+                  credits_earned:
+                    type: integer
+                    description: Credits actually awarded (may be less than jobs_accepted if the daily cap was hit).
+                    example: 5
+                  jobs_accepted:
+                    type: integer
+                    description: Unique jobs actually stored from this request.
+                    example: 5
+                  invalid_skipped:
+                    type: integer
+                    description: Number of submitted entries skipped for missing/invalid fields or an invalid URL.
+                    example: 0
+                  failed:
+                    type: integer
+                    description: Number of entries that could not be inserted due to an unexpected database error.
+                    example: 0
+                  warning:
+                    type: string
+                    description: Present when the daily push credit cap was reached.
+        '400':
+          description: Invalid payload or malformed JSON body
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '413':
+          description: Payload Too Large (Exceeds 1000 jobs)
+        '429':
+          description: Too Many Requests (rate limited)
+
+  /api/jobs/pull:
+    get:
+      summary: Pull Jobs
+      description: Consume jobs from the database. Deducts 1 API credit per job. Falls back to a strict daily quota (50 jobs/day) if credits are 0. Each user is only ever served a given job once — already-pulled jobs are excluded from future pulls.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Maximum number of jobs to return.
+      responses:
+        '200':
+          description: Jobs retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  warning:
+                    type: string
+                    description: Warning message if the requested limit was capped.
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JobOutput'
+                  deducted:
+                    type: integer
+                    description: Number of credits deducted from balance.
+                  quota_used:
+                    type: integer
+                    description: Number of free quota jobs used if user has 0 credits.
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '403':
+          description: Forbidden (Daily free quota exhausted)
+        '409':
+          description: Conflict (lost a race with a concurrent pull request from the same user); safe to retry
+
+  /api/me:
+    get:
+      summary: Get Account Info
+      description: Returns the authenticated user's current Give-to-Get economy balance and stats.
+      responses:
+        '200':
+          description: Account info retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  email:
+                    type: string
+                  current_credits:
+                    type: integer
+                  total_pushed:
+                    type: integer
+                  total_pulled:
+                    type: integer
+                  daily_quota_remaining:
+                    type: integer
+                    description: Remaining free-tier jobs pullable today (resets daily; only relevant once credits reach 0).
+                  daily_push_credits_remaining:
+                    type: integer
+                    description: Credits still earnable from pushing today before the daily cap is reached.
+                  flagged_count:
+                    type: integer
+                    description: Number of this user's contributed jobs the community has flagged as fake or dead.
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+
+  /api/jobs/report:
+    post:
+      summary: Report a Job
+      description: >
+        Community quality control. Report a job as fake, dead, or spam. You may only report a job you have
+        actually pulled, and only once per job. Once 3 distinct users report the same job it is flagged and
+        withdrawn from circulation, the contributor loses the credit earned for it and receives a strike;
+        at 5 strikes the contributor is automatically banned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - job_id
+              properties:
+                job_id:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+                  example: dead_link
+      responses:
+        '200':
+          description: Report recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  report_count:
+                    type: integer
+                    description: Distinct users who have now reported this job.
+                  reports_needed_to_flag:
+                    type: integer
+                  job_flagged:
+                    type: boolean
+                    description: True if this report crossed the threshold and withdrew the job.
+                  contributor_banned:
+                    type: boolean
+                  message:
+                    type: string
+                    description: Present when this user had already reported the job.
+        '400':
+          description: Missing or invalid job_id, or malformed JSON body
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '403':
+          description: Forbidden (you can only report a job you have pulled)
+        '404':
+          description: Job not found
+
+  /health:
+    get:
+      summary: Health Check
+      description: Unauthenticated liveness probe; also verifies the D1 binding responds.
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  database:
+                    type: string
+                    example: ok
+        '503':
+          description: Database unreachable
+

@@ -189,7 +189,9 @@ def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool
         company = t.get("company")
         if not target_name and is_provider_blocked(db, company):
             logger.warning(f"[{company}] Skipping target due to 24-hour BLOCKED cooldown.")
-            company_logs.append({"company": company, "status": "FAILED", "jobs_found": 0, "message": "BLOCKED (Cooldown active)"})
+            # SKIPPED, not FAILED: this target never ran, so it must not count as a failure
+            # in health state or target-health stats (see health_manager.update_health).
+            company_logs.append({"company": company, "status": "SKIPPED", "jobs_found": 0, "message": "BLOCKED (Cooldown active)"})
         else:
             filtered_targets.append(t)
             

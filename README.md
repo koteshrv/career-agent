@@ -6,8 +6,8 @@
   **Your personal AI-powered job search automation platform.**  
   Quietly scrape job boards, evaluate match scores, and programmatically compile ATS-friendly LaTeX resumes and cold emails.
 
-  [![GitHub Stars](https://img.shields.io/github/stars/hariharavk/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/hariharavk/career-agent/stargazers)
-  [![GitHub Forks](https://img.shields.io/github/forks/hariharavk/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/hariharavk/career-agent/network/members)
+  [![GitHub Stars](https://img.shields.io/github/stars/koteshrv/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/koteshrv/career-agent/stargazers)
+  [![GitHub Forks](https://img.shields.io/github/forks/koteshrv/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/koteshrv/career-agent/network/members)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
   [![React](https://img.shields.io/badge/React-19-blue.svg?style=for-the-badge&logo=react)](https://react.dev/)
   [![FastAPI](https://img.shields.io/badge/FastAPI-0.138-green.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -23,27 +23,29 @@
 
 </div>
 
+> **⚠️ Active Development:** CareerAgent is currently in rapid development (Beta). APIs, database schemas, and features may change frequently as we build towards `v1.0`. We highly recommend backing up your `jobs.db` file before pulling major updates.
+
 ---
 
 **CareerAgent** is a sophisticated, 100% free automation platform built for ambitious software engineers and IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, evaluates your precise fit using your choice of AI, and compiles professionally formatted LaTeX PDFs designed to bypass corporate Applicant Tracking Systems.
 
-<div align="center">
-  <img src="frontend/public/screenshots/kanban.png" alt="Kanban Pipeline Screenshot" width="800" />
-  <p><em>Track your job applications in a beautiful, dynamic Kanban pipeline.</em></p>
-</div>
+
 
 ---
 
 ## 🚀 Why CareerAgent?
 
 Unlike generic AI job wrappers that spam "Easy Apply" buttons, **CareerAgent focuses on quality and precision.** It acts as your personal career agent, ensuring your resume mathematically aligns with the raw Job Description and generating personalized outreach materials that recruiters actually read.
+
 ## ✨ Features
 
+- 🌐 **[New] Global Crowdsourced Network**: Opt-in to the community job pool to sync and share jobs with other users. Features a decentralized credit economy to prevent spam, automatic local deduplication, and community-driven reporting to instantly flag and remove dead or fake job links.
 - **Automated Job Discovery**: A powerful hybrid approach. Uses Playwright backend scrapers for standard ATS platforms, and a companion Chrome Extension to directly scrape heavily protected sites (LinkedIn, Indeed) completely bypassing IP bans.
 - **Kanban Pipeline**: Organize your job search visually. Drag and drop jobs across columns (New, Applied, Interviewing, Rejected) to track your pipeline at a glance.
 - **AI Match Scoring**: Instantly evaluates your exact profile against the raw job description, providing a definitive 0-100 match score.
 - **1-Click Application Materials**: Dynamically injects missing keywords into your base resume and natively compiles a pristine ATS-friendly PDF using LaTeX. Also generates tailored cover letters and cold emails.
 - **Bring Your Own Keys**: Bring your own OpenAI/Anthropic keys, or use Google AI Studio for 100% free AI processing. Natively manages API rate limits. For complete privacy, it supports executing fully locally via **Ollama**.
+
 ## 🏗 Architecture
 
 CareerAgent uses an elegant, decoupled microservice architecture:
@@ -76,14 +78,22 @@ graph TD
         LLM -->|Injects Keywords| Compiler
     end
 
-    %% Cross-subgraph edges must live outside every subgraph block — Mermaid assigns a
-    %% node's subgraph membership to wherever it's FIRST referenced (edge or declaration),
-    %% so an edge to API placed inside "Client Side" would silently render API inside the
-    %% wrong box even though it's declared under "Server Side".
+    subgraph "Community Network"
+        CF[Serverless Worker<br>Crowdsource API]:::backend
+        DB2[(Edge Database<br>Global Job Pool)]:::storage
+        CF <-->|Persists| DB2
+    end
+
+    %% Cross-subgraph edges must live outside every subgraph block
     UI <-->|REST API| API
     Ext -->|Syncs Scraped Jobs<br>Batch Processing| API
     API <-->|Extracts Competencies &<br>Scores Match| LLM
+    API <-->|Pushes Scraped Jobs &<br>Pulls Community Jobs| CF
 ```
+
+
+
+---
 
 ## 🚀 Getting Started
 
@@ -92,7 +102,7 @@ The easiest way to run CareerAgent is using our pre-built GitHub Container Regis
 
 ```bash
 # 1. Download the docker-compose file
-curl -O https://raw.githubusercontent.com/hariharavk/career-agent/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/koteshrv/career-agent/main/docker-compose.yml
 
 # 2. Start the application in the background
 docker compose up -d
@@ -121,8 +131,17 @@ npm install
 cd ..
 
 # 3. Run the full application (Frontend + Backend APIs)
-./start.sh
+./scripts/run.sh
 ```
+
+### 🧩 Installing the Chrome Extension
+To scrape highly protected sites like LinkedIn, load the companion extension:
+1. Open Chrome and navigate to `chrome://extensions/`
+2. Enable **Developer mode** (top right corner).
+3. Click **Load unpacked** and select the `chrome-extension` folder from this repository.
+4. Pin the extension to your browser bar for 1-click job saving!
+
+---
 
 ## 🤝 Contributing
 We welcome contributions from the community! Check out our [Contributing Guide](CONTRIBUTING.md) to get started. See what we're working on in the [Roadmap](ROADMAP.md).

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   backend:
-    image: ghcr.io/hariharavk/career-agent-backend:main
+    image: ghcr.io/koteshrv/career-agent-backend:main
     ports:
       - "8000:8000"
     volumes:
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
 
   frontend:
-    image: ghcr.io/hariharavk/career-agent-frontend:main
+    image: ghcr.io/koteshrv/career-agent-frontend:main
     ports:
       - "5173:80"
     depends_on:

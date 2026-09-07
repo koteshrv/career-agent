@@ -50,10 +50,12 @@ def empty_trash(db: Session) -> int:
     return count
 
 def clean_old_trash(db: Session, retention_days: int) -> int:
-    from datetime import datetime, timedelta
     from sqlalchemy import func
-    
-    cutoff = datetime.now() - timedelta(days=retention_days)
+
+    # created_at/updated_at are written by func.now(), which SQLite records in UTC — a naive
+    # local datetime.now() here would shift the cutoff by the server's UTC offset and delete
+    # trash early (or late). Matches delete_old_scraper_logs below.
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
     count = db.query(models.Job).filter(
         models.Job.status == "TRASH",
         # Fallback to created_at if updated_at is null (for older items)
@@ -77,6 +79,7 @@ def bulk_delete_jobs(db: Session, ids: list) -> int:
 ENCRYPTED_FIELDS = {
     "telegram_bot_token", "gemini_api_key",
     "openai_api_key", "anthropic_api_key", "grok_api_key",
+    "career_agent_cloud_token",
 }
 
 def get_settings(db: Session):
@@ -113,6 +116,24 @@ def update_settings(db: Session, settings: schemas.SettingsBase):
     db.commit()
     db.refresh(db_settings)
     return get_settings(db)
+
+def get_unpushed_jobs(db: Session, limit: int = 1000) -> list:
+    """Jobs never yet pushed to the crowdsourcing API. Ordered oldest-first so the backlog
+    drains in order across successive push cycles rather than the same newest N repeating."""
+    return (
+        db.query(models.Job)
+        .filter(models.Job.crowdsource_pushed_at.is_(None))
+        .order_by(models.Job.created_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+def mark_jobs_crowdsource_pushed(db: Session, job_ids: list) -> None:
+    if not job_ids:
+        return
+    db.query(models.Job).filter(models.Job.id.in_(job_ids)).update(
+        {models.Job.crowdsource_pushed_at: datetime.now(timezone.utc)}, synchronize_session=False)
+    db.commit()
 
 def has_running_scrape(db: Session) -> bool:
     """True if a scraper run is already in flight (cron and manual can otherwise overlap)."""
@@ -205,6 +226,10 @@ def get_target_health(db: Session, run_limit: int = 20) -> list:
         for entry in entries:
             company = entry.get("company")
             if not company:
+                continue
+            # A target skipped by the BLOCKED cooldown never ran — counting it would drag
+            # down success_rate and break zero_streak on a run that never happened.
+            if entry.get("status") == "SKIPPED":
                 continue
             history.setdefault(company, []).append({
                 "timestamp": log.timestamp,

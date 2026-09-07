@@ -1,6 +1,6 @@
 import { motion } from "framer-motion"
 import { useNavigate } from "react-router-dom"
-import { Zap, Sparkles, FileText, ArrowRight, Code2, Search, Target, Cpu, KanbanSquare, BellRing } from "lucide-react"
+import { Zap, Sparkles, FileText, ArrowRight, Code2, Search, Target, Cpu, KanbanSquare, BellRing, Globe, BarChart3, ShieldCheck } from "lucide-react"
 
 export function LandingPage() {
   const navigate = useNavigate()
@@ -8,7 +8,13 @@ export function LandingPage() {
     navigate("/app/applications")
   }
 
-  const features = [
+  const features: Array<{icon: React.ReactNode, title: string, description: string, highlight?: boolean}> = [
+    {
+      icon: <Globe className="w-6 h-6 text-blue-400 animate-pulse" />,
+      title: "Global Crowdsourced Network (New)",
+      description: "Opt-in to the community job pool to sync and share jobs with other users. Features a decentralized credit economy, local deduplication, and community reporting to flag fake jobs.",
+      highlight: true
+    },
     {
       icon: <Search className="w-6 h-6 text-indigo-400" />,
       title: "Automated Job Discovery",
@@ -38,6 +44,16 @@ export function LandingPage() {
       icon: <BellRing className="w-6 h-6 text-yellow-400" />,
       title: "Telegram Alerts & Chrome Extension",
       description: "Receive instant push notifications via Telegram for high-match jobs, and use the companion extension to 1-click save roles directly from external job boards."
+    },
+    {
+      icon: <ShieldCheck className="w-6 h-6 text-teal-400" />,
+      title: "Privacy First & Local Storage",
+      description: "Your data never leaves your machine unless you explicitly opt-in. All job records, encrypted API keys, and resumes are stored securely in a local SQLite database."
+    },
+    {
+      icon: <BarChart3 className="w-6 h-6 text-pink-400" />,
+      title: "Advanced Analytics",
+      description: "Track your application funnel, analyze pipeline bottlenecks, and monitor your weekly sourcing velocity with beautiful, interactive charts."
     }
   ]
 
@@ -54,7 +70,7 @@ export function LandingPage() {
             <span className="font-bold text-lg tracking-tight">CareerAgent</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="https://github.com/hariharavk/career-agent" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-2">
+            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-2">
               <Code2 className="w-4 h-4" />
               GitHub
             </a>
@@ -109,7 +125,7 @@ export function LandingPage() {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="text-lg text-zinc-400 mb-8 leading-relaxed max-w-xl"
               >
-                CareerAgent is a sophisticated, 100% free automation platform built for ambitious IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, evaluates your precise fit using your choice of AI, and programmatically compiles ATS-optimized LaTeX resumes.
+                CareerAgent is a sophisticated, 100% free automation platform built for ambitious IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, connects you to a global crowdsourced job network, evaluates your precise fit using your choice of AI, and programmatically compiles ATS-optimized LaTeX resumes.
               </motion.p>
               
               <motion.div 
@@ -125,7 +141,7 @@ export function LandingPage() {
                   Launch Demo <ArrowRight className="w-5 h-5" />
                 </button>
                 <a 
-                  href="https://github.com/hariharavk/career-agent" 
+                  href="https://github.com/koteshrv/career-agent" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all"
@@ -186,9 +202,10 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:bg-white/[0.04] hover:-translate-y-1 transition-all duration-300 shadow-xl"
+                className={`backdrop-blur-sm border rounded-2xl p-6 transition-all duration-300 shadow-xl ${f.highlight ? "bg-blue-500/5 border-blue-500/30 hover:bg-blue-500/10 hover:-translate-y-1 shadow-[0_0_30px_rgba(59,130,246,0.1)] relative overflow-hidden" : "bg-black/40 border-white/10 hover:bg-white/[0.04] hover:-translate-y-1"}`}
               >
-                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6">
+                {f.highlight && <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-[50px] -mr-10 -mt-10 pointer-events-none" />}
+                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 relative z-10">
                   {f.icon}
                 </div>
                 <h3 className="text-lg font-bold mb-3 text-white">{f.title}</h3>
@@ -203,11 +220,11 @@ export function LandingPage() {
       <footer className="border-t border-white/5 py-12 bg-black">
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center justify-center gap-6">
           <div className="flex items-center justify-center text-sm text-zinc-400">
-            Built with <span className="mx-1.5">❤️</span> by <a href="https://github.com/hariharavk" target="_blank" rel="noopener noreferrer" className="text-white font-semibold hover:underline ml-1">Hari</a>.
+            Built with <span className="mx-1.5">❤️</span> by <a href="https://github.com/koteshrv" target="_blank" rel="noopener noreferrer" className="text-white font-semibold hover:underline ml-1">Hari</a>.
           </div>
           
           <div className="flex items-center justify-center gap-6 text-sm text-zinc-500 font-medium">
-            <a href="https://github.com/hariharavk/career-agent" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
+            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
               <Code2 className="w-4 h-4" />
               GitHub
             </a>

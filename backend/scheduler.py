@@ -2,15 +2,19 @@ import logging
 import json
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from .database import SessionLocal
-from . import crud, schemas, notifications
+from . import crud, schemas, notifications, crowdsourcing
 from .scraper_core import run_scraper
 
 logger = logging.getLogger(__name__)
 
 scheduler = BackgroundScheduler()
 JOB_ID = "scheduled_scrape"
+CROWDSOURCE_PUSH_JOB_ID = "crowdsource_push"
+CROWDSOURCE_PULL_JOB_ID = "crowdsource_pull"
+CROWDSOURCE_INTERVAL_MINUTES = 10
 
 class RunLogCaptureHandler(logging.Handler):
     def __init__(self):
@@ -72,6 +76,33 @@ def _scheduled_scrape():
         logging.getLogger().removeHandler(capture_handler)
         db.close()
 
+def _scheduled_crowdsource_push():
+    """Runs on its own DB session (no request context), like _scheduled_scrape. Errors are
+    logged, never raised — a crowdsourcing hiccup must not affect anything else running on
+    this scheduler."""
+    db = SessionLocal()
+    try:
+        result = crowdsourcing.push_jobs(db)
+        if not result.get("success") and not result.get("skipped"):
+            logger.warning(f"[Crowdsource] Scheduled push failed: {result.get('reason')}")
+    except Exception as e:
+        logger.error(f"[Crowdsource] Scheduled push crashed: {e}")
+    finally:
+        db.close()
+
+
+def _scheduled_crowdsource_pull():
+    db = SessionLocal()
+    try:
+        result = crowdsourcing.pull_jobs(db)
+        if not result.get("success") and not result.get("skipped"):
+            logger.warning(f"[Crowdsource] Scheduled pull failed: {result.get('reason')}")
+    except Exception as e:
+        logger.error(f"[Crowdsource] Scheduled pull crashed: {e}")
+    finally:
+        db.close()
+
+
 def reschedule(cron_expr: str) -> bool:
     """(Re)install the cron job. Returns False if the expression is invalid."""
     if not cron_expr:
@@ -86,7 +117,7 @@ def reschedule(cron_expr: str) -> bool:
     return True
 
 def start():
-    """Start the scheduler and install the job from the saved settings."""
+    """Start the scheduler and install the jobs from the saved settings."""
     if not scheduler.running:
         scheduler.start()
     db = SessionLocal()
@@ -95,3 +126,15 @@ def start():
         reschedule(settings.cron_schedule or "0 */12 * * *")
     finally:
         db.close()
+
+    # Fixed interval, not user-configurable — these both no-op immediately if no
+    # crowdsourcing account is connected (crowdsourcing._get_cloud_token returns None).
+    scheduler.add_job(
+        _scheduled_crowdsource_push, IntervalTrigger(minutes=CROWDSOURCE_INTERVAL_MINUTES),
+        id=CROWDSOURCE_PUSH_JOB_ID, replace_existing=True,
+    )
+    scheduler.add_job(
+        _scheduled_crowdsource_pull, IntervalTrigger(minutes=CROWDSOURCE_INTERVAL_MINUTES),
+        id=CROWDSOURCE_PULL_JOB_ID, replace_existing=True,
+    )
+    logger.info(f"Scheduled crowdsource push/pull every {CROWDSOURCE_INTERVAL_MINUTES} minutes.")

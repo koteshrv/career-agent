@@ -20,6 +20,23 @@ export const getToken  = () => localStorage.getItem(TOKEN_KEY)
 export const setToken  = (token: string) => localStorage.setItem(TOKEN_KEY, token)
 export const clearToken = () => localStorage.removeItem(TOKEN_KEY)
 
+export const CLOUD_TOKEN_KEY = "cloudToken"
+
+// Persists the career-agent-api JWT both for this browser (localStorage, so the frontend
+// can call career-agent-api directly) and server-side (Settings.career_agent_cloud_token,
+// encrypted at rest) so the backend's 10-minute push/pull schedule can use it independent
+// of whether a browser tab is open. This is scoped ONLY to the crowdsourcing API — it must
+// never be treated as local dashboard auth (see backend/crowdsourcing.py).
+//
+// Uses the dedicated public /api/crowdsource/connect endpoint, NOT PUT /api/settings —
+// connecting crowdsourcing happens from the Login page, before there's a local dashboard
+// session, so there's no local bearer token yet for the request interceptor to attach.
+// PUT /api/settings requires one and would 401 here.
+export async function setCloudToken(token: string, email?: string) {
+  localStorage.setItem(CLOUD_TOKEN_KEY, token)
+  await api.post("/api/crowdsource/connect", { token, email })
+}
+
 // Attach the auth token to every request.
 api.interceptors.request.use(config => {
   const token = getToken()
@@ -60,6 +77,8 @@ if (IS_DEMO) {
     if (url.startsWith("/api/generate/on-demand/pdf")) return respond(new Blob(["% PDF Dummy Data"]), 200)
     if (url.startsWith("/api/generate"))                   return respond({ content: "Demo mode — backend not available. This is a placeholder for the generated material.", latex_source: "% Demo mode — backend not available", cover_letter: "Demo mode cover letter." })
     if (url.startsWith("/api/scrape"))                     return respond({ status: "queued" })
+    if (url.startsWith("/api/crowdsource/me"))             return respond({ success: true, cloud_email: "johndoe@demo.com", current_credits: 2450, daily_quota_remaining: 10 })
+    if (url.startsWith("/api/crowdsource"))                return respond({ success: false, skipped: true, reason: "Crowdsourcing is disabled in the live demo." })
 
     return config
   })

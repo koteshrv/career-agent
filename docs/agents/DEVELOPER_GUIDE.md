@@ -55,6 +55,31 @@ The AI logic is located in `backend/ai_agent.py`.
 - **Do not introduce heavy dependencies** without user approval (the Docker image must stay lean).
 - **Concurrency**: Gemini evaluations are concurrent via `ThreadPoolExecutor` in `bulk_evaluate_jobs`. If you add another slow task, parallelize it similarly, but protect SQLite writes by committing sequentially.
 
+## 5. Crowdsourcing Sync (`backend/crowdsourcing.py`)
+Pushes/pulls jobs to/from `career-agent-api` (a **separate sibling repo**, not part of this
+backend — a Cloudflare Worker running the "Give-to-Get" credit economy). See
+`CAREERAGENT_MANUAL.md` § 17 for the full design.
+
+**The one rule that matters here:** `POST /api/auth/sso` and `POST /api/crowdsource/connect`
+must never mint or accept anything that grants *local dashboard* access. Local auth is
+`POST /api/login` only — full stop. An earlier version of the SSO endpoint minted a local
+session for any Google/GitHub account holder with no allowlist; that was a real
+vulnerability, not a shortcut worth reintroducing. If you're touching auth in this area,
+re-read `CLAUDE.md`'s "two separate trust boundaries" note first.
+
+- `push_jobs(db)` / `pull_jobs(db)` are the only two entry points that talk to
+  `career-agent-api`. Both are called from `backend/scheduler.py`'s 10-minute interval jobs
+  *and* from the on-demand `/api/crowdsource/push`/`/pull` routes — keep that shared, don't
+  fork the logic between the two callers.
+- `push_jobs()` must only mark a job `crowdsource_pushed_at` on a confirmed HTTP 200. If you
+  change the success condition, make sure a network failure still leaves jobs eligible for
+  retry on the next cycle instead of silently losing them from the backlog.
+- The crowdsourcing JWT has no refresh (§17, §19 of the manual) — don't build retry logic
+  that assumes 401 is transient; it means the user needs to reconnect from the Login page.
+- If you touch the request/response shape of `/api/jobs/push` or `/api/jobs/pull`, check
+  `~/career-agent-api/openapi.yaml` first — that's the authoritative contract, and it lives
+  in the other repo, so it's easy to miss.
+
 # Frontend Developer Instructions
 
 This document provides focused instructions for AI agents modifying the `career-agent` frontend.
