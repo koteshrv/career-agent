@@ -134,7 +134,7 @@ function Layout() {
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col h-screen relative">
           {/* Top Header */}
-          <header className="h-20 border-b border-white/5 bg-black/20 flex items-center justify-between px-8 z-30 sticky top-0">
+          <header className="h-20 border-b border-white/5 bg-black/20 flex items-center justify-between px-8 z-[60] sticky top-0">
             <div>
               <h2 className="text-2xl font-bold tracking-tight text-white">{title}</h2>
               {subtitle && <p className="text-sm text-zinc-400 mt-1">{subtitle}</p>}

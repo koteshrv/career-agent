@@ -159,6 +159,8 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
                 else:
                     db_job.description = next((p["description"] for p in ai_payload if p["id"] == job_id), None)
         db.commit()
+    task_manager.update_task(task_id, description=f"Evaluated {len(jobs)} jobs.", progress=100)
+    task_manager.complete_task(task_id, success=True)
 
 
 def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool = False):
