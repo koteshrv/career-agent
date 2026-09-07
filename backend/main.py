@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
+from .tasks import task_manager
 import asyncio
 from contextlib import asynccontextmanager
 from collections import deque
@@ -49,6 +50,13 @@ class ConnectionManager:
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        
+        # Send initial task sync for persistence across reloads
+        import json
+        tasks = task_manager.get_all_tasks()
+        if tasks:
+            await websocket.send_text(json.dumps({"type": "TASK_SYNC", "tasks": tasks}))
+            
         if self.log_buffer:
             await websocket.send_text("\n".join(self.log_buffer))
 
@@ -64,7 +72,17 @@ class ConnectionManager:
             except Exception:
                 self.disconnect(connection)
 
+
 manager = ConnectionManager()
+
+async def _broadcast_task(task: dict):
+    import json
+    await manager.broadcast(json.dumps({"type": "TASK_UPDATE", "task": task}))
+
+
+
+
+
 
 class WebSocketLogHandler(logging.Handler):
     def __init__(self, manager: ConnectionManager, loop: asyncio.AbstractEventLoop):
@@ -104,6 +122,7 @@ async def lifespan(app: FastAPI):
         logging.getLogger().setLevel(logging.DEBUG if is_debug else logging.INFO)
 
         loop = asyncio.get_running_loop()
+        task_manager.set_broadcast_callback(_broadcast_task, loop)
         ws_handler = WebSocketLogHandler(manager, loop)
         ws_handler.setLevel(logging.DEBUG if is_debug else logging.INFO)
         logging.getLogger().addHandler(ws_handler)
