@@ -41,11 +41,9 @@ function Layout() {
   const [confirmLogout, setConfirmLogout] = useState(false)
   
   useEffect(() => {
-    if (!IS_DEMO) {
-      api.get("/api/settings").then(res => {
-        setAccountEmail(res.data.career_agent_account_email)
-      }).catch(() => {})
-    }
+    api.get("/api/settings").then(res => {
+      setAccountEmail(res.data.career_agent_account_email)
+    }).catch(() => {})
   }, [])
 
   const handleLogoutClick = () => {

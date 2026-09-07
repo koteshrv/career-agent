@@ -23,6 +23,8 @@
 
 </div>
 
+> **⚠️ Active Development:** CareerAgent is currently in rapid development (Beta). APIs, database schemas, and features may change frequently as we build towards `v1.0`. We highly recommend backing up your `jobs.db` file before pulling major updates.
+
 ---
 
 **CareerAgent** is a sophisticated, 100% free automation platform built for ambitious software engineers and IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, evaluates your precise fit using your choice of AI, and compiles professionally formatted LaTeX PDFs designed to bypass corporate Applicant Tracking Systems.
@@ -37,7 +39,7 @@ Unlike generic AI job wrappers that spam "Easy Apply" buttons, **CareerAgent foc
 
 ## ✨ Features
 
-- 🌐 **[NEW] Global Crowdsourced Network**: Opt-in to the community job pool to sync and share jobs with other users. Features a decentralized credit economy to prevent spam, automatic local deduplication, and community-driven reporting to instantly flag and remove dead or fake job links.
+- 🌐 **[New] Global Crowdsourced Network**: Opt-in to the community job pool to sync and share jobs with other users. Features a decentralized credit economy to prevent spam, automatic local deduplication, and community-driven reporting to instantly flag and remove dead or fake job links.
 - **Automated Job Discovery**: A powerful hybrid approach. Uses Playwright backend scrapers for standard ATS platforms, and a companion Chrome Extension to directly scrape heavily protected sites (LinkedIn, Indeed) completely bypassing IP bans.
 - **Kanban Pipeline**: Organize your job search visually. Drag and drop jobs across columns (New, Applied, Interviewing, Rejected) to track your pipeline at a glance.
 - **AI Match Scoring**: Instantly evaluates your exact profile against the raw job description, providing a definitive 0-100 match score.
