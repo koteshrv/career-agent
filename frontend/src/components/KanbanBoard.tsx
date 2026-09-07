@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatISTDate } from "@/lib/datetime"
 import { api } from "@/lib/api"
-import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X, Globe, UploadCloud, DownloadCloud } from "lucide-react"
+import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X, Globe, UploadCloud, DownloadCloud, Database, RefreshCw, Filter } from "lucide-react"
 import { JobModal } from "./JobModal"
 import { useToast } from "./Toast"
 import { ConfirmDialog } from "./ConfirmDialog"
@@ -58,8 +58,9 @@ export function KanbanBoard() {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState<number[]>([])
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false)
-  const [crowdsourcePushing, setCrowdsourcePushing] = useState(false)
-  const [crowdsourcePulling, setCrowdsourcePulling] = useState(false)
+  const [isSyncing, setIsSyncing] = useState(false)
+  const [stats, setStats] = useState<any>(null)
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     fetchJobs()
@@ -149,33 +150,34 @@ export function KanbanBoard() {
 
   // TEMP — manual triggers for the 10-minute crowdsourcing push/pull background schedule,
   // for testing without waiting on the interval. Remove once the sync is confirmed working.
-  const handleCrowdsourcePush = async () => {
-    setCrowdsourcePushing(true)
+  const fetchStats = async () => {
     try {
-      const { data } = await api.post("/api/crowdsource/push")
-      if (data.skipped) toast(data.reason, "error")
-      else if (!data.success) toast(data.reason || "Push failed", "error")
-      else toast(`Pushed ${data.jobs_sent ?? 0} jobs — earned ${data.credits_earned ?? 0} credits`, "success")
-    } catch (e) {
-      toast("Push failed", "error")
-    }
-    setCrowdsourcePushing(false)
+      const res = await api.get("/api/crowdsource/me")
+      if (res.data.success) setStats(res.data)
+    } catch (e) {}
   }
 
-  const handleCrowdsourcePull = async () => {
-    setCrowdsourcePulling(true)
+  useEffect(() => {
+    fetchStats()
+  }, [])
+
+  const handleSync = async () => {
+    setIsSyncing(true)
     try {
-      const { data } = await api.post("/api/crowdsource/pull")
-      if (data.skipped) toast(data.reason, "error")
-      else if (!data.success) toast(data.reason || "Pull failed", "error")
-      else {
-        toast(`Pulled ${data.jobs_received ?? 0} jobs (${data.jobs_added ?? 0} new)`, "success")
-        if (data.jobs_added > 0) fetchJobs()
-      }
+      const pushRes = await api.post("/api/crowdsource/push")
+      const pullRes = await api.post("/api/crowdsource/pull")
+      
+      let msg = "Sync Complete. "
+      if (pushRes.data.success) msg += `Pushed ${pushRes.data.jobs_sent ?? 0}. `
+      if (pullRes.data.success) msg += `Pulled ${pullRes.data.jobs_received ?? 0}.`
+      
+      toast(msg, "success")
+      fetchJobs()
+      fetchStats()
     } catch (e) {
-      toast("Pull failed", "error")
+      toast("Sync failed.", "error")
     }
-    setCrowdsourcePulling(false)
+    setIsSyncing(false)
   }
 
   const toggleCompany = (company: string) => {
@@ -367,23 +369,33 @@ export function KanbanBoard() {
           </button>
 
           {/* TEMP — manual crowdsourcing push/pull triggers for testing. See handleCrowdsourcePush/Pull. */}
+          {stats && (
+            <div className="flex items-center bg-black/40 border border-white/5 rounded-full px-4 py-2 text-xs font-semibold text-zinc-300 gap-3">
+              <span className="flex items-center gap-1.5" title="Community Credits">
+                <Database className="w-3.5 h-3.5 text-blue-400" /> {stats.current_credits}
+              </span>
+              <span className="w-px h-3 bg-white/10" />
+              <span className="flex items-center gap-1.5" title="Push Credits Remaining Today">
+                <UploadCloud className="w-3.5 h-3.5 text-emerald-400" /> {stats.daily_push_credits_remaining}
+              </span>
+              <span className="w-px h-3 bg-white/10" />
+              <span className="flex items-center gap-1.5" title="Free Quota Remaining Today">
+                <DownloadCloud className="w-3.5 h-3.5 text-purple-400" /> {stats.daily_quota_remaining}
+              </span>
+            </div>
+          )}
+          
           <button
-            onClick={handleCrowdsourcePush}
-            disabled={crowdsourcePushing}
-            title="Temporary test button — manually triggers the crowdsourcing push cycle"
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={handleSync}
+            disabled={isSyncing}
+            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <UploadCloud className="w-3.5 h-3.5" />
-            {crowdsourcePushing ? 'Pushing...' : 'Push (temp)'}
-          </button>
-          <button
-            onClick={handleCrowdsourcePull}
-            disabled={crowdsourcePulling}
-            title="Temporary test button — manually triggers the crowdsourcing pull cycle"
-            className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <DownloadCloud className="w-3.5 h-3.5" />
-            {crowdsourcePulling ? 'Pulling...' : 'Pull (temp)'}
+            {isSyncing ? (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <RefreshCw className="w-3.5 h-3.5" />
+            )}
+            {isSyncing ? 'Syncing...' : 'Sync Community Jobs'}
           </button>
         </div>
       </div>

@@ -29,6 +29,7 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
   const [resumes, setResumes] = useState<string[]>([])
   const [selectedResume, setSelectedResume] = useState<string>("")
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [reportModalOpen, setReportModalOpen] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
   
   const [logs, setLogs] = useState<string[]>([])
@@ -110,6 +111,25 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
     navigator.clipboard.writeText(tailoredResume)
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
+  }
+
+  const handleReportJob = async () => {
+    try {
+      const res = await api.post("/api/crowdsource/report", { job_id: job.external_id, reason: "dead_link" })
+      if (res.data.success) {
+        toast("Job reported successfully.", "success")
+        setReportModalOpen(false)
+        if (res.data.job_flagged) {
+            onDelete(job.id) // Automatically remove locally if it was flagged globally
+        }
+      } else {
+        toast(res.data.reason || res.data.message || "Failed to report.", "error")
+        setReportModalOpen(false)
+      }
+    } catch (e: any) {
+      toast("Error reporting job.", "error")
+      setReportModalOpen(false)
+    }
   }
 
   const handleCopyLetter = () => {
@@ -500,6 +520,16 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
         confirmLabel="Delete"
         onConfirm={() => { setConfirmDeleteOpen(false); onDelete(job.id) }}
         onCancel={() => setConfirmDeleteOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={reportModalOpen}
+        danger
+        title="Report this community job?"
+        message="If this job is fake, spam, or a dead link, you can report it to the crowdsourcing network. If enough users report it, it will be flagged and removed from the global pool."
+        confirmLabel="Report Job"
+        onConfirm={handleReportJob}
+        onCancel={() => setReportModalOpen(false)}
       />
     </div>
   )

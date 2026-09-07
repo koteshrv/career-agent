@@ -127,7 +127,9 @@ def pull_jobs(db: Session, limit: int = 20) -> dict:
     }
 
     for job in pulled:
-        record_job(db, job["company"], job["title"], job["url"], job.get("location") or "")
+        db_job = record_job(db, job["company"], job["title"], job["url"], job.get("location") or "")
+        if job.get("id"):
+            db_job.external_id = job["id"]
 
     db.commit()
     jobs_added = len(pulled_urls) - len(already_known)
@@ -137,3 +139,45 @@ def pull_jobs(db: Session, limit: int = 20) -> dict:
         "jobs_received": len(pulled), "jobs_added": jobs_added,
         **{k: v for k, v in data.items() if k != "jobs"},
     }
+
+def get_account_info(db: Session) -> dict:
+    token = _get_cloud_token(db)
+    if not token:
+        return _not_connected()
+
+    try:
+        resp = requests.get(
+            f"{CROWDSOURCE_API_URL}/api/me",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=REQUEST_TIMEOUT_SECONDS,
+        )
+    except Exception as e:
+        return {"success": False, "skipped": False, "reason": str(e)}
+
+    if resp.status_code != 200:
+        return _auth_error(resp)
+
+    data = resp.json()
+    return {"success": True, "skipped": False, **data}
+
+
+def report_job(db: Session, job_id: str, reason: str) -> dict:
+    token = _get_cloud_token(db)
+    if not token:
+        return _not_connected()
+
+    try:
+        resp = requests.post(
+            f"{CROWDSOURCE_API_URL}/api/jobs/report",
+            json={"job_id": job_id, "reason": reason},
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=REQUEST_TIMEOUT_SECONDS,
+        )
+    except Exception as e:
+        return {"success": False, "skipped": False, "reason": str(e)}
+
+    if resp.status_code != 200:
+        return _auth_error(resp)
+
+    data = resp.json()
+    return {"success": True, "skipped": False, **data}

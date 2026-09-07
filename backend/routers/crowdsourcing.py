@@ -49,3 +49,15 @@ def trigger_push(db: Session = Depends(get_db)):
 @router.post("/pull")
 def trigger_pull(db: Session = Depends(get_db)):
     return crowdsourcing.pull_jobs(db)
+
+@router.get("/me")
+def get_account_info(db: Session = Depends(get_db)):
+    return crowdsourcing.get_account_info(db)
+
+class ReportRequest(BaseModel):
+    job_id: str
+    reason: str
+
+@router.post("/report")
+def report_job(req: ReportRequest, db: Session = Depends(get_db)):
+    return crowdsourcing.report_job(db, req.job_id, req.reason)
