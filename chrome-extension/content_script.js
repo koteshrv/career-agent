@@ -82,42 +82,43 @@ function checkQueueState(url, btn) {
 }
 
 function injectLinkedInFeed() {
-  // Like the Job page, bypass brittle CSS classes/aria-labels and look for the visible "Comment" or "Send" buttons
-  const allButtons = document.querySelectorAll('button, a');
+  // Find all posts by looking for the Control Menu (...) which is always at the top right of every post
+  const controlMenus = document.querySelectorAll('button[aria-label^="Open control menu"], button[aria-label^="Control menu"]');
   
-  allButtons.forEach(nativeBtn => {
-    const text = nativeBtn.innerText ? nativeBtn.innerText.trim().toLowerCase() : '';
-    const aria = nativeBtn.getAttribute('aria-label') ? nativeBtn.getAttribute('aria-label').toLowerCase() : '';
+  controlMenus.forEach(menuBtn => {
+    // The container that holds the Follow button and the (...) menu
+    const topBarRight = menuBtn.parentElement;
     
-    if (text === 'comment' || text === 'send' || aria === 'comment' || aria === 'send' || aria.includes('comment on this post')) {
-      // Find the flex container holding the action buttons
-      let actionBar = nativeBtn.parentElement;
+    if (topBarRight && !topBarRight.querySelector('.ca-save-btn')) {
+      const post = menuBtn.closest('.feed-shared-update-v2, [data-urn^="urn:li:activity"]') || topBarRight.parentElement?.parentElement;
+      if (!post) return;
       
-      // If the immediate parent is just a single-item wrapper, go up one more level
-      if (actionBar && actionBar.children.length < 3 && actionBar.parentElement) {
-        actionBar = actionBar.parentElement;
-      }
+      const postUrl = getPostUrl(menuBtn);
       
-      // If it looks like an action bar and we haven't injected yet
-      if (actionBar && actionBar.children.length >= 3 && !actionBar.querySelector('.ca-save-btn')) {
-        const postUrl = getPostUrl(actionBar);
-        
-        const btn = createFeedNativeButton(() => {
-          const post = actionBar.closest('.feed-shared-update-v2, [data-urn^="urn:li:activity"]') || actionBar.parentElement?.parentElement;
-          return { 
-            url: postUrl, 
-            description: post ? post.innerText : '', 
-            page_title: document.title 
-          };
-        });
-        
-        checkQueueState(postUrl, btn);
-        
-        // Append our button to the end of the action bar row
-        actionBar.appendChild(btn);
-        
-        console.log("CareerAgent: Button injected on Feed Post");
-      }
+      const btn = createFeedNativeButton(() => {
+        return { 
+          url: postUrl, 
+          description: post.innerText, 
+          page_title: document.title 
+        };
+      });
+      
+      // Adjust the button to look better in the top bar
+      btn.style.height = '32px';
+      btn.style.minHeight = '32px';
+      btn.style.padding = '0 8px';
+      btn.style.marginRight = '8px'; // Add space before the (...) menu
+      
+      checkQueueState(postUrl, btn);
+      
+      // Insert BEFORE the (...) menu button
+      topBarRight.insertBefore(btn, menuBtn);
+      
+      // Ensure the top bar container handles the new button nicely
+      topBarRight.style.display = 'flex';
+      topBarRight.style.alignItems = 'center';
+      
+      console.log("CareerAgent: Button injected at the top of Feed Post");
     }
   });
 }
