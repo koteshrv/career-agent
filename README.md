@@ -76,49 +76,20 @@ graph TD
         LLM -->|Injects Keywords| Compiler
     end
 
-    %% Cross-subgraph edges must live outside every subgraph block — Mermaid assigns a
-    %% node's subgraph membership to wherever it's FIRST referenced (edge or declaration),
-    %% so an edge to API placed inside "Client Side" would silently render API inside the
-    %% wrong box even though it's declared under "Server Side".
+    subgraph "Community Network"
+        CF[Serverless Worker<br>Crowdsource API]:::backend
+        DB2[(Edge Database<br>Global Job Pool)]:::storage
+        CF <-->|Persists| DB2
+    end
+
+    %% Cross-subgraph edges must live outside every subgraph block
     UI <-->|REST API| API
     Ext -->|Syncs Scraped Jobs<br>Batch Processing| API
     API <-->|Extracts Competencies &<br>Scores Match| LLM
+    API <-->|Pushes Scraped Jobs &<br>Pulls Community Jobs| CF
 ```
 
-## 📸 Screenshots
 
-<table>
-  <tr>
-    <td width="50%">
-      <img src="frontend/public/screenshots/analytics.png" alt="Analytics dashboard" />
-      <p align="center"><em>Analytics — application funnel, pipeline breakdown, and weekly sourcing velocity at a glance.</em></p>
-    </td>
-    <td width="50%">
-      <img src="frontend/public/screenshots/generation.png" alt="AI application materials generation" />
-      <p align="center"><em>AI match scoring plus a generated cover letter, tailored to the job description.</em></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="frontend/public/screenshots/history.png" alt="Scraper run history" />
-      <p align="center"><em>Run History — every scraper run logged, with per-run job counts and failure details.</em></p>
-    </td>
-    <td width="50%">
-      <img src="frontend/public/screenshots/settings.png" alt="Settings page" />
-      <p align="center"><em>Settings — search keywords, target companies, resumes, and AI model configuration.</em></p>
-    </td>
-  </tr>
-  <tr>
-    <td width="50%">
-      <img src="frontend/public/screenshots/extension.png" alt="Chrome extension on LinkedIn" />
-      <p align="center"><em>Chrome Extension — injects a one-click Save button directly into LinkedIn's feed.</em></p>
-    </td>
-    <td width="50%">
-      <img src="frontend/public/screenshots/queue.png" alt="Chrome extension batch queue" />
-      <p align="center"><em>Batch up jobs from a search page in the extension queue, then process them all at once.</em></p>
-    </td>
-  </tr>
-</table>
 
 ---
 

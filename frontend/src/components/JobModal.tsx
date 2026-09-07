@@ -201,7 +201,7 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
         <div className="flex items-start justify-between p-6 border-b border-white/5">
           <div>
             <h2 className="text-xl font-bold text-white">{job.title}</h2>
-            <div className="flex items-center gap-4 mt-2 text-sm text-zinc-400">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-zinc-400">
               <span className="font-semibold text-blue-400">{job.company}</span>
               {job.location && (
                 <span className="flex items-center gap-1">
@@ -214,8 +214,8 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
                 </span>
               )}
               {job.external_id && (
-                <span className="flex items-center gap-1 text-zinc-300">
-                  <span className="font-semibold text-zinc-500">ID:</span> {job.external_id}
+                <span className="flex items-center gap-1 text-zinc-300 font-mono text-xs bg-white/5 px-1.5 py-0.5 rounded" title={`Community ID: ${job.external_id}`}>
+                  <span className="font-semibold text-zinc-500 font-sans text-sm">ID:</span> {job.external_id.split('-')[0]}
                 </span>
               )}
               {job.yoe && (
