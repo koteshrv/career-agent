@@ -22,6 +22,9 @@ function injectLinkedInJobPage() {
     // Target the primary action buttons
     if (text === 'apply' || text.includes('easy apply') || text === 'save' || text === 'saved') {
       
+      // Prevent injecting into side-rail job cards or discover cards
+      if (nativeBtn.closest('.job-card-container, .job-card-list, .discover-entity-type-card, .artdeco-list, .scaffold-layout__list')) return;
+      
       const nativeWrapper = nativeBtn.parentElement;
       const outerContainer = nativeWrapper?.parentElement;
       
@@ -35,7 +38,7 @@ function injectLinkedInJobPage() {
           caWrapper.className = nativeWrapper.className;
           caWrapper.style.display = 'inline-flex';
           
-          const btn = createSaveButton('Save to CareerAgent', getLinkedInJobData);
+          const btn = createSaveButton('Queue', getLinkedInJobData);
           caWrapper.appendChild(btn);
           
           checkQueueState(cleanUrl(window.location.href), btn);
@@ -50,6 +53,28 @@ function injectLinkedInJobPage() {
   });
 }
 
+
+function setButtonActiveState(btn, isActive, isEvaluated = false) {
+  const path = btn.querySelector('svg path');
+  if (path) {
+    if (isActive) {
+      // Filled Bookmark
+      path.setAttribute('d', 'M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z');
+    } else {
+      // Outline Bookmark
+      path.setAttribute('d', 'M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2zm-7-6.2l5 2.85V5H7v12.65z');
+    }
+  }
+  
+  if (isEvaluated) {
+    btn.style.color = '#057642'; // LinkedIn Success Green
+  } else if (isActive) {
+    btn.style.color = '#0a66c2'; // LinkedIn Active Blue (same as Like)
+  } else {
+    btn.style.color = '#666666'; // LinkedIn Muted Gray
+  }
+}
+
 function checkQueueState(url, btn) {
   chrome.storage.local.get(['jobQueue', 'processedJobs'], (result) => {
     const queue = result.jobQueue || [];
@@ -58,105 +83,149 @@ function checkQueueState(url, btn) {
     
     if (processed.includes(url)) {
       if (isNative) {
-        btn.style.color = '#22c55e'; // Vibrant Green
-        const textSpan = btn.querySelector('span > span');
+        setButtonActiveState(btn, true, true);
+        const textSpan = btn.querySelector('.ca-dynamic-text, span > span');
         if (textSpan) textSpan.innerText = 'Evaluated';
       } else {
         btn.innerText = 'Evaluated';
-        btn.style.backgroundColor = '#22c55e'; // Vibrant Green
+        btn.style.backgroundColor = '#057642'; // Green
       }
       btn.style.pointerEvents = 'none';
-      // Removed opacity: 0.8 so it stays vibrantly green
     } else if (queue.find(j => j.url === url)) {
       if (isNative) {
-        btn.style.color = '#ea580c'; // Orange
+        setButtonActiveState(btn, true, false);
         const textSpan = btn.querySelector('.ca-dynamic-text, .saveSpn, span > span');
         if (textSpan) textSpan.innerText = 'Queued';
       } else {
-        btn.innerText = 'Saved to Queue';
-        btn.style.backgroundColor = '#ea580c'; // Vibrant Orange indicating queued/pending
+        btn.innerText = 'Queued';
+        btn.style.backgroundColor = '#0a66c2'; // Blue
       }
-
+    } else {
+      if (isNative) {
+        setButtonActiveState(btn, false, false);
+      }
     }
   });
 }
 
 function injectLinkedInFeed() {
-  // Find all posts by looking for the Control Menu (...) which is always at the top right of every post
-  const controlMenus = document.querySelectorAll('button[aria-label^="Open control menu"], button[aria-label^="Control menu"]');
+  // Like the Job page, bypass brittle CSS classes/aria-labels and look for the visible "Comment" or "Send" buttons
+  const allButtons = document.querySelectorAll('button, a');
   
-  controlMenus.forEach(menuBtn => {
-    // The container that holds the Follow button and the (...) menu
-    const topBarRight = menuBtn.parentElement;
+  allButtons.forEach(nativeBtn => {
+    const text = nativeBtn.innerText ? nativeBtn.innerText.trim().toLowerCase() : '';
+    const aria = nativeBtn.getAttribute('aria-label') ? nativeBtn.getAttribute('aria-label').toLowerCase() : '';
     
-    if (topBarRight && !topBarRight.querySelector('.ca-save-btn')) {
-      const post = menuBtn.closest('.feed-shared-update-v2, [data-urn^="urn:li:activity"]') || topBarRight.parentElement?.parentElement;
-      if (!post) return;
+    if (text === 'comment' || text === 'send' || aria === 'comment' || aria === 'send' || aria.includes('comment on this post')) {
+      // Find the flex container holding the action buttons
+      let actionBar = nativeBtn.parentElement;
       
-      const postUrl = getPostUrl(menuBtn);
+      // If the immediate parent is just a single-item wrapper, go up one more level
+      if (actionBar && actionBar.children.length < 3 && actionBar.parentElement) {
+        actionBar = actionBar.parentElement;
+      }
       
-      const btn = createFeedNativeButton(() => {
-        return { 
-          url: postUrl, 
-          description: post.innerText, 
-          page_title: document.title 
-        };
-      });
-      
-      // Adjust the button to look better in the top bar
-      btn.style.height = '32px';
-      btn.style.minHeight = '32px';
-      btn.style.padding = '0 8px';
-      btn.style.marginRight = '8px'; // Add space before the (...) menu
-      
-      checkQueueState(postUrl, btn);
-      
-      // Insert BEFORE the (...) menu button
-      topBarRight.insertBefore(btn, menuBtn);
-      
-      // Ensure the top bar container handles the new button nicely
-      topBarRight.style.display = 'flex';
-      topBarRight.style.alignItems = 'center';
-      
-      console.log("CareerAgent: Button injected at the top of Feed Post");
+      // If it looks like an action bar and we haven't injected yet
+      if (actionBar && actionBar.children.length >= 3 && !actionBar.querySelector('.ca-save-btn')) {
+        const postUrl = getPostUrl(actionBar);
+        
+        const btn = createFeedNativeButton(() => {
+          let current = actionBar;
+          let attempts = 0;
+          let descriptionText = '';
+          
+          while (current && attempts < 15) {
+            // Find the container that holds the main post text (usually has 'update-components-text' or is just a huge block)
+            const textBlock = current.querySelector('.update-components-text, .feed-shared-update-v2__description-wrapper, [dir="ltr"]');
+            if (textBlock && textBlock.innerText.length > 20) {
+              descriptionText = textBlock.innerText;
+              break;
+            }
+            current = current.parentElement;
+            attempts++;
+          }
+          
+          // Fallback to grabbing whatever large text is near the action bar
+          if (!descriptionText) {
+             const wrapper = actionBar.parentElement?.parentElement?.parentElement;
+             descriptionText = wrapper ? wrapper.innerText : '';
+          }
+
+          return { 
+            url: postUrl, 
+            description: descriptionText.trim(), 
+            page_title: document.title 
+          };
+        }, nativeBtn);
+        
+        checkQueueState(postUrl, btn);
+        
+        // Append our button to the end of the action bar row
+        actionBar.appendChild(btn);
+        
+        console.log("CareerAgent: Button injected on Feed Post");
+      }
     }
   });
 }
 
-function createFeedNativeButton(dataGetter) {
-  const btn = document.createElement('button');
-  // Use exact LinkedIn classes so it perfectly inherits padding, fonts, sizes, and hover states
-  btn.className = 'artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary ember-view ca-save-btn ca-feed-native-btn';
-  
-  // Custom margin to separate slightly from 'Send'
-  btn.style.marginLeft = '4px';
-  btn.style.transition = 'color 0.2s';
-  btn.style.border = 'none';
-  btn.style.background = 'transparent';
-  btn.style.fontFamily = '"Outfit", "Google Sans", sans-serif';
-  
-  // Unsaved: Blue
-  btn.style.color = '#666666'; // LinkedIn's default muted icon color
-  
-  // Standard Bookmark / Save SVG
-  const bookmarkSvg = `<svg role="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-supported-dps="24x24" fill="currentColor">
-    <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+function createFeedNativeButton(dataGetter, templateNode = null) {
+  let btn;
+  const bookmarkSvg = `<svg class="ca-icon" role="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2zm-7-6.2l5 2.85V5H7v12.65z"></path>
   </svg>`;
 
-  btn.innerHTML = `
-    <span class="artdeco-button__text" style="display: flex; align-items: center; color: inherit;">
-      ${bookmarkSvg}
-      <span aria-hidden="true" class="artdeco-button__text" style="margin-left: 4px; font-weight: 600;">
-          CareerAgent
+  if (templateNode) {
+    // Exact structural clone
+    btn = document.createElement('button');
+    btn.className = templateNode.className + ' ca-save-btn ca-feed-native-btn';
+    btn.style.cssText = templateNode.style.cssText;
+    btn.innerHTML = templateNode.innerHTML;
+    
+    // Replace SVG
+    const svgEl = btn.querySelector('svg');
+    if (svgEl) {
+      const parent = svgEl.parentNode;
+      const parser = new DOMParser();
+      const newSvg = parser.parseFromString(bookmarkSvg, 'image/svg+xml').querySelector('svg');
+      // Copy vital classes from old SVG if needed
+      newSvg.className.baseVal = svgEl.className.baseVal;
+      parent.replaceChild(newSvg, svgEl);
+    }
+    
+    // Replace Text
+    const walker = document.createTreeWalker(btn, NodeFilter.SHOW_TEXT, null, false);
+    let textNode;
+    while(textNode = walker.nextNode()) {
+      if(textNode.nodeValue.trim().length > 0) {
+        textNode.nodeValue = 'Queue';
+        if (textNode.parentNode) {
+          textNode.parentNode.classList.add('ca-dynamic-text');
+        }
+        break;
+      }
+    }
+  } else {
+    // Fallback if no template provided
+    btn = document.createElement('button');
+    btn.className = 'ca-save-btn ca-feed-native-btn';
+    btn.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent; border: none; color: #666666; font-family: inherit; font-size: 14px; font-weight: 600; min-height: 48px; padding: 8px; cursor: pointer;';
+    btn.innerHTML = `
+      <span style="display: flex; flex-direction: column; align-items: center;">
+        ${bookmarkSvg}
+        <span class="ca-dynamic-text" style="margin-top: 2px;">Queue</span>
       </span>
-    </span>
-  `;
+    `;
+  }
+  
+  btn.style.transition = 'color 0.2s';
+
 
   btn.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     
-    const textSpan = btn.querySelector('span > span');
+    const textSpan = btn.querySelector('.ca-dynamic-text, span > span');
     let jobData = typeof dataGetter === 'function' ? dataGetter() : dataGetter;
     if (jobData && typeof jobData.then === 'function') {
       if (textSpan) textSpan.innerText = 'Queuing...';
@@ -175,15 +244,15 @@ function createFeedNativeButton(dataGetter) {
           id: Date.now().toString()
         });
         chrome.storage.local.set({ jobQueue: queue }, () => {
-          btn.style.color = '#ea580c';
+          setButtonActiveState(btn, true, false);
           if (textSpan) textSpan.innerText = 'Queued';
           showToast('✅ Saved to CareerAgent Queue!');
         });
       } else {
         queue.splice(existingIdx, 1);
         chrome.storage.local.set({ jobQueue: queue }, () => {
-          btn.style.color = '#666666'; // Muted native color
-          if (textSpan) textSpan.innerText = 'CareerAgent';
+          setButtonActiveState(btn, false, false);
+          if (textSpan) textSpan.innerText = 'Queue';
           showToast('🛑 Removed from Queue');
         });
       }
@@ -217,7 +286,7 @@ function injectNaukriJobPage() {
           // Find the Apply button to steal its native classes for perfect styling
           const applyBtn = Array.from(nativeWrapper.querySelectorAll('button, a')).find(b => b.innerText && b.innerText.toLowerCase().includes('apply')) || nativeBtn;
           
-          const btn = createSaveButton('Save to CareerAgent', () => {
+          const btn = createSaveButton('Queue', () => {
             return { 
               url: cleanUrl(window.location.href), 
               description: document.body.innerText, 
@@ -377,13 +446,13 @@ function cloneNaukriNativeButton(nativeSaveNode, dataGetter) {
   if (textNodeToReplace) {
      const span = document.createElement('span');
      span.className = 'ca-dynamic-text';
-     span.innerText = 'Agent Save';
+     span.innerText = 'Queue';
      textNodeToReplace.parentNode.replaceChild(span, textNodeToReplace);
   } else {
      // Fallback if no text node was found
      const span = document.createElement('span');
      span.className = 'ca-dynamic-text';
-     span.innerText = 'Agent Save';
+     span.innerText = 'Queue';
      btn.appendChild(span);
   }
   
@@ -419,7 +488,7 @@ function cloneNaukriNativeButton(nativeSaveNode, dataGetter) {
         queue.splice(existingIdx, 1);
         chrome.storage.local.set({ jobQueue: queue }, () => {
           btn.style.color = 'inherit';
-          if (textSpan) textSpan.innerText = 'Agent Save';
+          if (textSpan) textSpan.innerText = 'Queue';
           showToast('🛑 Removed from Queue');
         });
       }
@@ -476,7 +545,7 @@ function createSaveButton(text, dataGetter, unstyled = false) {
           id: Date.now().toString()
         });
         chrome.storage.local.set({ jobQueue: queue }, () => {
-          btn.innerText = 'Saved to Queue';
+          btn.innerText = 'Queued';
           btn.style.backgroundColor = '#ea580c'; // Vibrant Orange
           showToast('✅ Saved to CareerAgent Queue!');
         });
@@ -484,7 +553,7 @@ function createSaveButton(text, dataGetter, unstyled = false) {
         // REMOVE
         queue.splice(existingIdx, 1);
         chrome.storage.local.set({ jobQueue: queue }, () => {
-          btn.innerText = 'Save to CareerAgent';
+          btn.innerText = 'Queue';
           btn.style.backgroundColor = '#2563eb'; // Blue back to normal
           showToast('🛑 Removed from Queue');
         });
@@ -531,31 +600,45 @@ function cleanUrl(url) {
 }
 
 function getPostUrl(actionBar) {
-  // 1. Try to find the URN
-  const urnNode = actionBar.closest('[data-urn]');
-  if (urnNode) {
-    const urn = urnNode.getAttribute('data-urn');
-    return `https://www.linkedin.com/feed/update/${urn}/`;
+  let current = actionBar;
+  let attempts = 0;
+  
+  // Walk up the DOM tree up to 15 levels to find the main post container
+  while (current && attempts < 15) {
+    // Look for data-urn or data-id (LinkedIn often uses these for the main post wrapper)
+    const urn = current.getAttribute('data-urn') || current.getAttribute('data-id');
+    if (urn && urn.includes('activity')) {
+      return `https://www.linkedin.com/feed/update/${urn}/`;
+    }
+    
+    // Look for the timestamp link inside this container
+    // We only search within this container if it looks like a large wrapper
+    if (current.innerText && current.innerText.length > 50) {
+      const links = current.querySelectorAll('a[href*="urn:li:activity"], a[href*="/posts/"]');
+      if (links.length > 0) {
+        // Find the one that actually looks like a post link (usually contains the timestamp)
+        for (const link of links) {
+          if (link.href.includes('activity:') || link.href.includes('/posts/')) {
+            return link.href.split('?')[0];
+          }
+        }
+      }
+    }
+    
+    current = current.parentElement;
+    attempts++;
   }
   
-  // 2. Try to find a link to the post (usually the timestamp)
-  const post = actionBar.closest('.feed-shared-update-v2') || actionBar.parentElement?.parentElement;
-  if (post) {
-     const links = post.querySelectorAll('a[href*="/feed/update/"], a[href*="/posts/"]');
-     if (links.length > 0) {
-       return links[0].href.split('?')[0]; // clean tracking
-     }
-     
-     // 3. Hash the text as a fallback
-     const text = post.innerText;
-     if (text) {
-        let hash = 0;
-        for (let i = 0; i < text.length; i++) hash = Math.imul(31, hash) + text.charCodeAt(i) | 0;
-        return `https://www.linkedin.com/feed/post/${Math.abs(hash)}`;
-     }
+  // Fallback: Just grab the first activity link on the entire screen that comes BEFORE our button 
+  // (A bit hacky, but better than a random hash!)
+  const allLinks = Array.from(document.querySelectorAll('a[href*="urn:li:activity"]'));
+  if (allLinks.length > 0) {
+     // Find the closest one above us in the DOM
+     // For now, just return the most recent one we can guess
+     return allLinks[allLinks.length - 1].href.split('?')[0];
   }
-  
-  return `https://www.linkedin.com/feed/post/${Math.random().toString().substring(2)}`;
+
+  return `https://www.linkedin.com/feed/`; // Ultimate fallback to home feed so it's not a broken 404 page
 }
 
 
