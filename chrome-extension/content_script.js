@@ -130,31 +130,69 @@ function injectLinkedInFeed() {
         const postUrl = getPostUrl(actionBar);
         
         const btn = createFeedNativeButton(() => {
-          let current = actionBar;
-          let attempts = 0;
           let descriptionText = '';
+          const wrapper = actionBar.closest('.feed-shared-update-v2, [data-urn], [data-id], [componentkey*="update-card"]') || actionBar.parentElement?.parentElement?.parentElement;
           
-          while (current && attempts < 15) {
-            // Find the container that holds the main post text (usually has 'update-components-text' or is just a huge block)
-            const textBlock = current.querySelector('.update-components-text, .feed-shared-update-v2__description-wrapper, [dir="ltr"]');
-            if (textBlock && textBlock.innerText.length > 20) {
-              descriptionText = textBlock.innerText;
-              break;
-            }
-            current = current.parentElement;
-            attempts++;
+          if (wrapper) {
+             const textBlocks = wrapper.querySelectorAll('.update-components-text, .feed-shared-update-v2__description-wrapper, .feed-shared-update-v2__commentary, .update-components-update-v2__commentary, [dir="ltr"]');
+             for (let i = 0; i < textBlocks.length; i++) {
+                const txt = textBlocks[i].innerText.trim();
+                // Exclude video player text
+                if (txt.length > 10 && !txt.includes("Video Player is loading") && !txt.includes("Play Video")) {
+                   descriptionText = txt;
+                   break;
+                }
+             }
+             if (!descriptionText) {
+                // Remove video player texts from the wrapper text
+                descriptionText = wrapper.innerText.replace(/Video Player is loading.+/ig, '').trim();
+             }
           }
           
-          // Fallback to grabbing whatever large text is near the action bar
-          if (!descriptionText) {
-             const wrapper = actionBar.parentElement?.parentElement?.parentElement;
-             descriptionText = wrapper ? wrapper.innerText : '';
+          let title = "LinkedIn Post ******";
+          let actorName = "";
+          
+          if (wrapper) {
+            // Strategy 1: Look for explicit author classes
+            const actorNode = wrapper.querySelector('.update-components-actor__name, .feed-shared-actor__name');
+            if (actorNode && actorNode.innerText.trim()) {
+               actorName = actorNode.innerText.trim().split('\n')[0];
+            }
+            
+            // Strategy 2: Scan profile links, but skip the 'X likes this' header
+            if (!actorName) {
+               const profileLinks = Array.from(wrapper.querySelectorAll('a[href*="/in/"], a[href*="/company/"]'));
+               for (const link of profileLinks) {
+                  // Skip social proof headers at the top of the post
+                  if (link.closest('.update-components-header, .feed-shared-update-v2__header, .update-components-mini-update-v2')) {
+                     continue;
+                  }
+                  
+                  const img = link.querySelector('img[alt]');
+                  if (img && img.alt && img.alt !== 'Profile picture' && img.alt.length > 1) {
+                     actorName = img.alt;
+                     break;
+                  }
+                  
+                  if (link.innerText.trim()) {
+                     actorName = link.innerText.trim().split('\n')[0];
+                     break;
+                  }
+               }
+            }
+          }
+          
+          if (actorName) {
+             title = `LinkedIn Post - ${actorName}`;
+          } else if (descriptionText.length > 0) {
+             let snippet = descriptionText.split('\n')[0].substring(0, 30);
+             title = `LinkedIn Post - ${snippet}...`;
           }
 
           return { 
             url: postUrl, 
             description: descriptionText.trim(), 
-            page_title: document.title 
+            page_title: title 
           };
         }, nativeBtn);
         
@@ -599,49 +637,77 @@ function cleanUrl(url) {
   }
 }
 
-function getPostUrl(actionBar) {
-  let current = actionBar;
-  let attempts = 0;
-  
-  // Walk up the DOM tree up to 15 levels to find the main post container
-  while (current && attempts < 15) {
-    // Look for data-urn or data-id (LinkedIn often uses these for the main post wrapper)
-    const urn = current.getAttribute('data-urn') || current.getAttribute('data-id');
-    if (urn && urn.includes('activity')) {
-      return `https://www.linkedin.com/feed/update/${urn}/`;
+// Decode LinkedIn's base64-encoded protobuf activity ID from the comment tools div id.
+// e.g. "CgsIgMC5lPD5t5fQAQ" -> "15001173489011810304" (unsigned) -> "7500586744505905152" (ZigZag sint64)
+function decodeLinkedInUrn(base64str) {
+  try {
+    const normalized = base64str.replace(/-/g, '+').replace(/_/g, '/');
+    const padding = '='.repeat((4 - normalized.length % 4) % 4);
+    const binary = atob(normalized + padding);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    let pos = 0;
+    if (bytes[pos++] !== 0x0a) return null; // outer field tag
+    pos++;                                   // skip length byte
+    if (bytes[pos++] !== 0x08) return null; // inner varint field tag
+    let result = 0n;
+    let shift = 0n;
+    while (pos < bytes.length) {
+      const b = BigInt(bytes[pos++]);
+      result |= (b & 0x7fn) << shift;
+      if (!(b & 0x80n)) break;
+      shift += 7n;
     }
-    
-    // Look for the timestamp link inside this container
-    // We only search within this container if it looks like a large wrapper
-    if (current.innerText && current.innerText.length > 50) {
-      const links = current.querySelectorAll('a[href*="urn:li:activity"], a[href*="/posts/"]');
-      if (links.length > 0) {
-        // Find the one that actually looks like a post link (usually contains the timestamp)
-        for (const link of links) {
-          if (link.href.includes('activity:') || link.href.includes('/posts/')) {
-            return link.href.split('?')[0];
-          }
-        }
-      }
-    }
-    
-    current = current.parentElement;
-    attempts++;
-  }
-  
-  // Fallback: Just grab the first activity link on the entire screen that comes BEFORE our button 
-  // (A bit hacky, but better than a random hash!)
-  const allLinks = Array.from(document.querySelectorAll('a[href*="urn:li:activity"]'));
-  if (allLinks.length > 0) {
-     // Find the closest one above us in the DOM
-     // For now, just return the most recent one we can guess
-     return allLinks[allLinks.length - 1].href.split('?')[0];
-  }
-
-  return `https://www.linkedin.com/feed/`; // Ultimate fallback to home feed so it's not a broken 404 page
+    // LinkedIn uses sint64 (ZigZag encoded) for this ID
+    const decoded = (result >> 1n) ^ (-(result & 1n));
+    const id = decoded.toString();
+    return id.length > 5 ? id : null;
+  } catch(e) { return null; }
 }
 
+function getPostUrl(actionBar) {
+  const p = window.location.pathname;
+  if ((p.startsWith('/posts/') || p.startsWith('/feed/update/')) && !p.includes('/company/')) {
+    return cleanUrl(window.location.href);
+  }
 
+  let current = actionBar;
+  let wrapper = actionBar;
+  while (current && current.tagName !== 'BODY') {
+    if (current.hasAttribute('data-id') || 
+        current.hasAttribute('data-urn') || 
+        current.classList.contains('feed-shared-update-v2') || 
+        (current.getAttribute('componentkey') || '').includes('update-card')) {
+      wrapper = current;
+      break;
+    }
+    current = current.parentElement;
+  }
+  
+  if (!wrapper) {
+    wrapper = actionBar.closest('.feed-shared-update-v2') || actionBar.closest('div[role="listitem"]') || document;
+  }
+
+  const commentTools = wrapper.querySelector('[id*="-replaceableCommentTools"]');
+  if (commentTools) {
+    const encodedPart = commentTools.id.split('-replaceableCommentTools')[0];
+    const activityId = decodeLinkedInUrn(encodedPart);
+    if (activityId) {
+      return 'https://www.linkedin.com/feed/update/urn:li:activity:' + activityId + '/';
+    }
+  }
+
+  const urnAttr = wrapper.getAttribute('data-urn') || wrapper.getAttribute('data-id');
+  if (urnAttr && (urnAttr.includes('urn:li:activity:') || urnAttr.includes('urn:li:share:'))) {
+    const m = urnAttr.match(/urn:li:(?:activity|share):\d+/);
+    if (m) return 'https://www.linkedin.com/feed/update/' + m[0] + '/';
+  }
+
+  const txt = wrapper.innerText || '';
+  let hash = 0;
+  for (let i = 0; i < txt.length; i++) hash = Math.imul(31, hash) + txt.charCodeAt(i) | 0;
+  return window.location.origin + window.location.pathname + '#post-' + Math.abs(hash);
+}
 
 // Run periodically to catch dynamic DOM changes (infinite scrolling)
 setInterval(injectCareerAgentButton, 2000);
