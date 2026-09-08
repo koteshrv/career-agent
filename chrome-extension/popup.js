@@ -96,6 +96,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const span = document.createElement('span');
       span.innerText = job.page_title;
       span.title = job.page_title;
+      span.style.cursor = "pointer";
+      
+      // Make it clickable to open the job URL in a new tab
+      span.addEventListener('click', () => {
+        chrome.tabs.create({ url: job.url });
+      });
+      
+      // Add a subtle hover effect
+      span.addEventListener('mouseenter', () => span.style.textDecoration = 'underline');
+      span.addEventListener('mouseleave', () => span.style.textDecoration = 'none');
       
       const rmBtn = document.createElement('button');
       rmBtn.className = 'remove-btn';

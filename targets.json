@@ -151,14 +151,16 @@
     "url": "https://www.google.com/about/careers/applications/jobs/results/?q={keyword}&location=India",
     "no_results_text": "did not match any jobs",
     "extra_wait_ms": 5000,
-    "job_url_pattern": "/results/\\d+"
+    "job_url_pattern": "/results/\\d+",
+    "use_playwright": true
   },
   {
     "company": "Amazon",
     "type": "playwright",
     "url": "https://www.amazon.jobs/en/search?base_query={keyword}&loc_query=India",
     "no_results_text": "we didn't find any jobs",
-    "job_url_pattern": "/jobs/\\d+"
+    "job_url_pattern": "/jobs/\\d+",
+    "use_playwright": true
   },
   {
     "company": "Microsoft",
@@ -166,7 +168,8 @@
     "url": "https://apply.careers.microsoft.com/careers?query={keyword}&start=0&location=India&sort_by=relevance&filter_include_remote=1",
     "no_results_text": "no jobs found",
     "extra_wait_ms": 6000,
-    "job_url_pattern": "/job/\\d+"
+    "job_url_pattern": "/job/\\d+",
+    "use_playwright": true
   },
   {
     "company": "Apple",
@@ -174,19 +177,22 @@
     "url": "https://jobs.apple.com/en-in/search?search={keyword}&location=india-IND",
     "no_results_text": "0 results found",
     "extra_wait_ms": 5000,
-    "job_url_pattern": "/details/\\d+"
+    "job_url_pattern": "/details/\\d+",
+    "use_playwright": true
   },
   {
     "company": "Meta",
     "type": "playwright",
     "url": "https://www.metacareers.com/jobs/?q={keyword}&location=India",
     "no_results_text": "0 jobs",
-    "job_url_pattern": "/job_details/"
+    "job_url_pattern": "/job_details/",
+    "use_playwright": true
   },
   {
     "company": "Stripe",
     "type": "greenhouse",
-    "api_board_token": "stripe"
+    "api_board_token": "stripe",
+    "use_playwright": true
   },
   {
     "company": "Airbnb",
@@ -207,7 +213,8 @@
     "company": "Coinbase",
     "type": "playwright",
     "url": "https://www.coinbase.com/careers/positions?department=Engineering",
-    "no_results_text": "0 open roles"
+    "no_results_text": "0 open roles",
+    "use_playwright": true
   },
   {
     "company": "Figma",

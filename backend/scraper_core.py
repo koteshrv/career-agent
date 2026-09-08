@@ -8,6 +8,7 @@ scraper functions directly from `backend.scraper_core`.
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
+from .tasks import task_manager
 from typing import List
 from sqlalchemy.orm import Session
 
@@ -33,6 +34,8 @@ logger = logging.getLogger(__name__)
 
 
 def bulk_evaluate_jobs(db: Session, jobs: list):
+    if not jobs: return
+    task_id = task_manager.start_task("AI Evaluation", f"Evaluating {len(jobs)} jobs...")
     """
     Takes a list of job dicts, chunks them into batches of 10,
     fetches HTML, strips it, and sends to Gemini for match evaluation.
@@ -55,6 +58,7 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
     batch_size = 10
     for i in range(0, len(jobs), batch_size):
         batch = jobs[i:i+batch_size]
+        task_manager.update_task(task_id, progress=int((i/len(jobs))*100), description=f"Evaluating {i}/{len(jobs)} jobs...")
 
         # We need the real DB job IDs
         batch_urls = [j['url'] for j in batch]
@@ -155,9 +159,12 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
                 else:
                     db_job.description = next((p["description"] for p in ai_payload if p["id"] == job_id), None)
         db.commit()
+    task_manager.update_task(task_id, description=f"Evaluated {len(jobs)} jobs.", progress=100)
+    task_manager.complete_task(task_id, success=True)
 
 
 def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool = False):
+    task_id = task_manager.start_task("Scraper Run", f"Scraping targets...")
     logger.info("=" * 60)
     logger.info("Starting Backend Scraper Engine...")
     targets = load_targets()

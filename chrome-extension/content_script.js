@@ -22,6 +22,9 @@ function injectLinkedInJobPage() {
     // Target the primary action buttons
     if (text === 'apply' || text.includes('easy apply') || text === 'save' || text === 'saved') {
       
+      // Prevent injecting into side-rail job cards or discover cards
+      if (nativeBtn.closest('.job-card-container, .job-card-list, .discover-entity-type-card, .artdeco-list, .scaffold-layout__list')) return;
+      
       const nativeWrapper = nativeBtn.parentElement;
       const outerContainer = nativeWrapper?.parentElement;
       
@@ -35,7 +38,7 @@ function injectLinkedInJobPage() {
           caWrapper.className = nativeWrapper.className;
           caWrapper.style.display = 'inline-flex';
           
-          const btn = createSaveButton('Save to CareerAgent', getLinkedInJobData);
+          const btn = createSaveButton('Queue', getLinkedInJobData);
           caWrapper.appendChild(btn);
           
           checkQueueState(cleanUrl(window.location.href), btn);
@@ -50,6 +53,28 @@ function injectLinkedInJobPage() {
   });
 }
 
+
+function setButtonActiveState(btn, isActive, isEvaluated = false) {
+  const path = btn.querySelector('svg path');
+  if (path) {
+    if (isActive) {
+      // Filled Bookmark
+      path.setAttribute('d', 'M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z');
+    } else {
+      // Outline Bookmark
+      path.setAttribute('d', 'M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2zm-7-6.2l5 2.85V5H7v12.65z');
+    }
+  }
+  
+  if (isEvaluated) {
+    btn.style.color = '#057642'; // LinkedIn Success Green
+  } else if (isActive) {
+    btn.style.color = '#0a66c2'; // LinkedIn Active Blue (same as Like)
+  } else {
+    btn.style.color = '#666666'; // LinkedIn Muted Gray
+  }
+}
+
 function checkQueueState(url, btn) {
   chrome.storage.local.get(['jobQueue', 'processedJobs'], (result) => {
     const queue = result.jobQueue || [];
@@ -58,26 +83,27 @@ function checkQueueState(url, btn) {
     
     if (processed.includes(url)) {
       if (isNative) {
-        btn.style.color = '#22c55e'; // Vibrant Green
-        const textSpan = btn.querySelector('span > span');
+        setButtonActiveState(btn, true, true);
+        const textSpan = btn.querySelector('.ca-dynamic-text, span > span');
         if (textSpan) textSpan.innerText = 'Evaluated';
       } else {
         btn.innerText = 'Evaluated';
-        btn.style.backgroundColor = '#22c55e'; // Vibrant Green
+        btn.style.backgroundColor = '#057642'; // Green
       }
       btn.style.pointerEvents = 'none';
-      // Removed opacity: 0.8 so it stays vibrantly green
     } else if (queue.find(j => j.url === url)) {
       if (isNative) {
-        btn.style.color = '#ea580c'; // Orange
+        setButtonActiveState(btn, true, false);
         const textSpan = btn.querySelector('.ca-dynamic-text, .saveSpn, span > span');
         if (textSpan) textSpan.innerText = 'Queued';
       } else {
-        btn.innerText = 'Saved to Queue';
-        btn.style.backgroundColor = '#ea580c'; // Vibrant Orange indicating queued/pending
+        btn.innerText = 'Queued';
+        btn.style.backgroundColor = '#0a66c2'; // Blue
       }
-      btn.style.pointerEvents = 'none';
-      btn.style.opacity = '0.8';
+    } else {
+      if (isNative) {
+        setButtonActiveState(btn, false, false);
+      }
     }
   });
 }
@@ -104,13 +130,71 @@ function injectLinkedInFeed() {
         const postUrl = getPostUrl(actionBar);
         
         const btn = createFeedNativeButton(() => {
-          const post = actionBar.closest('.feed-shared-update-v2, [data-urn^="urn:li:activity"]') || actionBar.parentElement?.parentElement;
+          let descriptionText = '';
+          const wrapper = actionBar.closest('.feed-shared-update-v2, [data-urn], [data-id], [componentkey*="update-card"]') || actionBar.parentElement?.parentElement?.parentElement;
+          
+          if (wrapper) {
+             const textBlocks = wrapper.querySelectorAll('.update-components-text, .feed-shared-update-v2__description-wrapper, .feed-shared-update-v2__commentary, .update-components-update-v2__commentary, [dir="ltr"]');
+             for (let i = 0; i < textBlocks.length; i++) {
+                const txt = textBlocks[i].innerText.trim();
+                // Exclude video player text
+                if (txt.length > 10 && !txt.includes("Video Player is loading") && !txt.includes("Play Video")) {
+                   descriptionText = txt;
+                   break;
+                }
+             }
+             if (!descriptionText) {
+                // Remove video player texts from the wrapper text
+                descriptionText = wrapper.innerText.replace(/Video Player is loading.+/ig, '').trim();
+             }
+          }
+          
+          let title = "LinkedIn Post ******";
+          let actorName = "";
+          
+          if (wrapper) {
+            // Strategy 1: Look for explicit author classes
+            const actorNode = wrapper.querySelector('.update-components-actor__name, .feed-shared-actor__name');
+            if (actorNode && actorNode.innerText.trim()) {
+               actorName = actorNode.innerText.trim().split('\n')[0];
+            }
+            
+            // Strategy 2: Scan profile links, but skip the 'X likes this' header
+            if (!actorName) {
+               const profileLinks = Array.from(wrapper.querySelectorAll('a[href*="/in/"], a[href*="/company/"]'));
+               for (const link of profileLinks) {
+                  // Skip social proof headers at the top of the post
+                  if (link.closest('.update-components-header, .feed-shared-update-v2__header, .update-components-mini-update-v2')) {
+                     continue;
+                  }
+                  
+                  const img = link.querySelector('img[alt]');
+                  if (img && img.alt && img.alt !== 'Profile picture' && img.alt.length > 1) {
+                     actorName = img.alt;
+                     break;
+                  }
+                  
+                  if (link.innerText.trim()) {
+                     actorName = link.innerText.trim().split('\n')[0];
+                     break;
+                  }
+               }
+            }
+          }
+          
+          if (actorName) {
+             title = `LinkedIn Post - ${actorName}`;
+          } else if (descriptionText.length > 0) {
+             let snippet = descriptionText.split('\n')[0].substring(0, 30);
+             title = `LinkedIn Post - ${snippet}...`;
+          }
+
           return { 
             url: postUrl, 
-            description: post ? post.innerText : '', 
-            page_title: document.title 
+            description: descriptionText.trim(), 
+            page_title: title 
           };
-        });
+        }, nativeBtn);
         
         checkQueueState(postUrl, btn);
         
@@ -123,61 +207,92 @@ function injectLinkedInFeed() {
   });
 }
 
-function createFeedNativeButton(dataGetter) {
-  const btn = document.createElement('button');
-  // Use exact LinkedIn classes so it perfectly inherits padding, fonts, sizes, and hover states
-  btn.className = 'artdeco-button artdeco-button--muted artdeco-button--4 artdeco-button--tertiary ember-view ca-save-btn ca-feed-native-btn';
-  
-  // Custom margin to separate slightly from 'Send'
-  btn.style.marginLeft = '4px';
-  btn.style.transition = 'color 0.2s';
-  btn.style.border = 'none';
-  btn.style.background = 'transparent';
-  btn.style.fontFamily = '"Outfit", "Google Sans", sans-serif';
-  
-  // Unsaved: Blue
-  btn.style.color = '#0a66c2';
-  
-  // Standard Bookmark / Save SVG
-  const bookmarkSvg = `<svg role="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" data-supported-dps="24x24" fill="currentColor">
-    <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
+function createFeedNativeButton(dataGetter, templateNode = null) {
+  let btn;
+  const bookmarkSvg = `<svg class="ca-icon" role="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2zm-7-6.2l5 2.85V5H7v12.65z"></path>
   </svg>`;
 
-  btn.innerHTML = `
-    <span class="artdeco-button__text" style="display: flex; align-items: center; color: inherit;">
-      ${bookmarkSvg}
-      <span aria-hidden="true" class="artdeco-button__text" style="margin-left: 4px; font-weight: 600;">
-          Save
+  if (templateNode) {
+    // Exact structural clone
+    btn = document.createElement('button');
+    btn.className = templateNode.className + ' ca-save-btn ca-feed-native-btn';
+    btn.style.cssText = templateNode.style.cssText;
+    btn.innerHTML = templateNode.innerHTML;
+    
+    // Replace SVG
+    const svgEl = btn.querySelector('svg');
+    if (svgEl) {
+      const parent = svgEl.parentNode;
+      const parser = new DOMParser();
+      const newSvg = parser.parseFromString(bookmarkSvg, 'image/svg+xml').querySelector('svg');
+      // Copy vital classes from old SVG if needed
+      newSvg.className.baseVal = svgEl.className.baseVal;
+      parent.replaceChild(newSvg, svgEl);
+    }
+    
+    // Replace Text
+    const walker = document.createTreeWalker(btn, NodeFilter.SHOW_TEXT, null, false);
+    let textNode;
+    while(textNode = walker.nextNode()) {
+      if(textNode.nodeValue.trim().length > 0) {
+        textNode.nodeValue = 'Queue';
+        if (textNode.parentNode) {
+          textNode.parentNode.classList.add('ca-dynamic-text');
+        }
+        break;
+      }
+    }
+  } else {
+    // Fallback if no template provided
+    btn = document.createElement('button');
+    btn.className = 'ca-save-btn ca-feed-native-btn';
+    btn.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; background: transparent; border: none; color: #666666; font-family: inherit; font-size: 14px; font-weight: 600; min-height: 48px; padding: 8px; cursor: pointer;';
+    btn.innerHTML = `
+      <span style="display: flex; flex-direction: column; align-items: center;">
+        ${bookmarkSvg}
+        <span class="ca-dynamic-text" style="margin-top: 2px;">Queue</span>
       </span>
-    </span>
-  `;
+    `;
+  }
+  
+  btn.style.transition = 'color 0.2s';
 
-  btn.addEventListener('click', (e) => {
+
+  btn.addEventListener('click', async (e) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Queuing state (Orange)
-    btn.style.color = '#ea580c';
-    btn.style.pointerEvents = 'none';
-    btn.style.opacity = '0.8';
-    
-    const textSpan = btn.querySelector('span > span');
-    if (textSpan) textSpan.innerText = 'Queued';
-    
-    showToast('✅ Saved to CareerAgent Queue!');
-    
-    const jobData = typeof dataGetter === 'function' ? dataGetter() : dataGetter;
+    const textSpan = btn.querySelector('.ca-dynamic-text, span > span');
+    let jobData = typeof dataGetter === 'function' ? dataGetter() : dataGetter;
+    if (jobData && typeof jobData.then === 'function') {
+      if (textSpan) textSpan.innerText = 'Queuing...';
+      jobData = await jobData;
+    }
     
     chrome.storage.local.get(['jobQueue'], (result) => {
-      const queue = result.jobQueue || [];
-      if (!queue.find(j => j.url === jobData.url)) {
+      let queue = result.jobQueue || [];
+      const existingIdx = queue.findIndex(j => j.url === jobData.url);
+      
+      if (existingIdx === -1) {
         queue.push({
           url: jobData.url,
           page_title: jobData.page_title,
           description: jobData.description,
           id: Date.now().toString()
         });
-        chrome.storage.local.set({ jobQueue: queue });
+        chrome.storage.local.set({ jobQueue: queue }, () => {
+          setButtonActiveState(btn, true, false);
+          if (textSpan) textSpan.innerText = 'Queued';
+          showToast('✅ Saved to CareerAgent Queue!');
+        });
+      } else {
+        queue.splice(existingIdx, 1);
+        chrome.storage.local.set({ jobQueue: queue }, () => {
+          setButtonActiveState(btn, false, false);
+          if (textSpan) textSpan.innerText = 'Queue';
+          showToast('🛑 Removed from Queue');
+        });
       }
     });
   });
@@ -209,7 +324,7 @@ function injectNaukriJobPage() {
           // Find the Apply button to steal its native classes for perfect styling
           const applyBtn = Array.from(nativeWrapper.querySelectorAll('button, a')).find(b => b.innerText && b.innerText.toLowerCase().includes('apply')) || nativeBtn;
           
-          const btn = createSaveButton('Save to CareerAgent', () => {
+          const btn = createSaveButton('Queue', () => {
             return { 
               url: cleanUrl(window.location.href), 
               description: document.body.innerText, 
@@ -369,13 +484,13 @@ function cloneNaukriNativeButton(nativeSaveNode, dataGetter) {
   if (textNodeToReplace) {
      const span = document.createElement('span');
      span.className = 'ca-dynamic-text';
-     span.innerText = 'Agent Save';
+     span.innerText = 'Queue';
      textNodeToReplace.parentNode.replaceChild(span, textNodeToReplace);
   } else {
      // Fallback if no text node was found
      const span = document.createElement('span');
      span.className = 'ca-dynamic-text';
-     span.innerText = 'Agent Save';
+     span.innerText = 'Queue';
      btn.appendChild(span);
   }
   
@@ -383,20 +498,19 @@ function cloneNaukriNativeButton(nativeSaveNode, dataGetter) {
     e.preventDefault();
     e.stopPropagation();
     
-    btn.style.pointerEvents = 'none';
     const textSpan = btn.querySelector('.ca-dynamic-text, .saveSpn, span > span');
-    if (textSpan) textSpan.innerText = 'Queuing...';
     
     let jobData = typeof dataGetter === 'function' ? dataGetter() : dataGetter;
     if (jobData && typeof jobData.then === 'function') {
+      if (textSpan) textSpan.innerText = 'Queuing...';
       jobData = await jobData;
     }
     
-    showToast('✅ Saved to CareerAgent Queue!');
-    
     chrome.storage.local.get(['jobQueue'], (result) => {
-      const queue = result.jobQueue || [];
-      if (!queue.find(j => j.url === jobData.url)) {
+      let queue = result.jobQueue || [];
+      const existingIdx = queue.findIndex(j => j.url === jobData.url);
+      
+      if (existingIdx === -1) {
         queue.push({
           url: jobData.url,
           page_title: jobData.page_title,
@@ -406,10 +520,15 @@ function cloneNaukriNativeButton(nativeSaveNode, dataGetter) {
         chrome.storage.local.set({ jobQueue: queue }, () => {
           btn.style.color = '#ea580c';
           if (textSpan) textSpan.innerText = 'Queued';
+          showToast('✅ Saved to CareerAgent Queue!');
         });
       } else {
-        btn.style.color = '#ea580c';
-        if (textSpan) textSpan.innerText = 'Queued';
+        queue.splice(existingIdx, 1);
+        chrome.storage.local.set({ jobQueue: queue }, () => {
+          btn.style.color = 'inherit';
+          if (textSpan) textSpan.innerText = 'Queue';
+          showToast('🛑 Removed from Queue');
+        });
       }
     });
   });
@@ -445,22 +564,18 @@ function createSaveButton(text, dataGetter, unstyled = false) {
     e.preventDefault();
     e.stopPropagation();
     
-    btn.innerText = 'Queuing...';
-    btn.style.pointerEvents = 'none';
-    btn.style.opacity = '0.8';
-    
-    showToast('✅ Saved to CareerAgent Queue!');
-    
     let jobData = typeof dataGetter === 'function' ? dataGetter() : dataGetter;
-    
-    // If it's a promise (e.g. from a background fetch), wait for it
     if (jobData && typeof jobData.then === 'function') {
+      btn.innerText = 'Queuing...';
       jobData = await jobData;
     }
     
     chrome.storage.local.get(['jobQueue'], (result) => {
-      const queue = result.jobQueue || [];
-      if (!queue.find(j => j.url === jobData.url)) {
+      let queue = result.jobQueue || [];
+      const existingIdx = queue.findIndex(j => j.url === jobData.url);
+      
+      if (existingIdx === -1) {
+        // ADD
         queue.push({
           url: jobData.url,
           page_title: jobData.page_title,
@@ -468,12 +583,18 @@ function createSaveButton(text, dataGetter, unstyled = false) {
           id: Date.now().toString()
         });
         chrome.storage.local.set({ jobQueue: queue }, () => {
-          btn.innerText = 'Saved to Queue';
+          btn.innerText = 'Queued';
           btn.style.backgroundColor = '#ea580c'; // Vibrant Orange
+          showToast('✅ Saved to CareerAgent Queue!');
         });
       } else {
-        btn.innerText = 'Saved to Queue';
-        btn.style.backgroundColor = '#ea580c'; // Vibrant Orange
+        // REMOVE
+        queue.splice(existingIdx, 1);
+        chrome.storage.local.set({ jobQueue: queue }, () => {
+          btn.innerText = 'Queue';
+          btn.style.backgroundColor = '#2563eb'; // Blue back to normal
+          showToast('🛑 Removed from Queue');
+        });
       }
     });
   });
@@ -516,35 +637,77 @@ function cleanUrl(url) {
   }
 }
 
-function getPostUrl(actionBar) {
-  // 1. Try to find the URN
-  const urnNode = actionBar.closest('[data-urn]');
-  if (urnNode) {
-    const urn = urnNode.getAttribute('data-urn');
-    return `https://www.linkedin.com/feed/update/${urn}/`;
-  }
-  
-  // 2. Try to find a link to the post (usually the timestamp)
-  const post = actionBar.closest('.feed-shared-update-v2') || actionBar.parentElement?.parentElement;
-  if (post) {
-     const links = post.querySelectorAll('a[href*="/feed/update/"], a[href*="/posts/"]');
-     if (links.length > 0) {
-       return links[0].href.split('?')[0]; // clean tracking
-     }
-     
-     // 3. Hash the text as a fallback
-     const text = post.innerText;
-     if (text) {
-        let hash = 0;
-        for (let i = 0; i < text.length; i++) hash = Math.imul(31, hash) + text.charCodeAt(i) | 0;
-        return `https://www.linkedin.com/feed/post/${Math.abs(hash)}`;
-     }
-  }
-  
-  return `https://www.linkedin.com/feed/post/${Math.random().toString().substring(2)}`;
+// Decode LinkedIn's base64-encoded protobuf activity ID from the comment tools div id.
+// e.g. "CgsIgMC5lPD5t5fQAQ" -> "15001173489011810304" (unsigned) -> "7500586744505905152" (ZigZag sint64)
+function decodeLinkedInUrn(base64str) {
+  try {
+    const normalized = base64str.replace(/-/g, '+').replace(/_/g, '/');
+    const padding = '='.repeat((4 - normalized.length % 4) % 4);
+    const binary = atob(normalized + padding);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    let pos = 0;
+    if (bytes[pos++] !== 0x0a) return null; // outer field tag
+    pos++;                                   // skip length byte
+    if (bytes[pos++] !== 0x08) return null; // inner varint field tag
+    let result = 0n;
+    let shift = 0n;
+    while (pos < bytes.length) {
+      const b = BigInt(bytes[pos++]);
+      result |= (b & 0x7fn) << shift;
+      if (!(b & 0x80n)) break;
+      shift += 7n;
+    }
+    // LinkedIn uses sint64 (ZigZag encoded) for this ID
+    const decoded = (result >> 1n) ^ (-(result & 1n));
+    const id = decoded.toString();
+    return id.length > 5 ? id : null;
+  } catch(e) { return null; }
 }
 
+function getPostUrl(actionBar) {
+  const p = window.location.pathname;
+  if ((p.startsWith('/posts/') || p.startsWith('/feed/update/')) && !p.includes('/company/')) {
+    return cleanUrl(window.location.href);
+  }
 
+  let current = actionBar;
+  let wrapper = actionBar;
+  while (current && current.tagName !== 'BODY') {
+    if (current.hasAttribute('data-id') || 
+        current.hasAttribute('data-urn') || 
+        current.classList.contains('feed-shared-update-v2') || 
+        (current.getAttribute('componentkey') || '').includes('update-card')) {
+      wrapper = current;
+      break;
+    }
+    current = current.parentElement;
+  }
+  
+  if (!wrapper) {
+    wrapper = actionBar.closest('.feed-shared-update-v2') || actionBar.closest('div[role="listitem"]') || document;
+  }
+
+  const commentTools = wrapper.querySelector('[id*="-replaceableCommentTools"]');
+  if (commentTools) {
+    const encodedPart = commentTools.id.split('-replaceableCommentTools')[0];
+    const activityId = decodeLinkedInUrn(encodedPart);
+    if (activityId) {
+      return 'https://www.linkedin.com/feed/update/urn:li:activity:' + activityId + '/';
+    }
+  }
+
+  const urnAttr = wrapper.getAttribute('data-urn') || wrapper.getAttribute('data-id');
+  if (urnAttr && (urnAttr.includes('urn:li:activity:') || urnAttr.includes('urn:li:share:'))) {
+    const m = urnAttr.match(/urn:li:(?:activity|share):\d+/);
+    if (m) return 'https://www.linkedin.com/feed/update/' + m[0] + '/';
+  }
+
+  const txt = wrapper.innerText || '';
+  let hash = 0;
+  for (let i = 0; i < txt.length; i++) hash = Math.imul(31, hash) + txt.charCodeAt(i) | 0;
+  return window.location.origin + window.location.pathname + '#post-' + Math.abs(hash);
+}
 
 // Run periodically to catch dynamic DOM changes (infinite scrolling)
 setInterval(injectCareerAgentButton, 2000);

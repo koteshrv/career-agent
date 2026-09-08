@@ -22,6 +22,8 @@ from sqlalchemy.orm import Session
 
 from . import crud, models
 from .sources.common import record_job
+from .scraper_core import bulk_evaluate_jobs
+from .tasks import task_manager
 
 logger = logging.getLogger(__name__)
 
@@ -55,14 +57,18 @@ def _auth_error(resp: requests.Response) -> dict:
 
 
 def push_jobs(db: Session) -> dict:
-    """Push jobs never previously pushed. Marks them as pushed only on a confirmed 200 —
-    a network failure or non-200 response leaves them eligible for the next cycle."""
+    """Push jobs never previously pushed."""
+    """Push jobs never previously pushed."""
+    task_id = task_manager.start_task("Crowdsource Push", "Uploading local jobs...")
     token = _get_cloud_token(db)
     if not token:
+        task_manager.complete_task(task_id, success=False, error="Not connected")
         return _not_connected()
 
     unpushed = crud.get_unpushed_jobs(db, limit=PUSH_BATCH_LIMIT)
     if not unpushed:
+        task_manager.update_task(task_id, description="Nothing new to push.")
+        task_manager.complete_task(task_id, success=True)
         return {"success": True, "skipped": False, "jobs_sent": 0, "message": "Nothing new to push."}
 
     payload = {
@@ -81,23 +87,29 @@ def push_jobs(db: Session) -> dict:
         )
     except Exception as e:
         logger.warning(f"[Crowdsource] Push request failed: {e}")
+        task_manager.complete_task(task_id, success=False, error=str(e))
         return {"success": False, "skipped": False, "reason": str(e)}
 
     if resp.status_code != 200:
         logger.warning(f"[Crowdsource] Push rejected ({resp.status_code}): {resp.text[:200]}")
+        task_manager.complete_task(task_id, success=False, error="Auth Error")
         return _auth_error(resp)
 
     data = resp.json()
     crud.mark_jobs_crowdsource_pushed(db, [j.id for j in unpushed])
     logger.info(f"[Crowdsource] Pushed {len(unpushed)} jobs — {data.get('credits_earned', 0)} credits earned.")
+    task_manager.update_task(task_id, description=f"Pushed {len(unpushed)} jobs, earned {data.get('credits_earned', 0)} credits.")
+    task_manager.complete_task(task_id, success=True)
     return {"success": True, "skipped": False, "jobs_sent": len(unpushed), **data}
 
 
 def pull_jobs(db: Session, limit: int = 100) -> dict:
-    """Pull jobs from the shared pool and insert them locally via the same dedup-by-URL
-    path (sources.common.record_job) the scrapers and Chrome extension use."""
+    """Pull jobs from the shared pool"""
+    """Pull jobs from the shared pool."""
+    task_id = task_manager.start_task("Crowdsource Pull", "Pulling shared jobs...")
     token = _get_cloud_token(db)
     if not token:
+        task_manager.complete_task(task_id, success=False, error="Not connected")
         return _not_connected()
 
     try:
@@ -109,10 +121,12 @@ def pull_jobs(db: Session, limit: int = 100) -> dict:
         )
     except Exception as e:
         logger.warning(f"[Crowdsource] Pull request failed: {e}")
+        task_manager.complete_task(task_id, success=False, error=str(e))
         return {"success": False, "skipped": False, "reason": str(e)}
 
     if resp.status_code != 200:
         logger.warning(f"[Crowdsource] Pull rejected ({resp.status_code}): {resp.text[:200]}")
+        task_manager.complete_task(task_id, success=False, error="Auth Error")
         return _auth_error(resp)
 
     data = resp.json()
@@ -126,14 +140,23 @@ def pull_jobs(db: Session, limit: int = 100) -> dict:
         row[0] for row in db.query(models.Job.url).filter(models.Job.url.in_(pulled_urls)).all()
     }
 
+    newly_added_jobs = []
     for job in pulled:
         db_job = record_job(db, job["company"], job["title"], job["url"], job.get("location") or "")
         if job.get("id"):
             db_job.external_id = job["id"]
+        if job["url"] not in already_known:
+            newly_added_jobs.append(job)
 
     db.commit()
-    jobs_added = len(pulled_urls) - len(already_known)
+    jobs_added = len(newly_added_jobs)
     logger.info(f"[Crowdsource] Pulled {len(pulled)} jobs from the shared pool ({jobs_added} new).")
+
+    if newly_added_jobs:
+        logger.info(f"[Crowdsource] Passing {jobs_added} new jobs to AI for evaluation...")
+        bulk_evaluate_jobs(db, newly_added_jobs)
+    task_manager.update_task(task_id, description=f"Pulled {jobs_added} new jobs ({len(pulled)} checked).")
+    task_manager.complete_task(task_id, success=True)
     return {
         "success": True, "skipped": False,
         "jobs_received": len(pulled), "jobs_added": jobs_added,
@@ -143,6 +166,7 @@ def pull_jobs(db: Session, limit: int = 100) -> dict:
 def get_account_info(db: Session) -> dict:
     token = _get_cloud_token(db)
     if not token:
+        task_manager.complete_task(task_id, success=False, error="Not connected")
         return _not_connected()
 
     try:
@@ -152,9 +176,11 @@ def get_account_info(db: Session) -> dict:
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
     except Exception as e:
+        task_manager.complete_task(task_id, success=False, error=str(e))
         return {"success": False, "skipped": False, "reason": str(e)}
 
     if resp.status_code != 200:
+        task_manager.complete_task(task_id, success=False, error="Auth Error")
         return _auth_error(resp)
 
     data = resp.json()
@@ -164,6 +190,7 @@ def get_account_info(db: Session) -> dict:
 def report_job(db: Session, job_id: str, reason: str) -> dict:
     token = _get_cloud_token(db)
     if not token:
+        task_manager.complete_task(task_id, success=False, error="Not connected")
         return _not_connected()
 
     try:
@@ -174,9 +201,11 @@ def report_job(db: Session, job_id: str, reason: str) -> dict:
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
     except Exception as e:
+        task_manager.complete_task(task_id, success=False, error=str(e))
         return {"success": False, "skipped": False, "reason": str(e)}
 
     if resp.status_code != 200:
+        task_manager.complete_task(task_id, success=False, error="Auth Error")
         return _auth_error(resp)
 
     data = resp.json()

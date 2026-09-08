@@ -19,6 +19,7 @@ router = APIRouter(tags=["Generation"])
 
 @router.post("/api/jobs/{job_id}/application-materials")
 def generate_application_materials_for_job(job_id: int, req: schemas.GenerationRequest, db: Session = Depends(get_db)):
+    task_id = task_manager.start_task("Application Generation", f"Generating materials for job {job_id}...")
     db_job = crud.get_job(db, job_id)
     if not db_job:
         raise HTTPException(status_code=404, detail="Job not found")
