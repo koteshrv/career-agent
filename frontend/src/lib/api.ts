@@ -125,15 +125,20 @@ export async function generateMaterialsStream(
   if (!res.ok) {
     let errText = "Unknown error"
     try {
-      const errJson = await res.json()
-      errText = errJson.detail || JSON.stringify(errJson)
+      const rawText = await res.text()
+      try {
+        const errJson = JSON.parse(rawText)
+        errText = errJson.detail || JSON.stringify(errJson)
+      } catch (parseError) {
+        errText = rawText
+      }
     } catch (e) {
-      errText = await res.text()
+      errText = res.statusText
     }
     throw new Error(errText || res.statusText)
   }
 
-  const reader = res.body?.getReader()
+    const reader = res.body?.getReader()
   if (!reader) throw new Error("No reader available")
 
   const decoder = new TextDecoder()
