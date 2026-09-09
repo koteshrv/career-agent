@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from .. import crud, schemas, ai_agent
 from ..database import get_db
+from ..tasks import task_manager
 
 logger = logging.getLogger(__name__)
 
@@ -75,27 +76,43 @@ def _compile_latex_to_pdf(latex_content: str, download_name: str) -> FileRespons
 
     clean_tex = ai_agent.strip_code_fences(latex_content)
 
+    import re
     with tempfile.TemporaryDirectory() as tmpdir:
         (Path(tmpdir) / "resume.tex").write_text(clean_tex)
-        try:
-            subprocess.run(
-                ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "resume.tex"],
-                cwd=tmpdir, check=True,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                timeout=LATEX_TIMEOUT_SECONDS,
-            )
-        except FileNotFoundError:
-            raise HTTPException(status_code=500, detail="pdflatex is not installed on the server.")
-        except subprocess.TimeoutExpired:
-            logger.error(f"LaTeX compilation timed out after {LATEX_TIMEOUT_SECONDS}s.")
-            raise HTTPException(
-                status_code=500,
-                detail=f"PDF compilation timed out after {LATEX_TIMEOUT_SECONDS}s — the generated LaTeX is likely malformed.",
-            )
-        except subprocess.CalledProcessError as e:
-            logger.error(f"LaTeX compilation failed: {e.stdout.decode(errors='ignore')} {e.stderr.decode(errors='ignore')}")
-            # ENHANCEMENT: Returning the raw latex output to help users debug
-            raise HTTPException(status_code=500, detail=f"Failed to compile PDF from LaTeX. Error: {e.stdout.decode(errors='ignore')}")
+        
+        compilation_success = False
+        for attempt in range(2):
+            try:
+                subprocess.run(
+                    ["pdflatex", "-no-shell-escape", "-interaction=nonstopmode", "resume.tex"],
+                    cwd=tmpdir, check=True,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    timeout=LATEX_TIMEOUT_SECONDS,
+                )
+                compilation_success = True
+                break
+            except FileNotFoundError:
+                raise HTTPException(status_code=500, detail="pdflatex is not installed on the server.")
+            except subprocess.TimeoutExpired:
+                logger.error(f"LaTeX compilation timed out after {LATEX_TIMEOUT_SECONDS}s.")
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"PDF compilation timed out after {LATEX_TIMEOUT_SECONDS}s — the generated LaTeX is likely malformed.",
+                )
+            except subprocess.CalledProcessError as e:
+                stdout_str = e.stdout.decode(errors='ignore')
+                if attempt == 0 and ("Misplaced alignment tab character &" in stdout_str or "unescaped %" in stdout_str.lower() or "unescaped $" in stdout_str.lower()):
+                    logger.warning("LaTeX compilation failed due to unescaped special characters. Attempting auto-fix...")
+                    # Auto-escape unescaped &, %, $
+                    clean_tex = re.sub(r'(?<!\\\\)&', r'\&', clean_tex)
+                    clean_tex = re.sub(r'(?<!\\\\)%', r'\%', clean_tex)
+                    # We might not want to escape $ because they might actually use math mode, but typical resumes don't.
+                    # For safety, let's just do & and %
+                    (Path(tmpdir) / "resume.tex").write_text(clean_tex)
+                    continue
+                else:
+                    logger.error(f"LaTeX compilation failed: {stdout_str} {e.stderr.decode(errors='ignore')}")
+                    raise HTTPException(status_code=500, detail=f"Failed to compile PDF from LaTeX. Error: {stdout_str}")
 
         pdf_path = Path(tmpdir) / "resume.pdf"
         if not pdf_path.exists():
