@@ -2,7 +2,12 @@ import asyncio
 import logging
 import re
 import urllib.parse
+import json
 from typing import List, Dict
+
+from markdownify import markdownify
+from ..ai_agent import _generate
+
 
 import httpx
 from bs4 import BeautifulSoup
@@ -137,66 +142,48 @@ async def extract_playwright_jobs(page, keyword: str, source_url: str, max_pages
             await page.wait_for_timeout(500)
             await dismiss_popups(page)  # Dismiss on every page/iteration
 
-            html_snippet = await page.evaluate(r'''() => {
-                let results = [];
-                // 1. Standard anchor tags
-                document.querySelectorAll('a[href]').forEach(el => {
-                    let text = (el.innerText || el.getAttribute('aria-label') || el.title || "").replace(/\s+/g, ' ').trim();
+            html = await page.content()
+            markdown_content = markdownify(html, strip=['script', 'style', 'img'])
+            
+            prompt = f"""You are an expert web scraper AI. I have provided the markdown content of a careers page.
+Your task is to extract ALL job postings found on this page.
+The user is specifically searching for roles related to "{keyword}", but you should extract all reasonable job postings you see.
 
-                    // Smarter title extraction for Oracle HCM / complex cards (e.g. Hexaware Technologies)
-                    // If the text is empty, generic, or just a company name, look in the parent container.
-                    if (!text || text.toLowerCase().includes("apply") || text.toLowerCase().includes("view job") || text.length < 5 || text.toLowerCase() === "hexaware technologies") {
-                        const container = el.closest('li, .job-list-item, .card, article, [class*="job-item"], div[class*="job"]');
-                        if (container) {
-                            const heading = container.querySelector('h1, h2, h3, h4, h5, .job-title, [class*="title"], [class*="jobTitle"]');
-                            if (heading && heading.innerText) {
-                                text = heading.innerText.replace(/\s+/g, ' ').trim();
-                            } else {
-                                // Fallback: grab the first bold or distinct text in the container
-                                const strong = container.querySelector('strong, b, [class*="title-text"]');
-                                if (strong && strong.innerText) text = strong.innerText.replace(/\s+/g, ' ').trim();
-                            }
-                        }
-                    }
+Return ONLY a strict JSON array of objects, with no markdown formatting or backticks (do not wrap in ```json).
+Each object MUST have EXACTLY two keys:
+1. "title": the job title.
+2. "href": the absolute URL or relative URL of the job posting.
 
-                    results.push({title: text, href: el.href || ""});
-                });
+If you find no jobs, return an empty array [].
 
-                // 2. AngularJS click handlers with string literals
-                document.querySelectorAll('[data-ng-click*="/jobs/"]').forEach(el => {
-                    const clickAttr = el.getAttribute('data-ng-click') || "";
-                    const match = clickAttr.match(/goTo\(['"]?(\/jobs\/[^'"]+)['"]?\)/);
-                    if (match) {
-                        const href = window.location.origin + '/candidate' + match[1];
-                        const text = (el.innerText || "").replace(/\s+/g, ' ').trim();
-                        results.push({title: text, href: href});
-                    }
-                });
-
-                // 3. AngularJS dynamic scope extraction (TCS iBegin)
-                if (window.angular) {
-                    document.querySelectorAll('.job-window, [data-ng-repeat*=" in "], [data-ng-click^="jobDesc"]').forEach(el => {
-                        try {
-                            const scope = window.angular.element(el).scope();
-                            if (scope) {
-                                const jobObj = scope.job || scope.j;
-                                if (jobObj && jobObj.jobId) {
-                                    const href = window.location.origin + '/candidate/jobs/' + jobObj.jobId;
-                                    const title = jobObj.title || "";
-                                    results.push({title: title, href: href});
-                                }
-                            }
-                        } catch (e) {}
-                    });
-                }
-
-                return results.filter(x => x.href && x.href.startsWith('http') && x.title !== undefined);
-            }''')
+Markdown Content:
+---
+{markdown_content[:25000]}
+---
+"""
+            try:
+                response_text = await asyncio.to_thread(_generate, prompt)
+                cleaned_text = response_text.strip()
+                if cleaned_text.startswith("```json"):
+                    cleaned_text = cleaned_text[7:]
+                elif cleaned_text.startswith("```"):
+                    cleaned_text = cleaned_text[3:]
+                if cleaned_text.endswith("```"):
+                    cleaned_text = cleaned_text[:-3]
+                
+                html_snippet = json.loads(cleaned_text.strip())
+                if not isinstance(html_snippet, list):
+                    html_snippet = []
+            except Exception as e:
+                logger.error(f"AI Extraction failed or returned invalid JSON: {e}")
+                html_snippet = []
 
             new_this_page = 0
             for item in html_snippet:
-                title = item["title"]
-                href = item["href"]
+                title = item.get("title", "")
+                href = item.get("href", "")
+                if not title or not href:
+                    continue
                 if href in seen:
                     continue
 

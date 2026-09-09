@@ -44,3 +44,11 @@ This document tracks upcoming features, infrastructure improvements, and product
 ## 7. Community & Discovery
 - [ ] **Community-Powered Job Pool (Crowdsourcing)** (Partially done) — `backend/crowdsourcing.py` pushes/pulls jobs to/from a sibling project, `career-agent-api` (a Cloudflare Worker with a Give-to-Get credit economy), on a 10-minute background schedule. Google/GitHub SSO identifies contributors for spam prevention, and is deliberately scoped to never grant local dashboard access (see `CAREERAGENT_MANUAL.md` § 13/17). Still open: the Chrome Extension itself doesn't push scraped jobs directly (only the backend's own scraped `jobs` table does); the on-demand push/pull triggers are temporary test buttons, not permanent UI; and the crowdsourcing JWT has no refresh, so sync silently stops working a week after connecting until the user reconnects.
 
+
+## Future Evaluation: Pure Autonomous Agentic Scraper
+*   **Concept:** Completely replace `targets.json` and hardcoded Playwright navigation with an autonomous agentic browser loop.
+*   **How it works:** Instead of procedural instructions (`click('.next-btn')`), the AI is given a high-level goal ("Find software engineer jobs on this site") and tools (`click(id)`, `type(text)`, `scroll()`). It visually/structurally analyzes the DOM and navigates the site autonomously.
+*   **Potential Tools to Evaluate:**
+    *   `browser-use` (Open-source agentic browser automation)
+    *   `Crawl4AI` (Optimized LLM scraping pipeline)
+    *   `ScrapeGraphAI`
