@@ -20,12 +20,14 @@ export function Login() {
     const exchangeCode = async () => {
       setLoading(true)
       try {
-        const cloudRes = await api.post("https://career-agent-api.kotesh-rv.workers.dev/api/auth/login", {
+        const cloudRes = await api.post(`${import.meta.env.VITE_CROWDSOURCE_API_URL || "https://career-agent-api.kotesh-rv.workers.dev"}/api/auth/login`, {
           idp_token: code,
           sso_provider: "github"
         })
         
+        
         let email = "GitHub User"
+
         try {
             const tokenToDecode = cloudRes.data.token || cloudRes.data.access_token
             if (tokenToDecode) {
@@ -60,11 +62,13 @@ export function Login() {
     setError(null)
     setLoading(true)
     try {
-      const cloudRes = await api.post("https://career-agent-api.kotesh-rv.workers.dev/api/auth/login", {
+      const cloudRes = await api.post(`${import.meta.env.VITE_CROWDSOURCE_API_URL || "https://career-agent-api.kotesh-rv.workers.dev"}/api/auth/login`, {
         idp_token: credentialResponse.credential,
         sso_provider: "google"
       })
+      
       let email = ""
+
       try {
         const payload = JSON.parse(atob(credentialResponse.credential.split('.')[1]))
         email = payload.email || ""
