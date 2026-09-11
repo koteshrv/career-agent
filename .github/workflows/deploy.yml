@@ -37,10 +37,6 @@ jobs:
         working-directory: frontend
         env:
           VITE_DEMO_MODE: "true"
-          # Set base to your GitHub Pages path e.g. /career-agent/
-          # Change this to match your repo name if different
-          VITE_BASE_URL: "/career-agent/"
-          # Custom domain careeragent.fyi — base is always "/"
           VITE_BASE_URL: "/"
         run: npm run build
 
