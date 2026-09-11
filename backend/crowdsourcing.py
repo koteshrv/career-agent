@@ -27,7 +27,7 @@ from .tasks import task_manager
 
 logger = logging.getLogger(__name__)
 
-CROWDSOURCE_API_URL = config["crowdsource_api_url"] or "https://career-agent-api.kotesh-rv.workers.dev"
+CROWDSOURCE_API_URL = config["crowdsource_api_url"] or "https://api.careeragent.fyi"
 
 # career-agent-api caps a single push request at 1000 jobs (openapi.yaml).
 PUSH_BATCH_LIMIT = 1000

@@ -26,7 +26,7 @@ _DEFAULTS = {
     # Docker so the DB isn't silently written to the container's ephemeral filesystem.
     "database_url": "sqlite:////app/data/jobs.db" if _IN_DOCKER else "sqlite:///./jobs.db",
     "log_level": "INFO",
-    "crowdsource_api_url": "https://career-agent-api.kotesh-rv.workers.dev",
+    "crowdsource_api_url": "https://api.careeragent.fyi",
 }
 
 
