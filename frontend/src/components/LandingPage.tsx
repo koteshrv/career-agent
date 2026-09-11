@@ -1,240 +1,245 @@
 import { motion } from "framer-motion"
+
 import { useNavigate } from "react-router-dom"
-import { Zap, Sparkles, FileText, ArrowRight, Code2, Search, Target, Cpu, KanbanSquare, BellRing, Globe, BarChart3, ShieldCheck } from "lucide-react"
+import { Search, Target, FileText, Globe, MessageSquare, Shield, CheckCircle2 } from "lucide-react"
 
 export function LandingPage() {
   const navigate = useNavigate()
-  const handleEnter = () => {
-    navigate("/app/applications")
-  }
-
-  const features: Array<{icon: React.ReactNode, title: string, description: string, highlight?: boolean}> = [
-    {
-      icon: <Globe className="w-6 h-6 text-blue-400 animate-pulse" />,
-      title: "Global Crowdsourced Network (New)",
-      description: "Opt-in to the community job pool to sync and share jobs with other users. Features a decentralized credit economy, local deduplication, and community reporting to flag fake jobs.",
-      highlight: true
-    },
-    {
-      icon: <Search className="w-6 h-6 text-indigo-400" />,
-      title: "Automated Job Discovery",
-      description: "Quietly runs Playwright scrapers in the background across job boards and company ATS portals, ensuring you never miss a newly posted role."
-    },
-    {
-      icon: <Target className="w-6 h-6 text-red-400" />,
-      title: "AI Match Scoring",
-      description: "Instantly evaluates your exact qualifications against the raw Job Description, generating a definitive 0-100 match score and fit analysis."
-    },
-    {
-      icon: <FileText className="w-6 h-6 text-blue-400" />,
-      title: "1-Click Application Materials",
-      description: "Programmatically generates tailored cover letters, referral emails, and natively compiles ATS-friendly LaTeX resumes into PDFs with a single click."
-    },
-    {
-      icon: <Cpu className="w-6 h-6 text-emerald-400" />,
-      title: "Bring Your Own AI (Free or Paid)",
-      description: "Use any AI you prefer! Bring your own OpenAI or Anthropic keys, or use 100% Free AI with a Google API key (we safely manage rate limits for Gemma and Gemini). Or run 100% privately with local Ollama models."
-    },
-    {
-      icon: <KanbanSquare className="w-6 h-6 text-orange-400" />,
-      title: "Kanban Pipeline",
-      description: "Organize your job search visually. Drag and drop jobs across a Kanban board (New, Applied, Interviewing, Rejected) to track your entire pipeline at a glance."
-    },
-    {
-      icon: <BellRing className="w-6 h-6 text-yellow-400" />,
-      title: "Telegram Alerts & Chrome Extension",
-      description: "Receive instant push notifications via Telegram for high-match jobs, and use the companion extension to 1-click save roles directly from external job boards."
-    },
-    {
-      icon: <ShieldCheck className="w-6 h-6 text-teal-400" />,
-      title: "Privacy First & Local Storage",
-      description: "Your data never leaves your machine unless you explicitly opt-in. All job records, encrypted API keys, and resumes are stored securely in a local SQLite database."
-    },
-    {
-      icon: <BarChart3 className="w-6 h-6 text-pink-400" />,
-      title: "Advanced Analytics",
-      description: "Track your application funnel, analyze pipeline bottlenecks, and monitor your weekly sourcing velocity with beautiful, interactive charts."
-    }
-  ]
+  const handleEnter = () => navigate("/app/applications")
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-blue-500/30 font-sans">
+    <div className="min-h-screen bg-background text-foreground font-sans selection:bg-primary/30 flex flex-col">
       
       {/* Navbar */}
-      <nav className="w-full border-b border-border bg-background/50 backdrop-blur-md fixed top-0 z-50">
+      <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-lg">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-foreground animate-pulse" />
-            </div>
-            <span className="font-bold text-lg tracking-tight">CareerAgent</span>
+            <img src="/favicon.svg" alt="Career Agent" className="w-8 h-8 drop-shadow-sm" />
+            <span className="font-medium text-lg tracking-tight">Career Agent</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
-              <Code2 className="w-4 h-4" />
+            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noreferrer" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block">
               GitHub
             </a>
-            <button onClick={handleEnter} className="text-sm font-semibold bg-white text-black px-4 py-1.5 rounded-full hover:bg-zinc-200 transition-colors">
-              Open App
+            <button onClick={handleEnter} className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-full hover:opacity-90 transition-opacity">
+              Launch App
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Hero Section */}
-      <div className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden">
-        {/* Background Glows (Animated) */}
-        <motion.div 
-          animate={{ scale: [1, 1.1, 1], opacity: [0.2, 0.3, 0.2] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-1/2 left-1/4 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[400px] bg-blue-600/30 blur-[120px] rounded-full pointer-events-none" 
-        />
-        <motion.div 
-          animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.4, 0.2] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute top-1/2 right-1/4 translate-x-1/4 -translate-y-1/3 w-[500px] h-[300px] bg-purple-600/30 blur-[100px] rounded-full pointer-events-none" 
-        />
+      <main className="flex-1 flex flex-col items-center">
         
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="grid lg:grid-cols-2 gap-12 items-center mb-24">
-            {/* Left side text */}
-            <div className="text-left">
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-semibold mb-6 uppercase tracking-widest"
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Advanced AI Engine
-              </motion.div>
-              
-              <motion.h1 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-                className="text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight mb-6 leading-[1.1]"
-              >
-                Make your next big career switch.<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">Powered by AI.</span>
-              </motion.h1>
-              
-              <motion.p 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-lg text-muted-foreground mb-8 leading-relaxed max-w-xl"
-              >
-                CareerAgent is a sophisticated, 100% free automation platform built for ambitious IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, connects you to a global crowdsourced job network, evaluates your precise fit using your choice of AI, and programmatically compiles ATS-optimized LaTeX resumes.
-              </motion.p>
-              
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.3 }}
-                className="flex flex-col sm:flex-row items-center gap-4"
-              >
-                <button 
-                  onClick={handleEnter}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all shadow-[0_0_40px_rgba(79,70,229,0.4)] hover:shadow-[0_0_60px_rgba(79,70,229,0.6)]"
-                >
-                  Launch Demo <ArrowRight className="w-5 h-5" />
-                </button>
-                <a 
-                  href="https://github.com/koteshrv/career-agent" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-secondary hover:bg-accent border border-border text-foreground px-8 py-3.5 rounded-full font-bold text-lg transition-all"
-                >
-                  <Code2 className="w-5 h-5" /> View on GitHub
-                </a>
-              </motion.div>
-            </div>
+        {/* Hero Section */}
+        <section className="w-full max-w-5xl mx-auto px-6 pt-24 md:pt-32 pb-16 text-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
+            <h1 className="text-5xl md:text-7xl font-serif tracking-tight mb-8 leading-[1.1] text-foreground">
+              Automate the job hunt.<br />
+              <span className="text-muted-foreground">Keep your privacy </span>
+              <span className="text-primary italic">intact.</span>
+            </h1>
+            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed font-light">
+              Open source AI-powered job search. Runs locally on your machine. Evaluates jobs, generates tailored LaTeX resumes, and tracks your pipeline automatically.
+            </p>
+          </motion.div>
 
-            {/* Right side AI Match Card */}
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.7, delay: 0.4 }}
-              className="hidden lg:block relative"
-            >
-              <div className="bg-card/90 border border-border rounded-2xl shadow-2xl overflow-hidden relative backdrop-blur-md p-8">
-                <div className="flex items-center justify-between mb-8">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                      <Target className="w-5 h-5 text-blue-400" />
-                    </div>
+          {/* Terminal Mockup */}
+          
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }} 
+            animate={{ opacity: 1, y: 0 }} 
+            transition={{ duration: 0.8, delay: 0.2 }}
+            className="w-full max-w-4xl mx-auto bg-card border border-border rounded-2xl shadow-2xl overflow-hidden text-left relative mt-8"
+          >
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-muted/30">
+              <div className="w-3 h-3 rounded-full bg-destructive/60" />
+              <div className="w-3 h-3 rounded-full bg-yellow-500/60" />
+              <div className="w-3 h-3 rounded-full bg-status-interviewing/60" />
+              <div className="ml-4 flex items-center gap-4 text-xs font-medium text-muted-foreground flex-1">
+                <span className="text-foreground">Pipeline</span>
+                <span>Matches</span>
+                <span>Settings</span>
+              </div>
+            </div>
+            <div className="p-6 md:p-10 flex flex-col md:flex-row gap-8 relative z-10">
+              {/* Left Column: Job Card */}
+              <div className="flex-1 space-y-4">
+                <div className="bg-background border border-border rounded-xl p-5 shadow-sm">
+                  <div className="flex justify-between items-start mb-4">
                     <div>
-                      <h3 className="font-bold text-foreground text-lg">Senior Backend Engineer</h3>
-                      <p className="text-muted-foreground text-sm">Stripe • Remote</p>
+                      <h4 className="font-semibold text-foreground text-lg">Senior Backend Engineer</h4>
+                      <p className="text-sm text-muted-foreground">Acme Corp • Remote</p>
+                    </div>
+                    <div className="bg-status-interviewing/10 text-status-interviewing border border-status-interviewing/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                      98% Match
                     </div>
                   </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-emerald-200">98%</span>
-                    <span className="text-[10px] uppercase tracking-wider text-emerald-500/70 font-semibold">Match Score</span>
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <CheckCircle2 className="w-4 h-4 text-status-interviewing" /> Required: Python, FastAPI, PostgreSQL
+                    </div>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                      <CheckCircle2 className="w-4 h-4 text-status-interviewing" /> 5+ years experience building APIs
+                    </div>
                   </div>
                 </div>
                 
-                <div className="p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 text-sm text-blue-200 leading-relaxed mt-4">
-                  <span className="font-semibold text-blue-400">AI Analysis:</span> The candidate is a perfect fit for this role, demonstrating deep expertise in building high-scale distributed systems and managing complex cloud infrastructure migrations.
+                <div className="bg-background border border-border rounded-xl p-5 shadow-sm opacity-60">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-semibold text-foreground text-lg">Platform Engineer</h4>
+                      <p className="text-sm text-muted-foreground">Globex Inc • New York</p>
+                    </div>
+                    <div className="bg-destructive/10 text-destructive border border-destructive/20 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
+                      42% Match
+                    </div>
+                  </div>
                 </div>
               </div>
-            </motion.div>
-          </div>
+              
+              {/* Right Column: AI Action */}
+              <div className="w-full md:w-72 bg-primary/5 border border-primary/20 rounded-xl p-6 flex flex-col justify-center">
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center mb-4">
+                  <Target className="w-6 h-6 text-primary" />
+                </div>
+                <h4 className="font-semibold text-foreground mb-2">Ready to apply</h4>
+                <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                  Resume tailored for Acme Corp. Missing keywords (GraphQL) injected. Cover letter drafted.
+                </p>
+                <button className="w-full py-2.5 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:opacity-90 transition-opacity">
+                  Review & Apply
+                </button>
+              </div>
+            </div>
+          </motion.div>
 
-        </div>
-      </div>
+        </section>
 
-      {/* Features Grid */}
-      <div className="border-t border-border bg-muted/30 relative">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(128,128,128,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(128,128,128,0.1)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-        <div className="max-w-7xl mx-auto px-6 py-24 relative z-10">
+        {/* Manifesto Quote */}
+        <section className="w-full max-w-4xl mx-auto px-6 py-20 text-center">
+          <hr className="w-24 border-border mx-auto mb-16" />
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif leading-tight text-foreground">
+            "ATS was built to save <span className="text-muted-foreground">their</span> time.<br />
+            Career Agent was built to save <span className="text-primary underline decoration-primary/30 underline-offset-8">yours</span>."
+          </h2>
+          <p className="mt-8 text-sm text-muted-foreground font-medium uppercase tracking-widest">— 100% Free & Open Source</p>
+        </section>
+
+        {/* Bento Grid Features */}
+        <section className="w-full max-w-6xl mx-auto px-6 py-20">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <div className="md:col-span-2 bg-card border border-border rounded-3xl p-8 md:p-10 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px] -mr-20 -mt-20 transition-all group-hover:bg-primary/20" />
+              <Target className="w-10 h-10 text-primary mb-6 relative z-10" />
+              <h3 className="text-2xl font-serif tracking-tight mb-4 relative z-10">Agentic Deep Evaluation</h3>
+              <p className="text-muted-foreground leading-relaxed max-w-md relative z-10">
+                A massive LLM rubric grades jobs against your resume in 5 dimensions. It flags red flags, calculates salary gaps, and outputs a strict 0-100 match score. No more spray and pray.
+              </p>
+            </div>
+
+            <div className="bg-card border border-border rounded-3xl p-8 md:p-10 relative overflow-hidden group">
+              <FileText className="w-10 h-10 text-primary mb-6 relative z-10" />
+              <h3 className="text-2xl font-serif tracking-tight mb-4 relative z-10">Native LaTeX CVs</h3>
+              <p className="text-muted-foreground leading-relaxed relative z-10">
+                1-click injects missing keywords and natively compiles a pristine ATS-friendly PDF.
+              </p>
+            </div>
+
+            <div className="bg-card border border-border rounded-3xl p-8 md:p-10 relative overflow-hidden group">
+              <Globe className="w-10 h-10 text-primary mb-6 relative z-10" />
+              <h3 className="text-2xl font-serif tracking-tight mb-4 relative z-10">Global Job Network</h3>
+              <p className="text-muted-foreground leading-relaxed relative z-10">
+                Opt-in to the crowdsourced job pool powered by our open-source API. Share protected jobs, deduplicate automatically, and flag fake listings.
+              </p>
+            </div>
+
+            <div className="md:col-span-2 bg-card border border-border rounded-3xl p-8 md:p-10 relative overflow-hidden group">
+              <Search className="w-10 h-10 text-primary mb-6 relative z-10" />
+              <h3 className="text-2xl font-serif tracking-tight mb-4 relative z-10">Playwright Hybrid Scrapers</h3>
+              <p className="text-muted-foreground leading-relaxed max-w-md relative z-10">
+                Runs headless background scrapers on standard ATS platforms. For heavily protected sites like LinkedIn, the companion Chrome Extension bypasses IP bans entirely.
+              </p>
+            </div>
+
+          
+            <div className="md:col-span-2 bg-card border border-border rounded-3xl p-8 md:p-10 relative overflow-hidden group">
+              <MessageSquare className="w-10 h-10 text-primary mb-6 relative z-10" />
+              <h3 className="text-2xl font-serif tracking-tight mb-4 relative z-10">Drafts Open-Ended Answers</h3>
+              <p className="text-muted-foreground leading-relaxed max-w-md relative z-10">
+                Greenhouse, Ashby, and Lever forms ask "Why this role?". The agent reads the form, drafts paste-ready answers based on your CV, and leaves the final click to you. It never auto-submits.
+              </p>
+            </div>
+
+            <div className="bg-card border border-border rounded-3xl p-8 md:p-10 relative overflow-hidden group">
+              <Shield className="w-10 h-10 text-primary mb-6 relative z-10" />
+              <h3 className="text-2xl font-serif tracking-tight mb-4 relative z-10">Your Data, Your Machine</h3>
+              <p className="text-muted-foreground leading-relaxed relative z-10">
+                Everything lives locally. No cloud, no telemetry, no accounts. You are in complete control of your data and your search.
+              </p>
+            </div>
+</div>
+        </section>
+
+      
+        {/* FAQ Section */}
+        <section className="w-full max-w-4xl mx-auto px-6 py-24">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Engineered for Success.</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">A comprehensive suite of tools to automate your job search while maintaining the highest standards of data privacy and professional formatting.</p>
+            <h2 className="text-3xl md:text-5xl font-serif text-foreground mb-4">Frequently Asked Questions</h2>
+            <p className="text-muted-foreground text-lg">Everything you need to know about how Career Agent works.</p>
           </div>
           
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {features.map((f, i) => (
-              <motion.div 
-                key={i}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: i * 0.1 }}
-                className={`backdrop-blur-sm border rounded-2xl p-6 transition-all duration-300 shadow-xl ${f.highlight ? "bg-blue-500/5 border-blue-500/30 hover:bg-blue-500/10 hover:-translate-y-1 shadow-[0_0_30px_rgba(59,130,246,0.1)] relative overflow-hidden" : "bg-card border-border hover:bg-accent/40 hover:-translate-y-1"}`}
-              >
-                {f.highlight && <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-[50px] -mr-10 -mt-10 pointer-events-none" />}
-                <div className="w-12 h-12 rounded-xl bg-secondary border border-border flex items-center justify-center mb-6 relative z-10">
-                  {f.icon}
-                </div>
-                <h3 className="text-lg font-bold mb-3 text-foreground">{f.title}</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">{f.description}</p>
-              </motion.div>
-            ))}
+          <div className="space-y-12">
+            <div>
+              <h3 className="text-xl font-medium text-foreground mb-3">How does Career Agent score job listings?</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                Career Agent uses a rubric-guided LLM evaluation across five dimensions — technical match, experience level, compensation, cultural signals, and red flags — producing a holistic 1-100 global score. Anything below a 70, the agent recommends against applying. No closed-form formula, no spray-and-pray.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="text-xl font-medium text-foreground mb-3">Does Career Agent apply to jobs for me?</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                No. It prepares every application right up to the click: it scans roles, scores each against your CV, tailors a LaTeX resume, and drafts open-ended answers. Then it hands the decision back to you. You review and send each one yourself. Mass auto-apply burns your standing with recruiters and ATS systems, so Career Agent removes the busywork but keeps the choice yours.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="text-xl font-medium text-foreground mb-3">Is Career Agent free? What is the business model?</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                Career Agent is permanently free and MIT-licensed. There is no paid tier, no waitlist, no accounts, and no premium features. You clone the repo, configure your profile, and run the system locally using your own free Gemini API key. It is an open-source tool built for the community.
+              </p>
+            </div>
+            
+            <div>
+              <h3 className="text-xl font-medium text-foreground mb-3">Where does my data live?</h3>
+              <p className="text-muted-foreground leading-relaxed">
+                On your own machine, in a local SQLite database. Career Agent runs entirely locally: no cloud, no telemetry, nothing uploaded to a central server. The only data that leaves your computer is sent directly to the Gemini API for resume scoring and tailoring.
+              </p>
+            </div>
           </div>
-        </div>
-      </div>
+        </section>
+
+      </main>
 
       {/* Footer */}
-      <footer className="border-t border-border py-12 bg-background">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col items-center justify-center gap-6">
-          <div className="flex items-center justify-center text-sm text-muted-foreground">
-            Built with <span className="mx-1.5">❤️</span> by <a href="https://github.com/koteshrv" target="_blank" rel="noopener noreferrer" className="text-foreground font-semibold hover:underline ml-1">Hari</a>.
+      <footer className="border-t border-border bg-card mt-auto">
+        <div className="max-w-7xl mx-auto px-6 py-12 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-2">
+            <img src="/favicon.svg" alt="Career Agent" className="w-6 h-6" />
+            <span className="font-medium text-sm">Career Agent</span>
           </div>
-          
-          <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground font-medium">
-            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-foreground transition-colors">
-              <Code2 className="w-4 h-4" />
-              GitHub
-            </a>
-            <span className="w-1 h-1 rounded-full bg-border"></span>
-            <span className="hover:text-zinc-300 transition-colors">MIT License</span>
-            <span className="w-1 h-1 rounded-full bg-border"></span>
-            <span>© {new Date().getFullYear()} CareerAgent</span>
+          <div className="flex items-center gap-6 text-sm text-muted-foreground font-medium">
+            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noreferrer" className="hover:text-foreground transition-colors">GitHub Source</a>
+            <span className="w-1 h-1 rounded-full bg-border" />
+            <span>MIT License</span>
+            <span className="w-1 h-1 rounded-full bg-border" />
+            <span>Free Forever</span>
           </div>
         </div>
       </footer>
+
     </div>
   )
 }
