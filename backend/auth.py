@@ -44,13 +44,24 @@ def create_token(user: "models.User") -> str:
     return f"{body}.{sig}"
 
 def decode_token(token: str) -> dict | None:
-    """Return the full token payload if valid and unexpired, else None."""
+    """Return the full token payload if valid, unexpired, and current-format, else None.
+
+    "Current-format" matters because tokens survive up to TOKEN_TTL (7 days by default) in
+    the browser's localStorage: create_token() used to sign {"u": username, "exp": ...} with
+    no "uid", and that signature is still valid against the same secret, so a pre-existing
+    token from before that change passes the HMAC check here. Every caller (AuthMiddleware,
+    get_current_user, websocket_logs) indexes payload["uid"] unconditionally, so silently
+    returning such a payload crashes the request with an unhandled KeyError instead of just
+    failing auth — checking here, once, is enough for all of them.
+    """
     try:
         body, sig = token.split(".")
         expected = _b64e(hmac.new(_secret(), body.encode(), hashlib.sha256).digest())
         if not hmac.compare_digest(sig, expected):
             return None
         payload = json.loads(_b64d(body))
+        if "uid" not in payload:
+            return None
         if int(payload.get("exp", 0)) < int(time.time()):
             return None
         return payload

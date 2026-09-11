@@ -1,3 +1,6 @@
+import hmac
+import hashlib
+import json
 import time
 from types import SimpleNamespace
 
@@ -38,3 +41,18 @@ def test_decode_token_rejects_expired_token(monkeypatch):
 def test_decode_token_rejects_malformed_input():
     assert auth.decode_token("not-a-token") is None
     assert auth.decode_token("") is None
+
+
+def test_decode_token_rejects_pre_migration_token_without_crashing():
+    """Regression test: create_token() used to sign {"u": username, "exp": ...} with no
+    "uid" at all. That token is still HMAC-valid against the same secret and can sit in a
+    browser's localStorage for up to TOKEN_TTL, so decode_token() must reject it cleanly
+    (as if invalid) rather than returning a payload that then crashes every caller
+    (AuthMiddleware, get_current_user, websocket_logs) with an unhandled KeyError on
+    payload["uid"] — this is exactly what happened in practice."""
+    legacy_payload = {"u": "admin", "exp": int(time.time()) + 3600}
+    body = auth._b64e(json.dumps(legacy_payload).encode())
+    sig = auth._b64e(hmac.new(auth._secret(), body.encode(), hashlib.sha256).digest())
+    legacy_token = f"{body}.{sig}"
+
+    assert auth.decode_token(legacy_token) is None
