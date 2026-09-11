@@ -1,27 +1,32 @@
-<div align="center">
-  <img src="frontend/public/favicon.svg" alt="CareerAgent Logo" width="120" />
-  
-  # CareerAgent
-  
-  **Your personal AI-powered job search automation platform.**  
-  Quietly scrape job boards, evaluate match scores, and programmatically compile ATS-friendly LaTeX resumes and cold emails.
+<p align="center">
+  <img src="frontend/public/favicon.svg" alt="CareerAgent" width="100" height="100">
+</p>
 
-  [![GitHub Stars](https://img.shields.io/github/stars/koteshrv/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/koteshrv/career-agent/stargazers)
-  [![GitHub Forks](https://img.shields.io/github/forks/koteshrv/career-agent.svg?style=for-the-badge&color=blue)](https://github.com/koteshrv/career-agent/network/members)
-  [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
-  [![React](https://img.shields.io/badge/React-19-blue.svg?style=for-the-badge&logo=react)](https://react.dev/)
-  [![FastAPI](https://img.shields.io/badge/FastAPI-0.138-green.svg?style=for-the-badge&logo=fastapi)](https://fastapi.tiangolo.com/)
-  [![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=for-the-badge&logo=docker)](https://www.docker.com/)
+<h1 align="center">CareerAgent</h1>
 
-  <p align="center">
-    <a href="#-why-careeragent">Why CareerAgent?</a> •
-    <a href="#-features">Features</a> •
-    <a href="#-architecture">Architecture</a> •
-    <a href="#-getting-started">Installation</a> •
-    <a href="#-contributing">Contributing</a>
-  </p>
+<p align="center">
+  <em>An open-source AI job search command center.</em><br>
+  <strong>Automate ATS scraping, deeply evaluate your resume fit, and compile optimized LaTeX CVs instantly.</strong>
+</p>
 
-</div>
+<p align="center">
+  <a href="https://github.com/koteshrv/career-agent/stargazers"><img src="https://img.shields.io/github/stars/koteshrv/career-agent.svg?style=flat-square&color=blue" alt="GitHub Stars"></a>
+  <a href="https://github.com/koteshrv/career-agent/network/members"><img src="https://img.shields.io/github/forks/koteshrv/career-agent.svg?style=flat-square&color=blue" alt="GitHub Forks"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT"></a>
+  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-blue.svg?style=flat-square&logo=react" alt="React"></a>
+  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.138-green.svg?style=flat-square&logo=fastapi" alt="FastAPI"></a>
+  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=flat-square&logo=docker" alt="Docker"></a>
+</p>
+
+<p align="center">
+  <a href="#-why-careeragent">Why CareerAgent?</a> •
+  <a href="#-features">Features</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-getting-started">Installation</a> •
+  <a href="#-contributing">Contributing</a>
+</p>
+
+---
 
 > **⚠️ Active Development:** CareerAgent is currently in rapid development (Beta). APIs, database schemas, and features may change frequently as we build towards `v1.0`. We highly recommend backing up your `jobs.db` file before pulling major updates.
 
