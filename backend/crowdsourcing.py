@@ -166,7 +166,6 @@ def pull_jobs(db: Session, limit: int = 100) -> dict:
 def get_account_info(db: Session) -> dict:
     token = _get_cloud_token(db)
     if not token:
-        task_manager.complete_task(task_id, success=False, error="Not connected")
         return _not_connected()
 
     try:
@@ -176,11 +175,9 @@ def get_account_info(db: Session) -> dict:
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
     except Exception as e:
-        task_manager.complete_task(task_id, success=False, error=str(e))
         return {"success": False, "skipped": False, "reason": str(e)}
 
     if resp.status_code != 200:
-        task_manager.complete_task(task_id, success=False, error="Auth Error")
         return _auth_error(resp)
 
     data = resp.json()
@@ -190,7 +187,6 @@ def get_account_info(db: Session) -> dict:
 def report_job(db: Session, job_id: str, reason: str) -> dict:
     token = _get_cloud_token(db)
     if not token:
-        task_manager.complete_task(task_id, success=False, error="Not connected")
         return _not_connected()
 
     try:
@@ -201,11 +197,9 @@ def report_job(db: Session, job_id: str, reason: str) -> dict:
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
     except Exception as e:
-        task_manager.complete_task(task_id, success=False, error=str(e))
         return {"success": False, "skipped": False, "reason": str(e)}
 
     if resp.status_code != 200:
-        task_manager.complete_task(task_id, success=False, error="Auth Error")
         return _auth_error(resp)
 
     data = resp.json()
