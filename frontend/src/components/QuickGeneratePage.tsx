@@ -119,83 +119,81 @@ export function QuickGeneratePage() {
   }
 
   return (
-    <div className="flex h-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="flex flex-col lg:flex-row h-full gap-6">
       {/* Left Panel: Form */}
-      <div className="w-1/2 flex flex-col border-r border-white/5 bg-[#0f1115] p-6 overflow-y-auto custom-scrollbar">
-        {/* The internal header has been removed; it is now managed dynamically by the global layout header */}
-
+      <div className="lg:w-1/2 flex flex-col bg-card border border-border rounded-lg p-6 overflow-y-auto custom-scrollbar">
         {error && (
-          <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div className="text-sm text-red-200">{error}</div>
+          <div className="mb-6 p-4 rounded-md bg-destructive/10 border border-destructive/20 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+            <div className="text-sm text-destructive">{error}</div>
           </div>
         )}
 
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">Company Name <span className="text-zinc-600">(Optional)</span></label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Company Name <span className="text-muted-foreground/60">(Optional)</span></label>
               <input
                 type="text"
                 value={company}
                 onChange={e => setCompany(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 placeholder:text-zinc-700"
+                className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/60"
                 placeholder="e.g. Google"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-zinc-400 mb-1">Job Title <span className="text-zinc-600">(Optional)</span></label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Job Title <span className="text-muted-foreground/60">(Optional)</span></label>
               <input
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 placeholder:text-zinc-700"
+                className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/60"
                 placeholder="e.g. Senior Backend Engineer"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-400 mb-1">Base Resume</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Base Resume</label>
             <div className="relative">
               <select
                 value={selectedResume}
                 onChange={e => setSelectedResume(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2.5 pr-10 text-white appearance-none focus:outline-none focus:border-blue-500 cursor-pointer text-sm"
+                className="w-full bg-secondary border border-border rounded-md px-4 py-2.5 pr-10 text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer text-sm"
               >
-                <option value="" disabled className="bg-[#12141a]">Select a resume to use...</option>
-                {resumes.map(r => <option key={r} value={r} className="bg-[#12141a]">{r}</option>)}
+                <option value="" disabled>Select a resume to use...</option>
+                {resumes.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
-              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-zinc-400">
+              <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-muted-foreground">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>
               </div>
             </div>
           </div>
 
           <div className="flex-1 flex flex-col min-h-[300px]">
-            <label className="block text-sm font-medium text-zinc-400 mb-1">Job Description <span className="text-red-400">*</span></label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Job Description <span className="text-destructive">*</span></label>
             <textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              className="flex-1 w-full bg-black/40 border border-white/10 rounded-lg px-4 py-3 text-sm text-white focus:outline-none focus:border-blue-500 placeholder:text-zinc-700 resize-none custom-scrollbar"
+              className="flex-1 w-full bg-secondary border border-border rounded-md px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/60 resize-none custom-scrollbar"
               placeholder="Paste the full job description here..."
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/5">
+          <div className="grid grid-cols-2 gap-3 pt-4 border-t border-border">
             <Button
               onClick={() => handleGenerate("cover_letter")}
               disabled={loading || !description.trim()}
-              className="bg-purple-600/20 text-purple-400 hover:bg-purple-600/30 border border-purple-500/30"
+              className="bg-secondary text-foreground hover:bg-accent border border-border"
             >
               <PenTool className="w-4 h-4 mr-2" />
               Write Cover Letter
             </Button>
-            
+
             <Button
               onClick={() => handleGenerate("resume")}
               disabled={loading || !selectedResume || !description.trim()}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-[0_0_15px_rgba(79,70,229,0.4)]"
+              className="bg-primary text-primary-foreground hover:opacity-90"
             >
               <Sparkles className="w-4 h-4 mr-2" />
               Tailor Resume
@@ -205,14 +203,14 @@ export function QuickGeneratePage() {
       </div>
 
       {/* Right Panel: Output */}
-      <div className="w-1/2 flex flex-col bg-[#0a0c10]">
-        <div className="flex px-4 pt-4 border-b border-white/5 gap-2">
+      <div className="lg:w-1/2 flex flex-col bg-card border border-border rounded-lg overflow-hidden">
+        <div className="flex px-4 pt-4 border-b border-border gap-2">
           <button
             onClick={() => setActiveTab("cover_letter")}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "cover_letter" 
-                ? "border-blue-500 text-blue-400" 
-                : "border-transparent text-zinc-400 hover:text-zinc-200 hover:border-white/20"
+              activeTab === "cover_letter"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             Cover Letter
@@ -220,9 +218,9 @@ export function QuickGeneratePage() {
           <button
             onClick={() => setActiveTab("resume")}
             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === "resume" 
-                ? "border-blue-500 text-blue-400" 
-                : "border-transparent text-zinc-400 hover:text-zinc-200 hover:border-white/20"
+              activeTab === "resume"
+                ? "border-primary text-foreground"
+                : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
             Tailored Resume
@@ -231,9 +229,9 @@ export function QuickGeneratePage() {
             <button
               onClick={() => setActiveTab("logs")}
               className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === "logs" 
-                  ? "border-blue-500 text-blue-400" 
-                  : "border-transparent text-zinc-400 hover:text-zinc-200 hover:border-white/20"
+                activeTab === "logs"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               AI Logs
@@ -243,22 +241,22 @@ export function QuickGeneratePage() {
 
         <div className="flex-1 p-6 overflow-y-auto custom-scrollbar relative group">
           {loading || (activeTab === "logs" && logs.length > 0) ? (
-            <div className="h-full flex flex-col bg-[#0a0c10] text-zinc-300 font-mono text-sm">
+            <div className="h-full flex flex-col text-muted-foreground font-mono text-sm">
               <div className="flex items-center space-x-3 mb-6">
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
                 ) : (
-                  <Check className="w-5 h-5 text-emerald-500" />
+                  <Check className="w-5 h-5 text-status-interviewing" />
                 )}
-                <span className="text-blue-400 font-semibold">
+                <span className="text-primary font-semibold">
                   {loading ? `AI is crafting your ${activeTab === 'logs' ? 'materials' : activeTab.replace("_", " ")}...` : "AI Generation Complete"}
                 </span>
               </div>
               <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pb-4">
                 {logs.map((log, i) => (
-                  <div key={i} className="animate-in fade-in slide-in-from-bottom-2 duration-300 flex gap-3 items-start">
-                    <span className="text-zinc-600 shrink-0">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
-                    <span className="text-zinc-300 whitespace-pre-wrap">{log}</span>
+                  <div key={i} className="flex gap-3 items-start">
+                    <span className="text-muted-foreground/60 shrink-0">[{new Date().toLocaleTimeString([], { hour12: false })}]</span>
+                    <span className="text-muted-foreground whitespace-pre-wrap">{log}</span>
                   </div>
                 ))}
                 <div ref={logsEndRef} />
@@ -267,47 +265,47 @@ export function QuickGeneratePage() {
           ) : activeTab === "cover_letter" && generatedCL ? (
             <>
               <div className="absolute top-6 right-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button 
-                  onClick={() => copyToClipboard(generatedCL, "cover_letter")} 
-                  size="sm" 
-                  className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
+                <Button
+                  onClick={() => copyToClipboard(generatedCL, "cover_letter")}
+                  size="sm"
+                  className="bg-secondary hover:bg-accent text-foreground"
                 >
-                  {copiedCL ? <Check className="w-4 h-4 mr-1.5 text-emerald-400" /> : <Copy className="w-4 h-4 mr-1.5" />}
+                  {copiedCL ? <Check className="w-4 h-4 mr-1.5 text-status-interviewing" /> : <Copy className="w-4 h-4 mr-1.5" />}
                   {copiedCL ? "Copied!" : "Copy"}
                 </Button>
               </div>
-              <pre className="text-sm text-zinc-300 font-sans whitespace-pre-wrap overflow-x-auto pb-8">
+              <pre className="text-sm text-foreground font-sans whitespace-pre-wrap overflow-x-auto pb-8">
                 {generatedCL}
               </pre>
             </>
           ) : activeTab === "resume" && generatedResume ? (
             <>
               <div className="absolute top-6 right-8 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                <Button 
-                  onClick={() => copyToClipboard(generatedResume, "resume")} 
-                  size="sm" 
-                  className="bg-white/10 hover:bg-white/20 text-white backdrop-blur-md"
+                <Button
+                  onClick={() => copyToClipboard(generatedResume, "resume")}
+                  size="sm"
+                  className="bg-secondary hover:bg-accent text-foreground"
                 >
-                  {copiedResume ? <Check className="w-4 h-4 mr-1.5 text-emerald-400" /> : <Copy className="w-4 h-4 mr-1.5" />}
+                  {copiedResume ? <Check className="w-4 h-4 mr-1.5 text-status-interviewing" /> : <Copy className="w-4 h-4 mr-1.5" />}
                   {copiedResume ? "Copied!" : "Copy LaTeX"}
                 </Button>
-                <Button 
-                  onClick={downloadPdf} 
+                <Button
+                  onClick={downloadPdf}
                   disabled={downloading}
-                  size="sm" 
-                  className="bg-blue-600 hover:bg-blue-500 text-white shadow-lg"
+                  size="sm"
+                  className="bg-primary text-primary-foreground hover:opacity-90"
                 >
                   <Download className="w-4 h-4 mr-1.5" />
                   {downloading ? "Compiling..." : "Download PDF"}
                 </Button>
               </div>
-              <pre className="text-xs text-zinc-400 font-mono whitespace-pre-wrap overflow-x-auto pb-8">
+              <pre className="text-xs text-muted-foreground font-mono whitespace-pre-wrap overflow-x-auto pb-8">
                 {generatedResume}
               </pre>
             </>
           ) : (
-            <div className="h-full flex flex-col items-center justify-center text-zinc-500 space-y-4 opacity-50">
-              <FilePlus className="w-12 h-12" />
+            <div className="h-full flex flex-col items-center justify-center text-muted-foreground space-y-4">
+              <FilePlus className="w-10 h-10 opacity-50" />
               <p className="text-sm">Output will appear here after generation.</p>
             </div>
           )}

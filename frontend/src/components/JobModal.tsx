@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import type { Job } from "./KanbanBoard"
+import type { Job } from "./JobsBoard"
 import { Button } from "@/components/ui/button"
 import { Sparkles, MapPin, Calendar, ExternalLink, X, FileText, Trash2, Download, Globe, MessageSquare, Check, Flag } from "lucide-react"
 import { formatISTDate } from "@/lib/datetime"

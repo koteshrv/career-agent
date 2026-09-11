@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react"
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
-import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { formatISTDate } from "@/lib/datetime"
 import { api } from "@/lib/api"
-import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, MapPin, Eye, EyeOff, Search, Trash2, Check, X, Globe, DownloadCloud, Database, RefreshCw, Filter } from "lucide-react"
+import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, Search, Trash2, Check, X, Globe, DownloadCloud, Database, RefreshCw, Filter, Inbox } from "lucide-react"
 import { JobModal } from "./JobModal"
 import { useToast } from "./Toast"
 import { ConfirmDialog } from "./ConfirmDialog"
@@ -33,22 +31,46 @@ export type Job = {
   applied_at?: string
 }
 
-const COLUMNS = [
-  { id: "NEW", title: "New Matches", color: "from-blue-500/20 to-cyan-500/10", border: "border-blue-500/20", badge: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  { id: "APPLIED", title: "Applied", color: "from-indigo-500/20 to-purple-500/10", border: "border-indigo-500/20", badge: "bg-indigo-500/20 text-indigo-300 border-indigo-500/30" },
-  { id: "INTERVIEWING", title: "Interviewing", color: "from-amber-500/20 to-orange-500/10", border: "border-amber-500/20", badge: "bg-amber-500/20 text-amber-300 border-amber-500/30" },
-  { id: "REJECTED", title: "Rejected", color: "from-red-500/20 to-rose-600/10", border: "border-red-500/20", badge: "bg-red-500/20 text-red-300 border-red-500/30" },
-  { id: "IGNORED", title: "Ignored", color: "from-zinc-500/20 to-zinc-600/10", border: "border-zinc-500/20", badge: "bg-zinc-800 text-zinc-400 border-zinc-700" },
-  { id: "TRASH", title: "Trash", color: "from-red-950/20 to-red-900/10", border: "border-red-900/30 border-dashed", badge: "bg-red-900/20 text-red-500 border-red-900/30" }
+const STATUS_META: Record<string, { label: string; dot: string; badge: string }> = {
+  NEW: { label: "New", dot: "bg-status-new", badge: "bg-status-new/15 text-status-new border-status-new/30" },
+  APPLIED: { label: "Applied", dot: "bg-status-applied", badge: "bg-status-applied/15 text-status-applied border-status-applied/30" },
+  INTERVIEWING: { label: "Interviewing", dot: "bg-status-interviewing", badge: "bg-status-interviewing/15 text-status-interviewing border-status-interviewing/30" },
+  REJECTED: { label: "Rejected", dot: "bg-status-rejected", badge: "bg-status-rejected/15 text-status-rejected border-status-rejected/30" },
+  IGNORED: { label: "Ignored", dot: "bg-status-ignored", badge: "bg-muted text-muted-foreground border-border" },
+  TRASH: { label: "Trash", dot: "bg-status-rejected", badge: "bg-muted text-muted-foreground border-border" },
+}
+
+const CLOSED_STATUSES = ["REJECTED", "IGNORED", "TRASH"]
+
+const TABS: { id: string; label: string; statuses: string[] | null }[] = [
+  { id: "ALL", label: "All", statuses: null },
+  { id: "NEW", label: "New", statuses: ["NEW"] },
+  { id: "APPLIED", label: "Applied", statuses: ["APPLIED"] },
+  { id: "INTERVIEWING", label: "Interviewing", statuses: ["INTERVIEWING"] },
+  { id: "CLOSED", label: "Closed", statuses: CLOSED_STATUSES },
 ]
 
-const ARCHIVED_STATUSES = ["REJECTED", "IGNORED", "TRASH"]
+const TAB_EMPTY: Record<string, string> = {
+  ALL: "No jobs yet. Sync Jobs to pull in new roles from your configured sources.",
+  NEW: "No new matches. Sync Jobs to check for new roles.",
+  APPLIED: "Nothing applied to yet — select a match and move it here once you apply.",
+  INTERVIEWING: "No interviews in progress.",
+  CLOSED: "Nothing closed out yet.",
+}
 
-export function KanbanBoard() {
+const CLOSED_FILTERS = [
+  { id: "ALL", label: "All" },
+  { id: "REJECTED", label: "Rejected" },
+  { id: "IGNORED", label: "Ignored" },
+  { id: "TRASH", label: "Trash" },
+]
+
+export function JobsBoard() {
   const { toast } = useToast()
   const [jobs, setJobs] = useState<Job[]>([])
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({})
-  const [showArchived, setShowArchived] = useState(false)
+  const [activeTab, setActiveTab] = useState<string>("ALL")
+  const [closedFilter, setClosedFilter] = useState<string>("ALL")
   const [groupByCompany, setGroupByCompany] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<"date" | "priority">("priority")
@@ -137,7 +159,7 @@ export function KanbanBoard() {
       if (!silent) toast("Failed to delete job", "error")
     }
   }
-  
+
   const fetchJobs = async () => {
     try {
       const { data } = await api.get("/api/jobs?limit=500")
@@ -166,11 +188,11 @@ export function KanbanBoard() {
     try {
       const pushRes = await api.post("/api/crowdsource/push")
       const pullRes = await api.post("/api/crowdsource/pull")
-      
+
       let msg = "Sync Complete. "
       if (pushRes.data.success) msg += `Pushed ${pushRes.data.jobs_sent ?? 0}. `
       if (pullRes.data.success) msg += `Pulled ${pullRes.data.jobs_received ?? 0}.`
-      
+
       toast(msg, "success")
       fetchJobs()
       fetchStats()
@@ -184,171 +206,162 @@ export function KanbanBoard() {
     setExpandedCompanies(prev => ({ ...prev, [company]: !prev[company] }))
   }
 
-  const onDragEnd = async (result: any) => {
-    if (!result.destination) return
-    const { source, destination, draggableId } = result
-    if (source.droppableId === destination.droppableId) return
+  const renderJobRow = (job: Job, showStatusBadge: boolean) => {
+    const loc = job.location && job.location.trim() !== "" ? job.location : null
+    const isSelected = selectedIds.includes(job.id)
+    const meta = STATUS_META[job.status] || STATUS_META.NEW
+    return (
+      <div
+        key={job.id}
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest('a') && !(e.target as HTMLElement).closest('[data-select]')) {
+            setSelectedJob(job)
+          }
+        }}
+        className={`flex items-center gap-3 px-4 py-3 border-b border-border last:border-0 hover:bg-accent/40 cursor-pointer transition-colors ${isSelected ? 'bg-primary/5' : ''}`}
+      >
+        <button
+          data-select
+          onClick={(e) => { e.stopPropagation(); toggleSelect(job.id) }}
+          className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-border hover:border-ring'}`}
+          title="Select"
+        >
+          {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
+        </button>
 
-    const newStatus = destination.droppableId
-    const jobId = parseInt(draggableId)
-    
-    // Optimistic UI update
-    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: newStatus } : j))
-    
-    try {
-      await api.put(`/api/jobs/${jobId}`, { status: newStatus })
-    } catch (e) {
-      console.error("Failed to update status", e)
-      fetchJobs() // revert on fail
-    }
+        <div className={`w-7 h-7 rounded flex items-center justify-center shrink-0 ${job.external_id ? 'bg-primary/10' : 'bg-accent'}`}>
+          {job.external_id ? (
+            <Globe className="w-3.5 h-3.5 text-primary" />
+          ) : (
+            <BriefcaseBusiness className="w-3.5 h-3.5 text-muted-foreground" />
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-foreground truncate" title={job.title}>{job.title}</p>
+          <p className="text-xs text-muted-foreground truncate">
+            {job.company}{loc ? ` · ${loc}` : ""}
+          </p>
+        </div>
+
+        {job.match_score !== undefined && job.match_score !== null && (
+          <div className="hidden sm:flex items-center gap-1.5 shrink-0 w-16" title={job.match_reason || ''}>
+            <span className={`w-2 h-2 rounded-full ${job.match_score >= 70 ? 'bg-status-interviewing' : job.match_score >= 50 ? 'bg-status-applied' : 'bg-status-rejected'}`} />
+            <span className="text-xs font-semibold text-muted-foreground">{job.match_score}%</span>
+          </div>
+        )}
+
+        {showStatusBadge && (
+          <Badge variant="outline" className={`hidden md:inline-flex shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.badge}`}>
+            {meta.label}
+          </Badge>
+        )}
+
+        <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium shrink-0 w-20">
+          <Calendar className="w-3.5 h-3.5" />
+          {formatISTDate(job.created_at)}
+        </div>
+
+        <div className="flex items-center gap-1 shrink-0">
+          <a href={job.url} target="_blank" rel="noreferrer" className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors" title="View Job">
+            <ExternalLink className="w-4 h-4" />
+          </a>
+          {job.status !== "TRASH" && (
+            <button
+              onClick={(e) => { e.stopPropagation(); moveToTrash(job.id) }}
+              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+              title="Move to Trash"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+    )
   }
 
-  const renderJobCard = (job: Job, snapshot: any, provided: any) => {
-    const loc = job.location && job.location.trim() !== "" ? job.location : null;
-    const isSelected = selectedIds.includes(job.id)
-    return (
-    <div
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      {...provided.dragHandleProps}
-      style={provided.draggableProps.style}
-      className="mb-3"
-      onClick={(e) => {
-        // Don't open modal when clicking the external link or the select checkbox.
-        if (!(e.target as HTMLElement).closest('a') && !(e.target as HTMLElement).closest('[data-select]')) {
-          setSelectedJob(job)
-        }
-      }}
-    >
-      <Card className={`bg-zinc-950/80 backdrop-blur-md border-white/5 hover:border-white/20 hover:bg-zinc-900 cursor-pointer transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-xl ${snapshot.isDragging ? 'ring-2 ring-indigo-500/50 shadow-indigo-500/20 z-50 -translate-y-2 scale-105' : ''} ${isSelected ? 'ring-2 ring-blue-500/60' : ''}`}>
-        <CardContent className="p-4">
-          <div className="flex justify-between items-start gap-3 mb-2">
-            <div className="flex items-center gap-2 text-zinc-300 font-medium text-sm truncate flex-1">
-              <button
-                data-select
-                onClick={(e) => { e.stopPropagation(); toggleSelect(job.id) }}
-                className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-white/20 hover:border-white/50'}`}
-                title="Select"
-              >
-                {isSelected && <Check className="w-3 h-3 text-white" />}
-              </button>
-              <div className={`w-6 h-6 rounded flex items-center justify-center shrink-0 ${job.external_id ? 'bg-blue-500/10' : 'bg-white/10'}`}>
-                {job.external_id ? (
-                  <Globe className="w-3.5 h-3.5 text-blue-400" />
-                ) : (
-                  <BriefcaseBusiness className="w-3.5 h-3.5 text-zinc-400" />
-                )}
-              </div>
-              <span className="truncate" title={job.company}>{job.company}</span>
-            </div>
-            <div className="flex items-center gap-1 shrink-0">
-              <a href={job.url} target="_blank" rel="noreferrer" className="p-1 text-zinc-500 hover:text-white hover:bg-white/10 rounded transition-colors" title="View Job">
-                <ExternalLink className="w-4 h-4" />
-              </a>
-              {job.status !== "TRASH" && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); moveToTrash(job.id) }}
-                  className="p-1 text-zinc-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-colors"
-                  title="Move to Trash"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
-          
-          <p className="text-sm font-semibold text-white leading-tight mb-3 line-clamp-2" title={job.title}>
-            {job.title}
-          </p>
-          
-          {job.match_score !== undefined && job.match_score !== null && (
-            <div className="mb-3 flex items-center gap-2" title={job.match_reason || ''}>
-              <div className={`w-2 h-2 rounded-full ${job.match_score >= 70 ? 'bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)]' : job.match_score >= 50 ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.6)]' : 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.6)]'}`} />
-              <span className="font-semibold text-zinc-300 text-xs">{job.match_score}% Matched</span>
-            </div>
-          )}
-          
-          <div className="flex items-center justify-between pt-3 border-t border-white/5">
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                <Calendar className="w-3.5 h-3.5" />
-                {formatISTDate(job.created_at)}
-              </div>
-              {loc && (
-                <div className="flex items-center gap-1.5 text-[11px] text-zinc-500 font-medium">
-                  {loc.startsWith("Extension") ? (
-                    <Globe className="w-3.5 h-3.5 text-blue-400" />
-                  ) : (
-                    <MapPin className="w-3.5 h-3.5" />
-                  )}
-                  {loc}
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )}
+  const tab = TABS.find(t => t.id === activeTab) || TABS[0]
 
-  const filteredJobs = jobs.filter(j => {
+  const tabCounts: Record<string, number> = {
+    ALL: jobs.length,
+    NEW: jobs.filter(j => j.status === "NEW").length,
+    APPLIED: jobs.filter(j => j.status === "APPLIED").length,
+    INTERVIEWING: jobs.filter(j => j.status === "INTERVIEWING").length,
+    CLOSED: jobs.filter(j => CLOSED_STATUSES.includes(j.status)).length,
+  }
+
+  let tabJobs = jobs.filter(j => {
     const q = searchQuery.toLowerCase()
     return j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q)
   })
+  if (tab.statuses) tabJobs = tabJobs.filter(j => tab.statuses!.includes(j.status))
+  if (activeTab === "CLOSED" && closedFilter !== "ALL") tabJobs = tabJobs.filter(j => j.status === closedFilter)
 
-  const columnsToRender = COLUMNS.filter(c => showArchived || !ARCHIVED_STATUSES.includes(c.id))
+  tabJobs = [...tabJobs].sort((a, b) => {
+    if (sortBy === "priority") {
+      const scoreA = a.match_score ?? -1
+      const scoreB = b.match_score ?? -1
+      return sortOrder === "desc" ? scoreB - scoreA : scoreA - scoreB
+    } else {
+      const timeA = new Date(a.created_at).getTime()
+      const timeB = new Date(b.created_at).getTime()
+      return sortOrder === "desc" ? timeB - timeA : timeA - timeB
+    }
+  })
+
+  const showStatusBadge = activeTab === "ALL" || activeTab === "CLOSED"
 
   return (
     <div className="flex flex-col h-full relative">
-      
+
       {/* Controls Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div className="relative max-w-md w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <input 
-            type="text" 
-            placeholder="Search roles, companies..." 
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
+        <div className="relative max-w-md w-full sm:flex-1 sm:min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="Search roles, companies..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-zinc-900/50 border border-white/10 rounded-full pl-10 pr-4 py-2 text-sm text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-blue-500/50 focus:bg-zinc-900 transition-all"
+            className="w-full bg-secondary border border-border rounded-md pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
           />
         </div>
 
         <div className="flex flex-wrap items-center justify-end gap-3">
-          
+
           <button
             onClick={() => setConfirmClearOpen(true)}
             disabled={clearing || jobs.length === 0}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors disabled:opacity-40"
             title="Clear All Jobs"
           >
             <Trash2 className="w-4 h-4" />
           </button>
 
           <div className="relative z-50">
-            <button 
+            <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold border transition-colors ${showFilters ? 'bg-white/10 text-white border-white/20' : 'bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10'}`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold border transition-colors ${showFilters ? 'bg-accent text-foreground border-border' : 'bg-secondary text-muted-foreground border-border hover:bg-accent'}`}
             >
               <Filter className="w-3.5 h-3.5" /> View Options
             </button>
-            
+
             {showFilters && (
-              <div className="absolute top-full right-0 mt-2 w-72 bg-[#1a1d24] border border-white/10 rounded-xl shadow-2xl p-5 z-50 flex flex-col gap-5">
-                
-                <div className="flex items-center justify-between gap-4 text-sm text-zinc-300">
+              <div className="absolute top-full right-0 mt-2 w-64 bg-popover border border-border rounded-md shadow-lg p-5 z-50 flex flex-col gap-5">
+
+                <div className="flex items-center justify-between gap-4 text-sm text-foreground">
                   <span className="font-medium whitespace-nowrap">Group By</span>
                   <select
                     value={groupByCompany.toString()}
                     onChange={(e) => setGroupByCompany(e.target.value === "true")}
-                    className="bg-black/60 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none w-full"
+                    className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none w-full"
                   >
                     <option value="true">Company</option>
                     <option value="false">None</option>
                   </select>
                 </div>
-                
-                <div className="flex items-center justify-between gap-4 text-sm text-zinc-300">
+
+                <div className="flex items-center justify-between gap-4 text-sm text-foreground">
                   <span className="font-medium whitespace-nowrap">Sort By</span>
                   <select
                     value={`${sortBy}-${sortOrder}`}
@@ -357,7 +370,7 @@ export function KanbanBoard() {
                       setSortBy(s as any)
                       setSortOrder(o as any)
                     }}
-                    className="bg-black/60 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none w-full"
+                    className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none w-full"
                   >
                     <option value="priority-desc">Priority (High &rarr; Low)</option>
                     <option value="priority-asc">Priority (Low &rarr; High)</option>
@@ -365,149 +378,103 @@ export function KanbanBoard() {
                     <option value="date-asc">Oldest First</option>
                   </select>
                 </div>
-                
-                <div className="border-t border-white/10 pt-4">
-                  <button
-                    onClick={() => setShowArchived(!showArchived)}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-xs font-semibold bg-white/5 text-zinc-300 border border-white/10 hover:bg-white/10 transition-colors"
-                  >
-                    {showArchived ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    {showArchived ? 'Hide Closed Jobs' : 'Show Closed Jobs'}
-                  </button>
-                </div>
               </div>
             )}
           </div>
 
           {stats && (
-            <div className="flex items-center bg-black/40 border border-white/5 rounded-full px-5 py-2 text-xs font-semibold gap-3">
-              <span className="flex items-center gap-1.5 text-blue-400" title="Community Credits">
-                <Database className="w-3.5 h-3.5" /> <span className="text-zinc-300">{stats.current_credits} Credits</span>
+            <div className="flex items-center bg-secondary border border-border rounded-md px-4 py-2 text-xs font-semibold gap-3">
+              <span className="flex items-center gap-1.5 text-primary" title="Community Credits">
+                <Database className="w-3.5 h-3.5" /> <span className="text-foreground">{stats.current_credits} Credits</span>
               </span>
               {stats.current_credits === 0 && (
                 <>
-                  <span className="w-px h-3 bg-white/10" />
-                  <span className="flex items-center gap-1.5 text-purple-400" title="Free Daily Quota">
-                    <DownloadCloud className="w-3.5 h-3.5" /> <span className="text-zinc-300">{stats.daily_quota_remaining} Free Pulls</span>
+                  <span className="w-px h-3 bg-border" />
+                  <span className="flex items-center gap-1.5 text-muted-foreground" title="Free Daily Quota">
+                    <DownloadCloud className="w-3.5 h-3.5" /> <span className="text-foreground">{stats.daily_quota_remaining} Free Pulls</span>
                   </span>
                 </>
               )}
             </div>
           )}
-          
+
           <button
             onClick={handleSync}
             disabled={isSyncing}
-            className="flex items-center gap-2 px-5 py-2 rounded-full text-xs font-semibold bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {isSyncing ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <RefreshCw className="w-4 h-4" />
-            )}
+            {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
             {isSyncing ? 'Syncing...' : 'Sync Jobs'}
           </button>
         </div>
       </div>
 
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className={`grid gap-6 h-full items-start ${showArchived ? 'grid-cols-1 lg:grid-cols-6' : 'grid-cols-1 lg:grid-cols-3'}`}>
-        {columnsToRender.map((col) => {
-          const columnJobs = filteredJobs
-            .filter(j => j.status === col.id)
-            .sort((a, b) => {
-              if (sortBy === "priority") {
-                const scoreA = a.match_score ?? -1;
-                const scoreB = b.match_score ?? -1;
-                return sortOrder === "desc" ? scoreB - scoreA : scoreA - scoreB;
-              } else {
-                const timeA = new Date(a.created_at).getTime();
-                const timeB = new Date(b.created_at).getTime();
-                return sortOrder === "desc" ? timeB - timeA : timeA - timeB;
-              }
-            })
-          
-          return (
-            <div 
-              key={col.id} 
-              className={`flex flex-col bg-[#12141a] rounded-2xl border ${col.border} p-5 h-[calc(100vh-10rem)] shadow-xl relative group`}
-            >
-              {/* Subtle Gradient Background */}
-              <div className={`absolute inset-0 bg-gradient-to-b ${col.color} opacity-30 group-hover:opacity-50 transition-opacity duration-500 pointer-events-none rounded-2xl`} />
+      {/* Status Tabs */}
+      <div className="flex items-center gap-1 border-b border-border mb-4 overflow-x-auto custom-scrollbar">
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${activeTab === t.id ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            {t.label}
+            <span className={`text-xs rounded-full px-1.5 py-0.5 ${activeTab === t.id ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+              {tabCounts[t.id]}
+            </span>
+          </button>
+        ))}
+      </div>
 
-              <div className="flex items-center justify-between mb-4 shrink-0">
-                <h3 className="text-sm font-bold text-zinc-100 uppercase tracking-wider">{col.title}</h3>
-                <Badge variant="outline" className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${col.badge}`}>
-                  {columnJobs.length}
-                </Badge>
-              </div>
-              
-              <Droppable droppableId={col.id}>
-                {(provided, snapshot) => (
-                  <div 
-                    {...provided.droppableProps} 
-                    ref={provided.innerRef}
-                    className={`flex-1 overflow-y-auto p-1 custom-scrollbar transition-colors duration-300 ${snapshot.isDraggingOver ? 'bg-white/5 rounded-xl' : ''}`}
-                  >
-                    
-                    {/* Render Grouped Companies or Flat list for NEW column */}
-                    {col.id === "NEW" && groupByCompany ? (
-                      (() => {
-                        const companies = Array.from(new Set(columnJobs.map(j => j.company)))
-                        return companies.map((company) => {
-                          const companyJobs = columnJobs.filter(j => j.company === company)
-                          const isExpanded = expandedCompanies[company] || false
-                          
-                          return (
-                            <div key={company} className="mb-4 bg-black/40 rounded-xl border border-white/5">
-                              <button 
-                                onClick={() => toggleCompany(company)}
-                                className="w-full flex items-center justify-between p-3 hover:bg-white/5 transition-colors rounded-xl"
-                              >
-                                <span className="font-semibold text-sm text-zinc-200 truncate">{company}</span>
-                                <div className="flex items-center gap-2">
-                                  <Badge className="bg-blue-500/20 text-blue-300 hover:bg-blue-500/30">{companyJobs.length}</Badge>
-                                  {isExpanded ? <ChevronUp className="w-4 h-4 text-zinc-500" /> : <ChevronDown className="w-4 h-4 text-zinc-500" />}
-                                </div>
-                              </button>
-                              
-                                {isExpanded && (
-                                  <div className="px-2">
-                                    <div className="pt-2 pb-1">
-                                      {companyJobs.map((job, index) => {
-                                        return (
-                                          <Draggable key={job.id} draggableId={job.id.toString()} index={index}>
-                                            {(provided, snapshot) => renderJobCard(job, snapshot, provided)}
-                                          </Draggable>
-                                        )
-                                      })}
-                                    </div>
-                                  </div>
-                                )}
-                            </div>
-                          )
-                        })
-                      })()
-                    ) : (
-                      /* Standard flat rendering for other columns */
-                      columnJobs.map((job, index) => {
-                        return (
-                          <Draggable key={job.id} draggableId={job.id.toString()} index={index}>
-                            {(provided, snapshot) => renderJobCard(job, snapshot, provided)}
-                          </Draggable>
-                        )
-                      })
-                    )}
-                    
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-            </div>
-          )
-        })}
+      {activeTab === "CLOSED" && (
+        <div className="flex items-center gap-2 mb-4">
+          {CLOSED_FILTERS.map(f => (
+            <button
+              key={f.id}
+              onClick={() => setClosedFilter(f.id)}
+              className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${closedFilter === f.id ? 'bg-accent text-foreground border-border' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
-      </DragDropContext>
+      )}
+
+      {/* List */}
+      <div className={`custom-scrollbar bg-card rounded-lg border border-border ${tabJobs.length === 0 ? 'shrink-0' : 'flex-1 overflow-y-auto'}`}>
+        {tabJobs.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 py-10 text-center px-6">
+            <Inbox className="w-5 h-5 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground max-w-sm">{TAB_EMPTY[activeTab]}</p>
+            {jobs.length === 0 && (
+              <button onClick={handleSync} className="mt-1 text-xs font-semibold text-primary hover:underline">
+                Sync Jobs now
+              </button>
+            )}
+          </div>
+        ) : groupByCompany ? (
+          Array.from(new Set(tabJobs.map(j => j.company))).map((company) => {
+            const companyJobs = tabJobs.filter(j => j.company === company)
+            const isExpanded = expandedCompanies[company] ?? true
+            return (
+              <div key={company} className="border-b border-border last:border-0">
+                <button
+                  onClick={() => toggleCompany(company)}
+                  className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-accent/40 transition-colors"
+                >
+                  <span className="font-semibold text-sm text-foreground truncate">{company}</span>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-status-new/15 text-status-new hover:bg-status-new/25">{companyJobs.length}</Badge>
+                    {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                  </div>
+                </button>
+                {isExpanded && companyJobs.map(job => renderJobRow(job, showStatusBadge))}
+              </div>
+            )
+          })
+        ) : (
+          tabJobs.map(job => renderJobRow(job, showStatusBadge))
+        )}
+      </div>
 
       {/* Modal Overlay */}
       {selectedJob && (
@@ -544,11 +511,11 @@ export function KanbanBoard() {
 
       {/* Bulk action bar */}
       {selectedIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-2 bg-[#12141a] border border-white/10 rounded-full shadow-2xl px-3 py-2 animate-in slide-in-from-bottom-4 fade-in duration-200">
-          <span className="text-xs font-semibold text-zinc-300 px-2">{selectedIds.length} selected</span>
-          <div className="w-px h-5 bg-white/10" />
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-2 bg-popover border border-border rounded-full shadow-lg px-3 py-2 animate-in slide-in-from-bottom-4 fade-in duration-200">
+          <span className="text-xs font-semibold text-foreground px-2">{selectedIds.length} selected</span>
+          <div className="w-px h-5 bg-border" />
           {[
-            { label: "New Matches", status: "NEW" },
+            { label: "New", status: "NEW" },
             { label: "Applied", status: "APPLIED" },
             { label: "Interviewing", status: "INTERVIEWING" },
             { label: "Rejected", status: "REJECTED" },
@@ -558,20 +525,20 @@ export function KanbanBoard() {
             <button
               key={a.status}
               onClick={() => bulkSetStatus(a.status)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium text-zinc-300 hover:bg-white/10 transition-colors"
+              className="px-3 py-1.5 rounded-full text-xs font-medium text-foreground hover:bg-accent transition-colors"
             >
               {a.label}
             </button>
           ))}
           <button
             onClick={() => setConfirmBulkDelete(true)}
-            className="px-3 py-1.5 rounded-full text-xs font-medium text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1"
+            className="px-3 py-1.5 rounded-full text-xs font-medium text-destructive hover:bg-destructive/10 transition-colors flex items-center gap-1"
           >
             <Trash2 className="w-3.5 h-3.5" /> Delete
           </button>
           <button
             onClick={() => setSelectedIds([])}
-            className="p-1.5 rounded-full text-zinc-500 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-1.5 rounded-full text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
             title="Clear selection"
           >
             <X className="w-4 h-4" />

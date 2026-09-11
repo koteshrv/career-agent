@@ -56,6 +56,13 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        status: {
+          new: "hsl(var(--status-new))",
+          applied: "hsl(var(--status-applied))",
+          interviewing: "hsl(var(--status-interviewing))",
+          rejected: "hsl(var(--status-rejected))",
+          ignored: "hsl(var(--status-ignored))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
