@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from "recharts"
-import { Cpu, TrendingUp, Filter, AlertTriangle, HeartPulse } from "lucide-react"
+import { Database, Cpu, TrendingUp, Filter, AlertTriangle, HeartPulse } from "lucide-react"
 
 type TargetHealth = {
   company: string
@@ -64,7 +64,8 @@ export function AnalyticsPage() {
   const [settings, setSettings] = useState<any>(null)
   const [targetHealth, setTargetHealth] = useState<TargetHealth[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'app' | 'ai' | 'health'>('app')
+  const [activeTab, setActiveTab] = useState<'app' | 'ai' | 'health' | 'crowdsource'>('app')
+  const [csStats, setCsStats] = useState<any>(null)
   const [isFreeTier, setIsFreeTier] = useState(() => {
     return localStorage.getItem("gemini_pricing_tier") !== "paygo"
   })
@@ -79,11 +80,15 @@ export function AnalyticsPage() {
     Promise.all([
       api.get("/api/jobs?limit=5000"),
       api.get("/api/settings"),
-      api.get("/api/companies/health")
-    ]).then(([jobsRes, settingsRes, healthRes]) => {
+      api.get("/api/companies/health"),
+      api.get("/api/crowdsource/me").catch(() => ({ data: { success: false } }))
+    ]).then(([jobsRes, settingsRes, healthRes, csRes]) => {
       setJobs(jobsRes.data)
       setSettings(settingsRes.data)
-      setTargetHealth(healthRes.data?.targets || [])
+      setTargetHealth(healthRes.data?.health || healthRes.data?.targets || [])
+      if (csRes && csRes.data && csRes.data.success) {
+        setCsStats(csRes.data)
+      }
       setLoading(false)
     }).catch(e => {
       console.error(e)
@@ -246,6 +251,14 @@ export function AnalyticsPage() {
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('crowdsource')}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 ${activeTab === 'crowdsource' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+        >
+          Crowdsourcing
+        </button>
+        
+        
       </div>
 
       {activeTab === 'app' && (
@@ -584,6 +597,44 @@ export function AnalyticsPage() {
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    
+
+      {activeTab === 'crowdsource' && (
+        <div className="max-w-3xl space-y-6">
+          <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Database className="w-4 h-4 text-primary" />
+              Crowdsourcing API Analytics
+            </h3>
+            
+            {!csStats ? (
+              <div className="bg-secondary/40 border border-border rounded-md p-6 text-center">
+                <p className="text-muted-foreground text-sm">Not connected to the crowdsourcing network or data unavailable.</p>
+                <p className="text-xs text-muted-foreground mt-2">Sign in using Google/GitHub, or manually add your Cloud Token in Settings &rarr; Integrations.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-secondary rounded-lg border border-border p-5 flex flex-col items-center justify-center">
+                  <p className="text-muted-foreground text-sm font-medium mb-1">Available Credits</p>
+                  <p className="text-3xl font-semibold text-primary">{csStats.current_credits || 0}</p>
+                </div>
+                <div className="bg-secondary rounded-lg border border-border p-5 flex flex-col items-center justify-center">
+                  <p className="text-muted-foreground text-sm font-medium mb-1">Total Pushed Jobs</p>
+                  <p className="text-3xl font-semibold text-foreground">{csStats.total_pushed || 0}</p>
+                </div>
+                <div className="bg-secondary rounded-lg border border-border p-5 flex flex-col items-center justify-center">
+                  <p className="text-muted-foreground text-sm font-medium mb-1">Total Pulled Jobs</p>
+                  <p className="text-3xl font-semibold text-foreground">{csStats.total_pulled || 0}</p>
+                </div>
+                <div className="bg-secondary rounded-lg border border-border p-5 flex flex-col items-center justify-center">
+                  <p className="text-muted-foreground text-sm font-medium mb-1">Daily Quota Remaining</p>
+                  <p className="text-3xl font-semibold text-status-new">{csStats.daily_quota_remaining || 0} pulls</p>
+                </div>
               </div>
             )}
           </div>

@@ -82,8 +82,8 @@ export function HistoryPage() {
       <div className="bg-card rounded-lg border border-border overflow-hidden">
         <div className="px-6 py-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-foreground">Scraper Run History</h3>
-            <p className="text-sm text-muted-foreground">Logs from background cron executions</p>
+            <h3 className="text-base font-semibold text-foreground">Local Scraper Run History</h3>
+            <p className="text-sm text-muted-foreground">Logs from your local scrape targets (does not include Community synced jobs).</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
             {hasRunning && (

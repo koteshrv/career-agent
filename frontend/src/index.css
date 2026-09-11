@@ -6,9 +6,37 @@
 
 @layer base {
   :root {
+    color-scheme: light;
+    --background: 240 5% 96%;
+    --foreground: 30 20% 12%;
+    --card: 40 20% 100%;
+    --card-foreground: 30 20% 12%;
+    --popover: 40 20% 100%;
+    --popover-foreground: 30 20% 12%;
+    --primary: 32 85% 58%;
+    --primary-foreground: 40 20% 98%;
+    --secondary: 240 5% 92%;
+    --secondary-foreground: 30 20% 18%;
+    --muted: 40 10% 92%;
+    --muted-foreground: 30 10% 45%;
+    --accent: 40 10% 89%;
+    --accent-foreground: 30 20% 18%;
+    --destructive: 6 70% 45%;
+    --destructive-foreground: 40 20% 98%;
+    --border: 40 10% 93%;
+    --input: 40 10% 93%;
+    --ring: 32 85% 58%;
+    --radius: 0.5rem;
+
+    --status-new: 217 91% 55%;
+    --status-applied: 32 85% 50%;
+    --status-interviewing: 142 71% 40%;
+    --status-rejected: 6 70% 45%;
+    --status-ignored: 30 5% 45%;
+  }
+
+  .dark {
     color-scheme: dark;
-    /* Ink-and-brass: a quiet near-black workspace with one deliberate warm accent,
-       standing in for status/attention instead of decorative gradients. */
     --background: 30 8% 7%;
     --foreground: 40 15% 92%;
     --card: 30 8% 9.5%;
@@ -28,14 +56,6 @@
     --border: 30 8% 17%;
     --input: 30 8% 17%;
     --ring: 32 85% 58%;
-    --radius: 0.5rem;
-
-    /* Status colors — used functionally (job stage, health), never decoratively. */
-    --status-new: 217 91% 60%;
-    --status-applied: 32 85% 58%;
-    --status-interviewing: 142 71% 45%;
-    --status-rejected: 6 70% 45%;
-    --status-ignored: 30 5% 45%;
   }
 }
 

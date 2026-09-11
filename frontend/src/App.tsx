@@ -10,7 +10,7 @@ import { getToken, clearToken, IS_DEMO, api } from "@/lib/api"
 import { QuickGeneratePage } from "./components/QuickGeneratePage"
 import { KnowledgeBasePage } from "./components/KnowledgeBasePage"
 import { NotificationTray } from "./components/NotificationTray"
-import { Home, Briefcase, Zap, Settings, History, LogOut, LineChart, Database, User, Menu } from "lucide-react"
+import { Home, Briefcase, Zap, Settings, History, LogOut, LineChart, Database, User, Menu, Sun, Moon } from "lucide-react"
 import { useState, useEffect } from "react"
 import type { ReactNode } from "react"
 
@@ -60,6 +60,21 @@ function NavItems({ onNavigate }: { onNavigate?: () => void }) {
 }
 
 function Layout() {
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+  });
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('career_agent_theme', newTheme);
+    if (newTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
   const location = useLocation()
   const navigate = useNavigate()
   const current = NAV.find(n => location.pathname.startsWith(n.to))
@@ -110,7 +125,7 @@ function Layout() {
         {/* Sidebar Navigation */}
         <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col z-40">
           <Link to="/app/home" className="h-16 flex items-center px-6 border-b border-border hover:bg-accent/40 transition-colors">
-            <span className="text-lg font-semibold tracking-tight text-foreground">CareerAgent</span>
+            <div className="flex items-center gap-2"><Zap className="w-6 h-6 text-primary fill-primary" /><span className="text-lg font-bold tracking-tight text-foreground">CareerAgent</span></div>
           </Link>
 
           <nav className="flex-1 px-4 py-6 space-y-1">
@@ -144,7 +159,7 @@ function Layout() {
             <div className="absolute inset-0 bg-black/60" onClick={() => setMobileNavOpen(false)} />
             <aside className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border flex flex-col">
               <div className="h-16 flex items-center px-6 border-b border-border">
-                <span className="text-lg font-semibold tracking-tight text-foreground">CareerAgent</span>
+                <div className="flex items-center gap-2"><Zap className="w-6 h-6 text-primary fill-primary" /><span className="text-lg font-bold tracking-tight text-foreground">CareerAgent</span></div>
               </div>
               <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                 <NavItems onNavigate={() => setMobileNavOpen(false)} />
@@ -181,6 +196,13 @@ function Layout() {
               </div>
             </div>
             <div className="flex items-center gap-4 shrink-0">
+              <button 
+                onClick={toggleTheme} 
+                className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground"
+                title="Toggle Theme"
+              >
+                {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
               <NotificationTray />
             </div>
           </header>

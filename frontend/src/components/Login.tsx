@@ -3,7 +3,7 @@ import axios from "axios"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { api, setToken, setCloudToken } from "@/lib/api"
 import { runtimeConfig } from "@/lib/runtime-config"
-import { Loader2, Clock } from "lucide-react"
+import { Loader2, Clock, Zap } from "lucide-react"
 import { GoogleLogin } from '@react-oauth/google'
 import { useToast } from "./Toast"
 
@@ -144,7 +144,10 @@ export function Login() {
         )}
 
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-semibold text-foreground tracking-tight">CareerAgent</h1>
+          <div className="flex items-center justify-center gap-2">
+            <Zap className="w-7 h-7 text-primary fill-primary" />
+            <h1 className="text-2xl font-bold text-foreground tracking-tight">CareerAgent</h1>
+          </div>
           <p className="text-muted-foreground text-sm mt-2">Your automated job search assistant</p>
         </div>
 
@@ -224,7 +227,7 @@ export function Login() {
               </button>
 
               <p className="text-[11px] leading-relaxed text-muted-foreground text-center mt-2 pt-2">
-                First time setting up this instance? The first Google/GitHub account to sign in becomes the administrator. After that, new sign-ins need the administrator's approval.
+                First time setting up this instance? The first Google/GitHub account to sign in becomes the administrator. After that, new sign-ins need the administrator's approval. Signing in with Google/GitHub automatically connects you to the crowdsourced job network.
               </p>
 
               {error && (

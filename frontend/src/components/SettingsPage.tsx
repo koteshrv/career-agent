@@ -125,35 +125,29 @@ function ModelPriorityPicker({ label, value, onChange, suggestions }: {
         </div>
       )}
 
-      {/* ── All models as checkboxes ── */}
-      <div className="rounded-md border border-border bg-secondary/40 divide-y divide-border overflow-hidden">
-        {allModels.map(s => {
-          const isChecked = selected.includes(s.value)
-          return (
-            <button key={s.value} onClick={() => toggle(s.value)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm text-left transition-colors
-                ${isChecked ? "bg-primary/5 hover:bg-primary/10" : "hover:bg-accent"}`}
-            >
-              <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 transition-colors
-                ${isChecked ? "bg-primary border-primary" : "border-border bg-transparent"}`}>
-                {isChecked && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-              </div>
-              <span className={`flex-1 font-mono ${isChecked ? "text-foreground" : "text-muted-foreground"}`}>{s.label}</span>
-              {s.badge && (
-                <span className={`text-[10px] px-1.5 py-0.5 rounded shrink-0
-                  ${isChecked ? "bg-primary/15 text-primary" : "bg-accent text-muted-foreground"}`}>
-                  {s.badge}
-                </span>
-              )}
-              {isChecked && (
-                <span className="text-[10px] text-primary font-semibold shrink-0">
-                  #{selected.indexOf(s.value) + 1}
-                </span>
-              )}
-            </button>
-          )
-        })}
+      {/* ── Add Model Input ── */}
+      <div className="mt-2">
+        <input 
+          type="text" 
+          placeholder="+ Type a model name to add and press Enter..." 
+          className="w-full bg-secondary border border-border rounded-md px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+              e.preventDefault();
+              const val = e.currentTarget.value.trim();
+              if (!selected.includes(val)) emit([...selected, val]);
+              e.currentTarget.value = '';
+            }
+          }}
+          list={`models-${label.replace(/\s+/g, '')}`}
+        />
+        <datalist id={`models-${label.replace(/\s+/g, '')}`}>
+          {suggestions.filter(s => !selected.includes(s.value)).map(s => (
+            <option key={s.value} value={s.value}>{s.badge || ''}</option>
+          ))}
+        </datalist>
       </div>
+
     </div>
   )
 }
@@ -186,7 +180,7 @@ const TABS = [
   { id: "data", label: "Data" },
   { id: "health", label: "System Health" },
 ] as const
-type TabId = typeof TABS[number]["id"] | "team"
+type TabId = typeof TABS[number]["id"] | "members"
 
 export function SettingsPage() {
   const { toast } = useToast()
@@ -345,8 +339,8 @@ export function SettingsPage() {
     </div>
   )
 
-  const visibleTabs = isAdmin ? [...TABS, { id: "team" as const, label: "Team" }] : TABS
-  const showSaveButton = activeTab !== "health" && activeTab !== "team"
+  const visibleTabs = isAdmin ? [...TABS, { id: "members" as const, label: "Members" }] : TABS
+  const showSaveButton = activeTab !== "health" && activeTab !== "members"
 
   return (
     <div className="max-w-4xl mx-auto pb-16 relative">
@@ -468,7 +462,7 @@ export function SettingsPage() {
 
             <div className="pt-6 border-t border-border space-y-3">
               <h4 className="text-sm font-semibold text-foreground">Baseline Match Skills</h4>
-              <p className="text-xs text-muted-foreground">These skills are matched against fetched Job Descriptions to calculate your Match Score. You can edit them manually below.</p>
+              <p className="text-xs text-muted-foreground">Skills are automatically extracted when you upload a resume. The AI uses these baseline skills to evaluate job descriptions. You can manually adjust them below if needed.</p>
 
               {(() => {
                 try {
@@ -790,9 +784,9 @@ export function SettingsPage() {
 
         {activeTab === "health" && <SystemHealth />}
 
-        {activeTab === "team" && isAdmin && (
+        {activeTab === "members" && isAdmin && (
           <div className="bg-card rounded-lg border border-border p-6 space-y-4">
-            <h3 className="text-base font-semibold text-foreground mb-1">Team Access</h3>
+            <h3 className="text-base font-semibold text-foreground mb-1">Members</h3>
             <p className="text-xs text-muted-foreground -mt-2">People who've signed in with Google/GitHub. New sign-ins need your approval before they can access the app.</p>
             {users.length === 0 ? (
               <p className="text-sm text-muted-foreground">No sign-in requests yet.</p>
@@ -800,16 +794,30 @@ export function SettingsPage() {
               <div className="space-y-2">
                 {users.map(u => (
                   <div key={u.id} className="flex items-center justify-between bg-secondary border border-border rounded-md px-4 py-2.5">
-                    <div className="flex flex-col">
-                      <span className="text-sm text-foreground">{u.email || u.username}</span>
-                      <span className="text-xs text-muted-foreground">{u.role} · {u.status}</span>
-                    </div>
-                    {u.status === "PENDING" && (
+                    <div className="flex flex-col gap-1">
+                      <span className="text-sm font-medium text-foreground">{u.email || u.username}</span>
                       <div className="flex items-center gap-2">
-                        <Button onClick={() => rejectUser(u.id)} className="bg-secondary text-foreground hover:bg-accent h-8 px-3 text-xs border border-border">Reject</Button>
-                        <Button onClick={() => approveUser(u.id)} className="bg-primary text-primary-foreground hover:opacity-90 h-8 px-3 text-xs">Approve</Button>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary border border-border font-medium text-muted-foreground">
+                          {u.role.charAt(0) + u.role.slice(1).toLowerCase()}
+                        </span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${u.status === 'ACTIVE' ? 'bg-status-interviewing/10 text-status-interviewing border-status-interviewing/20' : u.status === 'PENDING' ? 'bg-status-new/10 text-status-new border-status-new/20' : 'bg-destructive/10 text-destructive border-destructive/20'}`}>
+                          {u.status.charAt(0) + u.status.slice(1).toLowerCase()}
+                        </span>
                       </div>
-                    )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {u.status === "PENDING" && (
+                        <>
+                          <Button onClick={() => rejectUser(u.id)} className="bg-secondary text-foreground hover:bg-accent h-8 px-3 text-xs border border-border">Reject</Button>
+                          <Button onClick={() => approveUser(u.id)} className="bg-primary text-primary-foreground hover:opacity-90 h-8 px-3 text-xs">Approve</Button>
+                        </>
+                      )}
+                      {u.status === "ACTIVE" && (
+                        <button onClick={() => rejectUser(u.id)} className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors" title="Revoke Access">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

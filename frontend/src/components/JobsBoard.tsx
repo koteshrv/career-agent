@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useSearchParams } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { formatISTDate } from "@/lib/datetime"
 import { api } from "@/lib/api"
@@ -6,6 +7,8 @@ import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, Sear
 import { JobModal } from "./JobModal"
 import { useToast } from "./Toast"
 import { ConfirmDialog } from "./ConfirmDialog"
+
+let globalJobsCache: Job[] | null = null;
 
 export type Job = {
   id: number
@@ -67,11 +70,20 @@ const CLOSED_FILTERS = [
 
 export function JobsBoard() {
   const { toast } = useToast()
-  const [jobs, setJobs] = useState<Job[]>([])
+  const [jobs, setJobs] = useState<Job[]>(globalJobsCache || [])
   const [expandedCompanies, setExpandedCompanies] = useState<Record<string, boolean>>({})
-  const [activeTab, setActiveTab] = useState<string>("ALL")
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = searchParams.get("tab") || "ALL"
+  const [activeTab, setActiveTab] = useState<string>(initialTab)
+
+  // Update URL when tab changes, without triggering a full remount if possible
+  useEffect(() => {
+    if (searchParams.get("tab") !== activeTab) {
+      setSearchParams({ tab: activeTab }, { replace: true })
+    }
+  }, [activeTab, setSearchParams])
   const [closedFilter, setClosedFilter] = useState<string>("ALL")
-  const [groupByCompany, setGroupByCompany] = useState(true)
+  const [groupByCompany, setGroupByCompany] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<"date" | "priority">("priority")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
@@ -83,6 +95,17 @@ export function JobsBoard() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [stats, setStats] = useState<any>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const filtersRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filtersRef.current && !filtersRef.current.contains(event.target as Node)) {
+        setShowFilters(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
   useEffect(() => {
     fetchJobs()
@@ -164,6 +187,7 @@ export function JobsBoard() {
     try {
       const { data } = await api.get("/api/jobs?limit=500")
       const mapped = data.map((j: Job) => ({...j, status: j.status || 'NEW'}))
+      globalJobsCache = mapped
       setJobs(mapped)
     } catch (e) {
       console.error(e)
@@ -229,7 +253,7 @@ export function JobsBoard() {
           {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
         </button>
 
-        <div className={`w-7 h-7 rounded flex items-center justify-center shrink-0 ${job.external_id ? 'bg-primary/10' : 'bg-accent'}`}>
+        <div className={`w-7 h-7 rounded flex items-center justify-center shrink-0 ${job.external_id ? 'bg-primary/10' : 'bg-accent'}`} title={job.external_id ? "Crowdsourced Job" : "Locally Scraped Job"}>
           {job.external_id ? (
             <Globe className="w-3.5 h-3.5 text-primary" />
           ) : (
@@ -252,9 +276,11 @@ export function JobsBoard() {
         )}
 
         {showStatusBadge && (
-          <Badge variant="outline" className={`hidden md:inline-flex shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.badge}`}>
-            {meta.label}
-          </Badge>
+          <div className="hidden md:flex shrink-0 w-24 justify-end">
+            <Badge variant="outline" className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${meta.badge}`}>
+              {meta.label}
+            </Badge>
+          </div>
         )}
 
         <div className="hidden lg:flex items-center gap-1.5 text-[11px] text-muted-foreground font-medium shrink-0 w-20">
@@ -338,7 +364,7 @@ export function JobsBoard() {
             <Trash2 className="w-4 h-4" />
           </button>
 
-          <div className="relative z-50">
+          <div className="relative z-50" ref={filtersRef}>
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold border transition-colors ${showFilters ? 'bg-accent text-foreground border-border' : 'bg-secondary text-muted-foreground border-border hover:bg-accent'}`}
@@ -347,22 +373,22 @@ export function JobsBoard() {
             </button>
 
             {showFilters && (
-              <div className="absolute top-full right-0 mt-2 w-64 bg-popover border border-border rounded-md shadow-lg p-5 z-50 flex flex-col gap-5">
+              <div className="absolute top-full right-0 mt-2 w-[300px] bg-popover border border-border rounded-md shadow-lg p-5 z-50 flex flex-col gap-5">
 
                 <div className="flex items-center justify-between gap-4 text-sm text-foreground">
-                  <span className="font-medium whitespace-nowrap">Group By</span>
+                  <span className="font-medium whitespace-nowrap w-16">Group By</span>
                   <select
                     value={groupByCompany.toString()}
                     onChange={(e) => setGroupByCompany(e.target.value === "true")}
                     className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none w-full"
                   >
-                    <option value="true">Company</option>
                     <option value="false">None</option>
+                    <option value="true">Company</option>
                   </select>
                 </div>
 
                 <div className="flex items-center justify-between gap-4 text-sm text-foreground">
-                  <span className="font-medium whitespace-nowrap">Sort By</span>
+                  <span className="font-medium whitespace-nowrap w-16">Sort By</span>
                   <select
                     value={`${sortBy}-${sortOrder}`}
                     onChange={(e) => {

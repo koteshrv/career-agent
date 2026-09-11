@@ -20,7 +20,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from .. import auth, crowdsourcing, crud, models, scheduler
+from .. import auth, crowdsourcing, crud, models, scheduler, schemas
 from ..database import get_db
 
 router = APIRouter(prefix="/api", tags=["Users"])
@@ -69,6 +69,12 @@ def sso_login(req: SsoLoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=403, detail="Your access request was rejected.")
     if user.status == "PENDING":
         return {"status": "pending", "email": email}
+
+
+    if user.status == "ACTIVE":
+        settings = crud.get_settings(db, user.id)
+        if settings and req.cloud_token:
+            crud.update_settings(db, user.id, schemas.SettingsBase(career_agent_cloud_token=req.cloud_token))
 
     return {"status": "active", "token": auth.create_token(user)}
 

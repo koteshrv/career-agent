@@ -1,706 +1,639 @@
-{
-  "info": {
-    "name": "Career Agent API",
-    "description": "Postman collection for testing the Career Agent API locally.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-  },
-  "item": [
-    {
-      "name": "0. API Info",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            ""
-          ]
-        },
-        "description": "Unauthenticated. Basic metadata and links — not part of the versioned API surface."
-      },
-      "response": []
-    },
-    {
-      "name": "1. SSO Login",
-      "event": [
-        {
-          "listen": "test",
-          "script": {
-            "exec": [
-              "var jsonData = pm.response.json();",
-              "if (jsonData.token || jsonData.access_token) {",
-              "    pm.collectionVariables.set(\"jwt_token\", jsonData.token || jsonData.access_token);",
-              "    console.log(\"JWT Token saved to collection variables!\");",
-              "}"
-            ],
-            "type": "text/javascript"
-          }
-        }
-      ],
-      "request": {
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"idp_token\": \"PASTE_REAL_TOKEN_HERE\",\n    \"sso_provider\": \"github\"\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/v1/auth/login",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "v1",
-            "auth",
-            "login"
-          ]
-        },
-        "description": "Simulates the frontend sending SSO details. Automatically saves the returned JWT to a collection variable."
-      },
-      "response": []
-    },
-    {
-      "name": "2. Push Jobs (Give to Get)",
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{jwt_token}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"jobs\": [\n        {\n            \"company\": \"TechCorp\",\n            \"title\": \"Software Engineer\",\n            \"location\": \"Remote\",\n            \"url\": \"https://techcorp.com/jobs/1\"\n        },\n        {\n            \"company\": \"InnoSys\",\n            \"title\": \"Frontend Developer\",\n            \"location\": \"New York, NY\",\n            \"url\": \"https://innosys.com/jobs/2\"\n        }\n    ]\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/v1/jobs/push",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "v1",
-            "jobs",
-            "push"
-          ]
-        },
-        "description": "Uploads scraped jobs and earns credits. Requires JWT token."
-      },
-      "response": []
-    },
-    {
-      "name": "3. Pull Jobs (Consume)",
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{jwt_token}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/v1/jobs/pull?limit=5",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "v1",
-            "jobs",
-            "pull"
-          ],
-          "query": [
-            {
-              "key": "limit",
-              "value": "5"
-            }
-          ]
-        },
-        "description": "Pulls the latest jobs and deducts credits. Requires JWT token. Jobs older than 60 days are excluded by default — add &include_stale=true to the URL to include them."
-      },
-      "response": []
-    },
-    {
-      "name": "4. Report a Job",
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{jwt_token}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "POST",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"job_id\": \"PASTE_JOB_ID_FROM_PULL\",\n    \"reason\": \"dead_link\"\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/v1/jobs/report",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "v1",
-            "jobs",
-            "report"
-          ]
-        },
-        "description": "Report a pulled job as fake or dead. 3 distinct reports flag the job and penalise the contributor."
-      },
-      "response": []
-    },
-    {
-      "name": "5. Get Account Info",
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{jwt_token}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/v1/me",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "v1",
-            "me"
-          ]
-        },
-        "description": "Current credit balance, contribution stats, remaining daily quota and push-credit allowance."
-      },
-      "response": []
-    },
-    {
-      "name": "6. Health Check",
-      "request": {
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/health",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "health"
-          ]
-        },
-        "description": "Unauthenticated liveness probe; also verifies the PostgreSQL database responds."
-      },
-      "response": []
-    },
-    {
-      "name": "7. Logout Everywhere",
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{jwt_token}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "POST",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/v1/auth/logout-all",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "v1",
-            "auth",
-            "logout-all"
-          ]
-        },
-        "description": "Invalidates every JWT previously issued to this account, including the one used to call this. Deliberately sent with no body/Content-Type — an empty JSON body would be rejected by Fastify before the handler runs."
-      },
-      "response": []
-    },
-    {
-      "name": "8. Export My Data",
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{jwt_token}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "GET",
-        "header": [],
-        "url": {
-          "raw": "{{base_url}}/v1/me/export",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "v1",
-            "me",
-            "export"
-          ]
-        },
-        "description": "Self-service export: profile, jobs contributed, jobs pulled, reports filed."
-      },
-      "response": []
-    },
-    {
-      "name": "9. Delete My Account",
-      "request": {
-        "auth": {
-          "type": "bearer",
-          "bearer": [
-            {
-              "key": "token",
-              "value": "{{jwt_token}}",
-              "type": "string"
-            }
-          ]
-        },
-        "method": "DELETE",
-        "header": [
-          {
-            "key": "Content-Type",
-            "value": "application/json",
-            "type": "text"
-          }
-        ],
-        "body": {
-          "mode": "raw",
-          "raw": "{\n    \"confirm\": true\n}"
-        },
-        "url": {
-          "raw": "{{base_url}}/v1/me",
-          "host": [
-            "{{base_url}}"
-          ],
-          "path": [
-            "v1",
-            "me"
-          ]
-        },
-        "description": "Deletes this account and its own activity records. Jobs it contributed are kept (attribution detached), not deleted. Irreversible."
-      },
-      "response": []
-    },
-    {
-      "name": "Admin",
-      "description": "Requires the calling account to have is_admin = true (no self-service way to set this — see DATABASE_QUERIES.md). Use {{admin_jwt_token}}, obtained by logging in as an admin account via request #1 and copying its token here. A non-admin gets 404 from all of these, not 403.",
-      "item": [
-        {
-          "name": "Look Up Users By Email",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/admin/users?email=user@example.com",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users"
-              ],
-              "query": [
-                {
-                  "key": "email",
-                  "value": "user@example.com"
-                }
-              ]
-            },
-            "description": "Email is not unique (accounts are keyed on sso_provider + provider_user_id), so this can return more than one account for the same address."
-          },
-          "response": []
-        },
-        {
-          "name": "Get User",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/admin/users/{{target_user_id}}",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "{{target_user_id}}"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Set Credit Balance",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"credits\": 50000\n}"
-            },
-            "url": {
-              "raw": "{{base_url}}/v1/admin/users/{{target_user_id}}/credits",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "{{target_user_id}}",
-                "credits"
-              ]
-            },
-            "description": "Sets the absolute balance (not a delta)."
-          },
-          "response": []
-        },
-        {
-          "name": "Ban User",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/admin/users/{{target_user_id}}/ban",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "{{target_user_id}}",
-                "ban"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Unban User",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/admin/users/{{target_user_id}}/unban",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "users",
-                "{{target_user_id}}",
-                "unban"
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "List Flagged Jobs",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/admin/jobs/flagged?limit=50",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "jobs",
-                "flagged"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "50"
-                }
-              ]
-            }
-          },
-          "response": []
-        },
-        {
-          "name": "Unflag a Job",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "POST",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/admin/jobs/{{target_job_id}}/unflag",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "jobs",
-                "{{target_job_id}}",
-                "unflag"
-              ]
-            },
-            "description": "Restores a job to circulation, e.g. after review finds a report was a false positive."
-          },
-          "response": []
-        },
-        {
-          "name": "Who Reported a Job",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/admin/jobs/{{target_job_id}}/reports",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "jobs",
-                "{{target_job_id}}",
-                "reports"
-              ]
-            },
-            "description": "Works for any job, not just already-flagged ones."
-          },
-          "response": []
-        },
-        {
-          "name": "Audit Log",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/admin/audit-log?limit=50",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "audit-log"
-              ],
-              "query": [
-                {
-                  "key": "limit",
-                  "value": "50"
-                }
-              ]
-            },
-            "description": "Every write made through /v1/admin/* — who did what, when."
-          },
-          "response": []
-        },
-        {
-          "name": "Aggregate Stats",
-          "request": {
-            "auth": {
-              "type": "bearer",
-              "bearer": [
-                {
-                  "key": "token",
-                  "value": "{{admin_jwt_token}}",
-                  "type": "string"
-                }
-              ]
-            },
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/v1/admin/stats",
-              "host": [
-                "{{base_url}}"
-              ],
-              "path": [
-                "v1",
-                "admin",
-                "stats"
-              ]
-            },
-            "description": "Total users/jobs/reports/flags plus the top 10 contributors by jobs pushed."
-          },
-          "response": []
-        }
-      ]
-    }
-  ],
-  "variable": [
-    {
-      "key": "base_url",
-      "value": "http://localhost:3000",
-      "type": "string"
-    },
-    {
-      "key": "jwt_token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "admin_jwt_token",
-      "value": "",
-      "type": "string",
-      "description": "Token for an account with is_admin = true. Log in as that account via request #1 and paste its token here (or reuse jwt_token if the same account is both)."
-    },
-    {
-      "key": "target_user_id",
-      "value": "",
-      "type": "string",
-      "description": "UUID of the user an Admin request acts on."
-    },
-    {
-      "key": "target_job_id",
-      "value": "",
-      "type": "string",
-      "description": "UUID of the job an Admin request acts on."
-    }
-  ]
-}
+openapi: 3.0.3
+info:
+  title: Career Agent API
+  description: A centralized crowdsourcing API for an open-source job scraping tool featuring a Give-to-Get credit economy.
+  version: 1.0.0
+servers:
+  - url: https://api.careeragent.fyi
+    description: Live community instance
+  - url: http://localhost:3000
+    description: Local Development Server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    JobInput:
+      type: object
+      required:
+        - company
+        - title
+        - url
+      description: Entries missing company, title, or url are silently skipped (see invalid_skipped in the push response); location is optional.
+      properties:
+        company:
+          type: string
+          example: TechCorp
+        title:
+          type: string
+          example: Software Engineer
+        location:
+          type: string
+          example: Remote
+        url:
+          type: string
+          example: https://techcorp.com/jobs/1
+          
+    JobOutput:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        company:
+          type: string
+        title:
+          type: string
+        location:
+          type: string
+        url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+
+security:
+  - bearerAuth: []
+
+paths:
+  /:
+    get:
+      summary: Root
+      description: Unauthenticated. Basic API metadata and links — not part of the versioned API surface.
+      security: []
+      responses:
+        '200':
+          description: API metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: CareerAgent API
+                  version:
+                    type: string
+                    description: The deployed image's git commit hash, or "unknown".
+                  docs:
+                    type: string
+                  repo:
+                    type: string
+                  health:
+                    type: string
+                    example: /health
+
+  /v1/auth/login:
+    post:
+      summary: SSO Login
+      description: >
+        Exchanges a Google or GitHub Identity Provider (IdP) token for an internal Asymmetric RS256 API JWT. 
+        The generated RS256 token embeds the user's `email` and can be cryptographically verified offline by local API containers using the central Public Key. 
+        User IP addresses are automatically logged on login to mitigate sybil attacks and track multi-account usage.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - idp_token
+                - sso_provider
+              properties:
+                idp_token:
+                  type: string
+                  description: The JWT ID Token (for Google) or the raw OAuth Authorization Code (for GitHub).
+                sso_provider:
+                  type: string
+                  enum: [google, github]
+      responses:
+        '200':
+          description: Successful authentication
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    description: The primary RS256 signed JWT.
+                  access_token:
+                    type: string
+                    description: Identical to `token`, kept for backward compatibility.
+                  token_type:
+                    type: string
+                    example: bearer
+                  expires_in:
+                    type: integer
+                    example: 604800
+        '400':
+          description: Missing parameters or failed to extract email/account id from IdP.
+        '401':
+          description: Invalid IdP token or GitHub code exchange failed.
+        '429':
+          description: Too Many Requests (rate limited — a tighter 20/60s budget applies to this route specifically)
+        '500':
+          description: Server misconfiguration (GOOGLE_CLIENT_ID, or GITHUB_CLIENT_ID/GITHUB_CLIENT_SECRET, not set for the requested provider)
+
+  /v1/auth/logout-all:
+    post:
+      summary: Log Out Everywhere
+      description: >
+        Invalidates every previously-issued JWT for this account, including
+        the one used to call this endpoint. JWTs are stateless and not
+        tracked individually, so revocation is all-or-nothing per account —
+        there is no way to revoke a single session.
+      responses:
+        '200':
+          description: All tokens for this account are now invalid.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          description: Missing, invalid, expired, or already-revoked token.
+        '403':
+          description: User is banned.
+
+  /v1/jobs/push:
+    post:
+      summary: Push Scraped Jobs
+      description: >
+        Upload newly scraped jobs to the database. Earns 1 API credit per unique job successfully inserted,
+        up to a daily cap of 500 earned credits per user. Entries whose `url` is not a valid http(s) URL, or
+        whose fields exceed the length limits, are skipped rather than failing the batch. Maximum 1000 jobs per request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - jobs
+              properties:
+                jobs:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/JobInput'
+                  maxItems: 1000
+      responses:
+        '200':
+          description: Jobs processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Pushed 5 jobs.
+                  credits_earned:
+                    type: integer
+                    description: Credits actually awarded (may be less than jobs_accepted if the daily cap was hit).
+                    example: 5
+                  jobs_accepted:
+                    type: integer
+                    description: Unique jobs actually stored from this request.
+                    example: 5
+                  invalid_skipped:
+                    type: integer
+                    description: Number of submitted entries skipped for missing/invalid fields or an invalid URL.
+                    example: 0
+                  failed:
+                    type: integer
+                    description: Number of entries that could not be inserted due to an unexpected database error.
+                    example: 0
+                  warning:
+                    type: string
+                    description: Present when the daily push credit cap was reached.
+        '400':
+          description: Invalid payload or malformed JSON body
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '413':
+          description: Payload Too Large (Exceeds 1000 jobs)
+        '429':
+          description: Too Many Requests (rate limited)
+
+  /v1/jobs/pull:
+    get:
+      summary: Pull Jobs
+      description: Consume jobs from the database. Deducts 1 API credit per job. Falls back to a strict daily quota (50 jobs/day) if credits are 0. Each user is only ever served a given job once — already-pulled jobs are excluded from future pulls. Jobs older than 60 days are excluded by default (soft staleness — see include_stale).
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 100
+          description: Maximum number of jobs to return.
+        - in: query
+          name: include_stale
+          schema:
+            type: string
+            enum: ["true"]
+          description: Include jobs older than 60 days, which are excluded by default.
+      responses:
+        '200':
+          description: Jobs retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  warning:
+                    type: string
+                    description: Warning message if the requested limit was capped.
+                  jobs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/JobOutput'
+                  deducted:
+                    type: integer
+                    description: Number of credits deducted from balance.
+                  quota_used:
+                    type: integer
+                    description: Number of free quota jobs used if user has 0 credits.
+                  has_more:
+                    type: boolean
+                    description: >
+                      Whether at least one more unconsumed, unflagged job existed beyond this batch at
+                      query time — a hint for whether it's worth calling again, not a hard guarantee (the
+                      pool is shared and can shift between requests). Not a cursor: calling pull() again
+                      already advances through the corpus for free, since already-pulled jobs are excluded.
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '403':
+          description: Forbidden (Daily free quota exhausted)
+        '409':
+          description: Conflict (lost a race with a concurrent pull request from the same user); safe to retry
+
+  /v1/me:
+    get:
+      summary: Get Account Info
+      description: Returns the authenticated user's current Give-to-Get economy balance and stats.
+      responses:
+        '200':
+          description: Account info retrieved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  email:
+                    type: string
+                  current_credits:
+                    type: integer
+                  total_pushed:
+                    type: integer
+                  total_pulled:
+                    type: integer
+                  daily_quota_remaining:
+                    type: integer
+                    description: Remaining free-tier jobs pullable today (resets daily; only relevant once credits reach 0).
+                  daily_push_credits_remaining:
+                    type: integer
+                    description: Credits still earnable from pushing today before the daily cap is reached.
+                  flagged_count:
+                    type: integer
+                    description: Number of this user's contributed jobs the community has flagged as fake or dead.
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+
+  /v1/me/export:
+    get:
+      summary: Export Account Data
+      description: >
+        Self-service data export: this account's own profile, jobs it contributed, jobs it pulled,
+        and reports it filed. Does not include community data other users generated (e.g. reports
+        filed against this account's jobs by other users).
+      responses:
+        '200':
+          description: Export retrieved
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+
+  /v1/me:
+    delete:
+      summary: Delete Account
+      description: >
+        Self-service account deletion. Erases this account's own row (email, IP, credit/stat
+        history) and its own activity records (jobs pulled, reports filed). Jobs this account
+        contributed are NOT deleted — they're a shared resource other users may already rely on;
+        attribution is detached instead (`scraped_by_user_id` becomes null). Immediately invalidates
+        every JWT for the account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm:
+                  type: boolean
+                  description: Must be `true` — a bare DELETE with no body is rejected, to guard against an accidental call.
+      responses:
+        '200':
+          description: Account deleted
+        '400':
+          description: Missing confirm:true
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+
+  /v1/jobs/report:
+    post:
+      summary: Report a Job
+      description: >
+        Community quality control. Report a job as fake, dead, or spam. You may only report a job you have
+        actually pulled, and only once per job. Once 3 distinct users report the same job it is flagged and
+        withdrawn from circulation, the contributor loses the credit earned for it and receives a strike;
+        at 5 strikes the contributor is automatically banned.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - job_id
+              properties:
+                job_id:
+                  type: string
+                  format: uuid
+                reason:
+                  type: string
+                  example: dead_link
+      responses:
+        '200':
+          description: Report recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  report_count:
+                    type: integer
+                    description: Distinct users who have now reported this job.
+                  reports_needed_to_flag:
+                    type: integer
+                  job_flagged:
+                    type: boolean
+                    description: True if this report crossed the threshold and withdrew the job.
+                  contributor_banned:
+                    type: boolean
+                  message:
+                    type: string
+                    description: Present when this user had already reported the job.
+        '400':
+          description: Missing or invalid job_id, or malformed JSON body
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '403':
+          description: Forbidden (you can only report a job you have pulled)
+        '404':
+          description: Job not found
+
+  /v1/admin/users:
+    get:
+      summary: "[Admin] Look Up Users By Email"
+      description: >
+        Requires an admin account (no self-service way to become one — see DATABASE_QUERIES.md).
+        A non-admin gets 404, not 403, so these routes can't be distinguished from a typo'd path.
+        Email is not unique (see the SSO identity model note above), so this can return more than
+        one account.
+      parameters:
+        - in: query
+          name: email
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching accounts (possibly empty)
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account
+
+  /v1/admin/users/{id}:
+    get:
+      summary: "[Admin] Get User"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Account found
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or user not found
+
+  /v1/admin/users/{id}/credits:
+    post:
+      summary: "[Admin] Set Credit Balance"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credits]
+              properties:
+                credits:
+                  type: integer
+                  minimum: 0
+                  description: Sets the absolute balance (not a delta).
+      responses:
+        '200':
+          description: Balance set
+        '400':
+          description: credits out of range
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or user not found
+
+  /v1/admin/users/{id}/ban:
+    post:
+      summary: "[Admin] Ban User"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User banned
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or user not found
+
+  /v1/admin/users/{id}/unban:
+    post:
+      summary: "[Admin] Unban User"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User unbanned
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or user not found
+
+  /v1/admin/jobs/flagged:
+    get:
+      summary: "[Admin] List Flagged Jobs"
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: Flagged jobs
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account
+
+  /v1/admin/jobs/{id}/unflag:
+    post:
+      summary: "[Admin] Un-flag a Job"
+      description: Restores a job to circulation, e.g. after review finds a report was a false positive.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job un-flagged
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or job not found
+
+  /v1/admin/jobs/{id}/reports:
+    get:
+      summary: "[Admin] Who Reported a Job, and Why"
+      description: >
+        Works for any job, not just already-flagged ones, so a borderline case can be reviewed
+        before it hits the auto-flag threshold.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reports for this job (possibly empty)
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or job not found
+
+  /v1/admin/audit-log:
+    get:
+      summary: "[Admin] Audit Log"
+      description: Every write made through /v1/admin/* — who did what, when.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: Recent admin actions, newest first
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account
+
+  /v1/admin/stats:
+    get:
+      summary: "[Admin] Aggregate System Metrics"
+      description: Total users/jobs/reports/flags/stale jobs, plus the top 10 contributors by jobs pushed.
+      responses:
+        '200':
+          description: Aggregate stats
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account
+
+  /health:
+    get:
+      summary: Health Check
+      description: Unauthenticated liveness probe; also verifies the database connection.
+      security: []
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  database:
+                    type: string
+                    example: ok
+        '503':
+          description: Database unreachable
+

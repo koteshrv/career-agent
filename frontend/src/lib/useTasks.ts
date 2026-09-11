@@ -57,6 +57,16 @@ function connectWebSocket() {
   }
 }
 
+export function clearTask(id: string) {
+  globalTasks = globalTasks.filter(t => t.id !== id)
+  notifyListeners()
+}
+
+export function clearCompletedTasks() {
+  globalTasks = globalTasks.filter(t => t.status === "RUNNING")
+  notifyListeners()
+}
+
 function notifyListeners() {
   listeners.forEach(l => l([...globalTasks]))
 }
