@@ -8,26 +8,25 @@ services:
     volumes:
       # Mount a single data directory for all databases and encryption keys
       - ./data:/app/data
+      # Bootstrap config (login credentials, DB path) — copy backend/config.example.json to
+      # ./backend-config.json and edit it before exposing this app past localhost. Everything
+      # else (Gemini/Telegram/OpenAI keys, healthcheck URL, crowdsourcing token) lives in the
+      # Settings UI instead, not here.
+      - ./backend-config.json:/app/data/config.json
     environment:
       - PYTHONUNBUFFERED=1
-      # Auth credentials — change these before exposing the app to the internet!
-      - APP_USERNAME=${APP_USERNAME:-admin}
-      - APP_PASSWORD=${APP_PASSWORD:-admin}
-      - AUTH_SECRET=${AUTH_SECRET:-}
-      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      # Fallback if not set via the Settings UI — see .env.example
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
-      # Dead-man's-switch ping for the scheduled scraper — see .env.example
-      - HEALTHCHECK_PING_URL=${HEALTHCHECK_PING_URL:-}
-      # Tell the app to save the SQLite database in the mapped data folder
-      - DATABASE_URL=sqlite:////app/data/jobs.db
     restart: unless-stopped
 
   frontend:
     image: ghcr.io/koteshrv/career-agent-frontend:main
     ports:
       - "5173:80"
+    volumes:
+      # Public, non-secret deployment config (OAuth client IDs, API URLs) — copy
+      # frontend/public/runtime-config.json to ./frontend-config.json and fill in your own
+      # values. Mounted at runtime so the same published image works for every self-hoster
+      # without rebuilding.
+      - ./frontend-config.json:/usr/share/nginx/html/runtime-config.json:ro
     depends_on:
       backend:
         condition: service_healthy

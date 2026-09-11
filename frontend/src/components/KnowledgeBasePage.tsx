@@ -63,34 +63,34 @@ export function KnowledgeBasePage() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       {error && (
-        <div className="bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl flex items-center gap-3">
+        <div className="bg-destructive/10 border border-destructive/30 text-destructive p-4 rounded-md flex items-center gap-3">
           <Info className="w-5 h-5 flex-shrink-0" />
           <p className="text-sm font-medium">{error}</p>
         </div>
       )}
 
-      <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-6">
-        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
-          <Database className="w-5 h-5 text-indigo-400" />
+      <div className="bg-card border border-border rounded-lg p-6">
+        <h2 className="text-base font-semibold text-foreground mb-2 flex items-center gap-2">
+          <Database className="w-5 h-5 text-primary" />
           Add Career Experience
         </h2>
-        <p className="text-sm text-gray-400 mb-6">
-          Paste paragraphs from your master resume, LinkedIn profile, or project descriptions here. 
+        <p className="text-sm text-muted-foreground mb-6">
+          Paste paragraphs from your master resume, LinkedIn profile, or project descriptions here.
           The AI will automatically search through these entries to construct tailored resumes and cover letters.
         </p>
-        
+
         <form onSubmit={handleAdd} className="space-y-4">
           <textarea
             value={newText}
             onChange={(e) => setNewText(e.target.value)}
             placeholder="E.g., Led the migration of a legacy monolithic application to a microservices architecture using Docker and Kubernetes, reducing deployment time by 40%..."
-            className="w-full h-32 bg-black/50 border border-white/10 rounded-xl p-4 text-white placeholder:text-gray-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all resize-none"
+            className="w-full h-32 bg-secondary border border-border rounded-md p-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors resize-none custom-scrollbar"
           />
           <div className="flex justify-end">
             <button
               type="submit"
               disabled={adding || !newText.trim()}
-              className="flex items-center gap-2 px-6 py-2.5 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 disabled:hover:bg-indigo-500 text-white font-medium rounded-xl transition-colors"
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground font-medium rounded-md transition-opacity"
             >
               {adding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {adding ? "Embedding..." : "Add to Knowledge Base"}
@@ -100,35 +100,35 @@ export function KnowledgeBasePage() {
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-white px-2">Current Knowledge Base ({items.length})</h3>
-        
+        <h3 className="text-sm font-semibold text-foreground px-1">Current Knowledge Base ({items.length})</h3>
+
         {loading ? (
           <div className="flex justify-center p-8">
-            <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
           </div>
         ) : items.length === 0 ? (
-          <div className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-12 text-center">
-            <Database className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400">Your knowledge base is empty.</p>
-            <p className="text-sm text-gray-500 mt-2">Add some career experiences above to get started.</p>
+          <div className="bg-card border border-border rounded-lg p-10 text-center">
+            <Database className="w-10 h-10 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <p className="text-muted-foreground">Your knowledge base is empty.</p>
+            <p className="text-sm text-muted-foreground/70 mt-2">Add some career experiences above to get started.</p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {items.map((item) => (
-              <div key={item.id} className="bg-[#1C1C1E] border border-white/10 rounded-2xl p-5 group flex gap-4 transition-all hover:border-indigo-500/30 items-start">
-                <p className="text-gray-300 text-sm leading-relaxed flex-1 whitespace-pre-wrap">{item.text}</p>
+              <div key={item.id} className="bg-card border border-border rounded-lg p-5 group flex gap-4 transition-colors hover:border-ring/40 items-start">
+                <p className="text-foreground text-sm leading-relaxed flex-1 whitespace-pre-wrap">{item.text}</p>
                 {deletingId === item.id ? (
                   <div className="flex items-center gap-2 pt-1 shrink-0">
-                    <span className="text-xs text-red-400 font-medium mr-1">Delete?</span>
+                    <span className="text-xs text-destructive font-medium mr-1">Delete?</span>
                     <button
                       onClick={() => handleDelete(item.id)}
-                      className="px-3 py-1.5 bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded-lg text-xs font-medium transition-colors"
+                      className="px-3 py-1.5 bg-destructive/15 text-destructive hover:bg-destructive/25 rounded-md text-xs font-medium transition-colors"
                     >
                       Yes
                     </button>
                     <button
                       onClick={() => setDeletingId(null)}
-                      className="px-3 py-1.5 bg-white/5 text-gray-300 hover:bg-white/10 rounded-lg text-xs font-medium transition-colors"
+                      className="px-3 py-1.5 bg-secondary text-foreground hover:bg-accent rounded-md text-xs font-medium transition-colors"
                     >
                       Cancel
                     </button>
@@ -136,7 +136,7 @@ export function KnowledgeBasePage() {
                 ) : (
                   <button
                     onClick={() => setDeletingId(item.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg shrink-0"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md shrink-0"
                     title="Delete experience"
                   >
                     <Trash2 className="w-4 h-4" />

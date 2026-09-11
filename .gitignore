@@ -2,6 +2,7 @@
 .env
 .env.local
 .encryption_key
+backend/config.json
 
 # Database & scraper data
 *.db

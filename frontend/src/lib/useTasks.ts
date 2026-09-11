@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react'
+import { getToken } from './api'
 
 const wsBase = window.location.protocol === 'https:' ? `wss://${window.location.host}` : `ws://${window.location.host}`
-const wsUrl = `${wsBase}/api/ws/logs`
+// The backend authenticates this connection itself (BaseHTTPMiddleware never sees
+// WebSocket scopes), via a token query param since a browser WebSocket can't set a
+// custom Authorization header.
+const wsUrl = () => `${wsBase}/api/ws/logs?token=${encodeURIComponent(getToken() || "")}`
 
 
 export interface Task {
@@ -24,7 +28,7 @@ function connectWebSocket() {
   if (ws) return
   
   // We can just use the existing /ws/logs endpoint since we added our TASK_SYNC and TASK_UPDATE messages there!
-  ws = new WebSocket(wsUrl)
+  ws = new WebSocket(wsUrl())
   
   ws.onmessage = (event) => {
     try {
@@ -51,6 +55,16 @@ function connectWebSocket() {
     ws = null
     setTimeout(connectWebSocket, 5000)
   }
+}
+
+export function clearTask(id: string) {
+  globalTasks = globalTasks.filter(t => t.id !== id)
+  notifyListeners()
+}
+
+export function clearCompletedTasks() {
+  globalTasks = globalTasks.filter(t => t.status === "RUNNING")
+  notifyListeners()
 }
 
 function notifyListeners() {

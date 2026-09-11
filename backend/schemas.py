@@ -91,6 +91,7 @@ class SettingsBase(BaseModel):
     telegram_chat_id: Optional[str] = None
     telegram_bot_token: Optional[str] = None
     telegram_alerts_enabled: Optional[bool] = True
+    healthcheck_ping_url: Optional[str] = None
     gemini_api_key: Optional[str] = None
     gemini_model: Optional[str] = "gemini-2.5-flash, gemini-flash-latest, gemini-2.5-pro"
     cron_schedule: Optional[str] = "0 */12 * * *"

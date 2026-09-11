@@ -69,8 +69,8 @@ export function HistoryPage() {
   }, [hasRunning, fetchLogs])
 
   if (loading) return (
-    <div className="max-w-4xl mx-auto p-8">
-      <div className="bg-[#12141a] rounded-2xl border border-white/5 shadow-xl p-6 space-y-4">
+    <div className="max-w-5xl mx-auto">
+      <div className="bg-card rounded-lg border border-border p-6 space-y-4">
         <Skeleton className="h-6 w-48" />
         {[0, 1, 2, 3, 4].map(i => <Skeleton key={i} className="h-12 w-full" />)}
       </div>
@@ -78,18 +78,18 @@ export function HistoryPage() {
   )
 
   return (
-    <div className="max-w-6xl mx-auto p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="bg-[#12141a] rounded-2xl border border-white/5 shadow-xl overflow-hidden">
-        <div className="px-6 py-5 border-b border-white/5 flex items-center justify-between">
+    <div className="max-w-6xl mx-auto">
+      <div className="bg-card rounded-lg border border-border overflow-hidden">
+        <div className="px-6 py-5 border-b border-border flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h3 className="text-lg font-bold text-white">Scraper Run History</h3>
-            <p className="text-sm text-zinc-400">Logs from background cron executions</p>
+            <h3 className="text-base font-semibold text-foreground">Local Scraper Run History</h3>
+            <p className="text-sm text-muted-foreground">Logs from your local scrape targets (does not include Community synced jobs).</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             {hasRunning && (
               <button
                 onClick={() => setIsLogsModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30 transition-all animate-pulse"
+                className="flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold bg-status-interviewing/15 text-status-interviewing border border-status-interviewing/30 hover:bg-status-interviewing/25 transition-colors"
               >
                 <Terminal className="w-3.5 h-3.5" />
                 Live Logs
@@ -98,7 +98,7 @@ export function HistoryPage() {
             <button
               onClick={() => fetchLogs()}
               disabled={refreshing}
-              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-zinc-800/50 text-zinc-300 border border-white/5 hover:bg-zinc-800 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold bg-secondary text-muted-foreground border border-border hover:bg-accent transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? "animate-spin" : ""}`} />
               {refreshing ? "Refreshing..." : "Refresh"}
@@ -106,7 +106,7 @@ export function HistoryPage() {
             <button
               onClick={() => setConfirmClearOpen(true)}
               disabled={refreshing || logs.length === 0}
-              className="flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors disabled:opacity-50"
             >
               <Trash2 className="w-3.5 h-3.5" />
               Clear History
@@ -114,7 +114,7 @@ export function HistoryPage() {
             <Button
               onClick={handleRunNow}
               disabled={running || hasRunning}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shrink-0 rounded-full h-8 px-4 text-xs font-semibold"
+              className="bg-primary text-primary-foreground hover:opacity-90 shrink-0 rounded-md h-8 px-4 text-xs font-semibold"
             >
               <Play className={`w-3.5 h-3.5 mr-1.5 fill-current ${running ? "animate-pulse" : ""}`} />
               {running ? "Starting..." : "Run Now"}
@@ -123,7 +123,7 @@ export function HistoryPage() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="text-xs text-zinc-400 bg-black/20 uppercase">
+            <thead className="text-xs text-muted-foreground bg-secondary/50">
               <tr>
                 <th className="px-6 py-4 font-medium">Timestamp</th>
                 <th className="px-6 py-4 font-medium">Trigger</th>
@@ -132,17 +132,17 @@ export function HistoryPage() {
                 <th className="px-6 py-4 font-medium">Details</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/5">
+            <tbody className="divide-y divide-border">
               {logs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">No logs found yet. Run the scraper from Settings or wait for the cron schedule.</td>
+                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground">No logs found yet. Run the scraper from Settings or wait for the cron schedule.</td>
                 </tr>
               ) : logs.map((log) => {
                 const hasError = !!log.error_message
                 const hasDetails = !!log.detailed_logs
                 const isExpandable = hasError || hasDetails
                 const isOpen = expanded === log.id
-                
+
                 let filteredDetails: any[] = []
                 if (log.detailed_logs) {
                   try {
@@ -152,21 +152,21 @@ export function HistoryPage() {
                     }
                   } catch(e) {}
                 }
-                
+
                 return (
                 <Fragment key={log.id}>
                 <tr
                   onClick={() => isExpandable && setExpanded(isOpen ? null : log.id)}
-                  className={`hover:bg-white/[0.02] transition-colors ${isExpandable ? "cursor-pointer" : ""}`}
+                  className={`hover:bg-accent/30 transition-colors ${isExpandable ? "cursor-pointer" : ""}`}
                 >
-                  <td className="px-6 py-4 text-zinc-300 whitespace-nowrap">
+                  <td className="px-6 py-4 text-foreground whitespace-nowrap">
                     {formatISTDateTime(log.timestamp)}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${
                       log.trigger_source === "CRON"
-                        ? "bg-indigo-500/10 text-indigo-300 border border-indigo-500/20"
-                        : "bg-blue-500/10 text-blue-300 border border-blue-500/20"
+                        ? "bg-primary/10 text-primary border border-primary/20"
+                        : "bg-secondary text-muted-foreground border border-border"
                     }`}>
                       {log.trigger_source === "CRON" ? <Clock className="w-3.5 h-3.5" /> : <Hand className="w-3.5 h-3.5" />}
                       {log.trigger_source === "CRON" ? "Cron" : "Manual"}
@@ -174,40 +174,40 @@ export function HistoryPage() {
                   </td>
                   <td className="px-6 py-4">
                     {log.status === "SUCCESS" ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-status-interviewing/10 text-status-interviewing border border-status-interviewing/20">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Success
                       </span>
                     ) : log.status === "RUNNING" ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-status-applied/10 text-status-applied border border-status-applied/20">
                         <Loader2 className="w-3.5 h-3.5 animate-spin" />
                         Running
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20">
                         <XCircle className="w-3.5 h-3.5" />
                         Failed
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-zinc-300">
-                    <span className="font-semibold text-white">{log.jobs_found}</span> jobs
+                  <td className="px-6 py-4 text-foreground">
+                    <span className="font-semibold text-foreground">{log.jobs_found}</span> jobs
                   </td>
-                  <td className="px-6 py-4 text-zinc-500 max-w-xs">
+                  <td className="px-6 py-4 text-muted-foreground max-w-xs">
                     <div className="flex items-center gap-4">
                       {isExpandable ? (
-                        <button onClick={(e) => { e.stopPropagation(); setExpanded(isOpen ? null : log.id); }} className="flex items-center gap-1.5 hover:text-white transition-colors cursor-pointer w-[140px]">
+                        <button onClick={(e) => { e.stopPropagation(); setExpanded(isOpen ? null : log.id); }} className="flex items-center gap-1.5 hover:text-foreground transition-colors cursor-pointer w-[140px]">
                           <span className="truncate">{hasError ? log.error_message : "View Breakdown"}</span>
                           <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                         </button>
-                      ) : <span className="w-[140px] text-zinc-600">-</span>}
+                      ) : <span className="w-[140px] text-muted-foreground/50">-</span>}
                       {typeof log.raw_logs === 'string' && log.raw_logs !== "" && (
-                        <button 
-                          onClick={(e) => { 
-                            e.stopPropagation(); 
-                            setSelectedLogRaw(log.raw_logs); 
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedLogRaw(log.raw_logs);
                           }}
-                          className="flex items-center gap-1.5 text-blue-400 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-2.5 py-1 rounded-md font-semibold transition-colors shrink-0"
+                          className="flex items-center gap-1.5 text-primary bg-primary/10 hover:bg-primary/20 border border-primary/20 px-2.5 py-1 rounded-md font-semibold transition-colors shrink-0"
                         >
                           <Terminal className="w-3.5 h-3.5" />
                           Logs
@@ -217,34 +217,34 @@ export function HistoryPage() {
                   </td>
                 </tr>
                 {isOpen && (
-                  <tr className="bg-black/40">
+                  <tr className="bg-secondary/30">
                     <td colSpan={5} className="px-6 py-4">
                       {hasError && (
                         <div className="mb-4">
-                          <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider font-semibold">Full error detail</p>
-                          <pre className="text-xs text-red-300 bg-red-500/5 border border-red-500/20 rounded-lg p-4 whitespace-pre-wrap break-words overflow-x-auto">
+                          <p className="text-xs text-muted-foreground mb-2 font-semibold">Full error detail</p>
+                          <pre className="text-xs text-destructive bg-destructive/5 border border-destructive/20 rounded-md p-4 whitespace-pre-wrap break-words overflow-x-auto">
                             {log.error_message}
                           </pre>
                         </div>
                       )}
                       {filteredDetails.length > 0 && (
                         <div>
-                          <p className="text-xs text-zinc-500 mb-2 uppercase tracking-wider font-semibold">Per-Company Results</p>
+                          <p className="text-xs text-muted-foreground mb-2 font-semibold">Per-Company Results</p>
                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                             {filteredDetails.map((d: any, i: number) => (
-                              <div key={i} className={`p-3 rounded-lg border ${d.status === 'SUCCESS' ? 'bg-emerald-500/5 border-emerald-500/10' : d.status === 'SKIPPED' ? 'bg-amber-500/5 border-amber-500/10' : 'bg-red-500/5 border-red-500/10'}`}>
+                              <div key={i} className={`p-3 rounded-md border ${d.status === 'SUCCESS' ? 'bg-status-interviewing/5 border-status-interviewing/15' : d.status === 'SKIPPED' ? 'bg-status-applied/5 border-status-applied/15' : 'bg-destructive/5 border-destructive/15'}`}>
                                 <div className="flex justify-between items-start mb-1">
-                                  <span className="font-semibold text-white text-sm">{d.company}</span>
+                                  <span className="font-semibold text-foreground text-sm">{d.company}</span>
                                   {d.status === 'SUCCESS' ? (
-                                    <span className="text-xs font-medium text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">{d.jobs_found} jobs</span>
+                                    <span className="text-xs font-medium text-status-interviewing bg-status-interviewing/10 px-2 py-0.5 rounded-full">{d.jobs_found} jobs</span>
                                   ) : d.status === 'SKIPPED' ? (
-                                    <span className="text-xs font-medium text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full">Skipped</span>
+                                    <span className="text-xs font-medium text-status-applied bg-status-applied/10 px-2 py-0.5 rounded-full">Skipped</span>
                                   ) : (
-                                    <span className="text-xs font-medium text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full">Failed</span>
+                                    <span className="text-xs font-medium text-destructive bg-destructive/10 px-2 py-0.5 rounded-full">Failed</span>
                                   )}
                                 </div>
                                 {d.message && (
-                                  <p className="text-xs text-zinc-400 mt-2 truncate" title={d.message}>{d.message}</p>
+                                  <p className="text-xs text-muted-foreground mt-2 truncate" title={d.message}>{d.message}</p>
                                 )}
                               </div>
                             ))}
@@ -263,20 +263,20 @@ export function HistoryPage() {
       </div>
       <LiveLogsModal isOpen={isLogsModalOpen} onClose={() => setIsLogsModalOpen(false)} />
       {selectedLogRaw !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95">
-          <div className="bg-[#0f1115] border border-white/10 rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#12141a]">
-              <div className="flex items-center gap-3 text-white font-semibold">
-                <Terminal className="w-5 h-5 text-blue-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+          <div className="bg-card border border-border rounded-lg w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div className="flex items-center gap-3 text-foreground font-semibold">
+                <Terminal className="w-5 h-5 text-primary" />
                 Execution Logs
               </div>
-              <button onClick={() => setSelectedLogRaw(null)} className="text-zinc-500 hover:text-white p-1.5 rounded-lg hover:bg-white/10 transition-colors">
+              <button onClick={() => setSelectedLogRaw(null)} className="text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-accent transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-auto p-6 custom-scrollbar bg-black/40">
-              <textarea 
-                className="w-full h-full bg-transparent text-[11px] font-mono text-zinc-300 resize-none outline-none"
+            <div className="flex-1 overflow-auto p-6 custom-scrollbar bg-secondary/30">
+              <textarea
+                className="w-full h-full bg-transparent text-[11px] font-mono text-foreground resize-none outline-none"
                 readOnly
                 value={(() => {
                   if (typeof selectedLogRaw !== 'string' || selectedLogRaw === '') return "No logs available.";

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import { api } from "@/lib/api"
 import { Skeleton } from "@/components/ui/skeleton"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line } from "recharts"
-import { Cpu, TrendingUp, Filter, AlertTriangle, HeartPulse } from "lucide-react"
+import { Database, Cpu, TrendingUp, Filter, AlertTriangle, HeartPulse } from "lucide-react"
 
 type TargetHealth = {
   company: string
@@ -15,6 +15,17 @@ type TargetHealth = {
   zero_streak: number
   historical_avg_jobs_found: number
   possibly_silent_failure: boolean
+}
+
+// Chart colors mirror the app's design tokens (frontend/src/index.css) — Recharts needs
+// literal color values, so these are resolved hex equivalents of the HSL custom properties.
+const CHART_COLORS = {
+  new: "#3b82f6",          // --status-new
+  applied: "#ef9a39",      // --status-applied / --primary
+  interviewing: "#22c55e", // --status-interviewing
+  rejected: "#c53a2f",     // --status-rejected
+  grid: "rgba(255,255,255,0.06)",
+  tick: "#8a8578",
 }
 
 /**
@@ -53,7 +64,8 @@ export function AnalyticsPage() {
   const [settings, setSettings] = useState<any>(null)
   const [targetHealth, setTargetHealth] = useState<TargetHealth[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState<'app' | 'ai' | 'health'>('app')
+  const [activeTab, setActiveTab] = useState<'app' | 'ai' | 'health' | 'crowdsource'>('app')
+  const [csStats, setCsStats] = useState<any>(null)
   const [isFreeTier, setIsFreeTier] = useState(() => {
     return localStorage.getItem("gemini_pricing_tier") !== "paygo"
   })
@@ -68,11 +80,15 @@ export function AnalyticsPage() {
     Promise.all([
       api.get("/api/jobs?limit=5000"),
       api.get("/api/settings"),
-      api.get("/api/companies/health")
-    ]).then(([jobsRes, settingsRes, healthRes]) => {
+      api.get("/api/companies/health"),
+      api.get("/api/crowdsource/me").catch(() => ({ data: { success: false } }))
+    ]).then(([jobsRes, settingsRes, healthRes, csRes]) => {
       setJobs(jobsRes.data)
       setSettings(settingsRes.data)
-      setTargetHealth(healthRes.data?.targets || [])
+      setTargetHealth(healthRes.data?.health || healthRes.data?.targets || [])
+      if (csRes && csRes.data && csRes.data.success) {
+        setCsStats(csRes.data)
+      }
       setLoading(false)
     }).catch(e => {
       console.error(e)
@@ -81,13 +97,13 @@ export function AnalyticsPage() {
   }, [])
 
   if (loading) return (
-    <div className="max-w-5xl mx-auto p-8 space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[0, 1, 2].map(i => <Skeleton key={i} className="h-28 rounded-2xl" />)}
+        {[0, 1, 2].map(i => <Skeleton key={i} className="h-28 rounded-lg" />)}
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Skeleton className="h-[400px] rounded-2xl" />
-        <Skeleton className="h-[400px] rounded-2xl" />
+        <Skeleton className="h-[400px] rounded-lg" />
+        <Skeleton className="h-[400px] rounded-lg" />
       </div>
     </div>
   )
@@ -103,10 +119,10 @@ export function AnalyticsPage() {
   const interviewingJobs = statusCounts["INTERVIEWING"] || 0
 
   const pieData = [
-    { name: "New Matches", value: statusCounts["NEW"] || 0, color: "#3b82f6" },
-    { name: "Applied", value: appliedJobs, color: "#a855f7" },
-    { name: "Interviewing", value: interviewingJobs, color: "#eab308" },
-    { name: "Rejected/Ignored", value: (statusCounts["REJECTED"] || 0) + (statusCounts["IGNORED"] || 0), color: "#ef4444" },
+    { name: "New Matches", value: statusCounts["NEW"] || 0, color: CHART_COLORS.new },
+    { name: "Applied", value: appliedJobs, color: CHART_COLORS.applied },
+    { name: "Interviewing", value: interviewingJobs, color: CHART_COLORS.interviewing },
+    { name: "Rejected/Ignored", value: (statusCounts["REJECTED"] || 0) + (statusCounts["IGNORED"] || 0), color: CHART_COLORS.rejected },
   ].filter(d => d.value > 0)
 
   // 2. Top companies
@@ -114,7 +130,7 @@ export function AnalyticsPage() {
     acc[job.company] = (acc[job.company] || 0) + 1
     return acc
   }, {})
-  
+
   const barData = Object.entries(companyCounts)
     .map(([name, count]) => ({ name, jobs: count }))
     .sort((a, b) => (b.jobs as number) - (a.jobs as number))
@@ -123,7 +139,7 @@ export function AnalyticsPage() {
   // 3. Gemini Token Cost Estimator
   const promptTokens = settings?.total_prompt_tokens || 0
   const candidateTokens = settings?.total_candidate_tokens || 0
-  
+
   let modelStats: any[] = []
   let calculatedCost = 0
 
@@ -136,7 +152,7 @@ export function AnalyticsPage() {
         const rateOut = isModelPro ? 5.00 : 0.30
         const cost = ((stats.prompt_tokens / 1000000) * rateIn) + ((stats.candidate_tokens / 1000000) * rateOut)
         calculatedCost += cost
-        
+
         let dailyLimit = getModelDailyLimit(model);
 
         const todayRequests = stats.today_requests || 0
@@ -153,9 +169,9 @@ export function AnalyticsPage() {
           requestsLeft
         }
       })
-      
+
       modelStats.sort((a, b) => b.requests - a.requests)
-      
+
     } catch (e) {}
   }
 
@@ -208,98 +224,106 @@ export function AnalyticsPage() {
   })
 
   return (
-    <div className="max-w-5xl mx-auto p-8 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      
+    <div className="max-w-5xl mx-auto space-y-8">
+
       {/* Tabs */}
-      <div className="flex p-1 bg-[#12141a] rounded-lg border border-white/5 w-fit">
-        <button 
+      <div className="flex items-center gap-1 border-b border-border w-fit">
+        <button
           onClick={() => setActiveTab('app')}
-          className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'app' ? 'bg-blue-500/20 text-blue-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === 'app' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
         >
           App Analytics
         </button>
         <button
           onClick={() => setActiveTab('ai')}
-          className={`px-4 py-2 rounded-md text-sm font-semibold transition-all ${activeTab === 'ai' ? 'bg-purple-500/20 text-purple-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${activeTab === 'ai' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
         >
           AI Telemetry
         </button>
         <button
           onClick={() => setActiveTab('health')}
-          className={`px-4 py-2 rounded-md text-sm font-semibold transition-all flex items-center gap-1.5 ${activeTab === 'health' ? 'bg-red-500/20 text-red-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 ${activeTab === 'health' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
         >
           Target Health
           {targetHealth.filter(t => t.consecutive_failures >= 3 || t.possibly_silent_failure).length > 0 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-destructive/15 text-destructive border border-destructive/25">
               {targetHealth.filter(t => t.consecutive_failures >= 3 || t.possibly_silent_failure).length}
             </span>
           )}
         </button>
+        <button
+          onClick={() => setActiveTab('crowdsource')}
+          className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 ${activeTab === 'crowdsource' ? 'border-primary text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+        >
+          Crowdsourcing
+        </button>
+        
+        
       </div>
 
       {activeTab === 'app' && (
         <div className="space-y-8">
           {/* Top Level Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl flex flex-col items-center justify-center">
-              <p className="text-zinc-400 text-sm font-medium mb-1">Total Jobs Scraped</p>
-              <p className="text-4xl font-bold text-white">{totalJobs}</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-card rounded-lg border border-border p-6 flex flex-col items-center justify-center">
+              <p className="text-muted-foreground text-sm font-medium mb-1">Total Jobs Scraped</p>
+              <p className="text-3xl font-semibold text-foreground">{totalJobs}</p>
             </div>
-            <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl flex flex-col items-center justify-center">
-              <p className="text-zinc-400 text-sm font-medium mb-1">Application Rate</p>
-              <p className="text-4xl font-bold text-purple-400">
+            <div className="bg-card rounded-lg border border-border p-6 flex flex-col items-center justify-center">
+              <p className="text-muted-foreground text-sm font-medium mb-1">Application Rate</p>
+              <p className="text-3xl font-semibold text-status-applied">
                 {totalJobs > 0 ? Math.round((appliedJobs / totalJobs) * 100) : 0}%
               </p>
             </div>
-            <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl flex flex-col items-center justify-center">
-              <p className="text-zinc-400 text-sm font-medium mb-1">Interview Rate</p>
-              <p className="text-4xl font-bold text-yellow-400">
+            <div className="bg-card rounded-lg border border-border p-6 flex flex-col items-center justify-center">
+              <p className="text-muted-foreground text-sm font-medium mb-1">Interview Rate</p>
+              <p className="text-3xl font-semibold text-status-interviewing">
                 {appliedJobs > 0 ? Math.round((interviewingJobs / appliedJobs) * 100) : 0}%
               </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Application Funnel Chart */}
-            <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl space-y-6">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Filter className="w-5 h-5 text-blue-400" />
+            <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                <Filter className="w-4 h-4 text-primary" />
                 Application Funnel
               </h3>
               <div className="space-y-4">
                 <div>
-                  <div className="flex justify-between text-xs font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">
+                  <div className="flex justify-between text-xs font-medium text-muted-foreground mb-1.5">
                     <span>1. Scraped / Saved</span>
-                    <span className="text-white">{totalJobs} Roles</span>
+                    <span className="text-foreground">{totalJobs} Roles</span>
                   </div>
-                  <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-500" style={{ width: '100%' }} />
+                  <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-status-new" style={{ width: '100%' }} />
                   </div>
                 </div>
                 <div>
-                  <div className="flex justify-between text-xs font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">
+                  <div className="flex justify-between text-xs font-medium text-muted-foreground mb-1.5">
                     <span>2. Applied ({totalJobs > 0 ? Math.round((appliedJobs / totalJobs) * 100) : 0}% conversion)</span>
-                    <span className="text-purple-400 font-bold">{appliedJobs} Roles</span>
+                    <span className="text-status-applied font-semibold">{appliedJobs} Roles</span>
                   </div>
-                  <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-500 transition-all duration-1000" style={{ width: `${totalJobs > 0 ? (appliedJobs / totalJobs) * 100 : 0}%` }} />
+                  <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-status-applied transition-all duration-700" style={{ width: `${totalJobs > 0 ? (appliedJobs / totalJobs) * 100 : 0}%` }} />
                   </div>
                 </div>
                 <div>
-                  <div className="flex justify-between text-xs font-semibold text-zinc-400 mb-1.5 uppercase tracking-wider">
+                  <div className="flex justify-between text-xs font-medium text-muted-foreground mb-1.5">
                     <span>3. Interviewing ({appliedJobs > 0 ? Math.round((interviewingJobs / appliedJobs) * 100) : 0}% conversion)</span>
-                    <span className="text-yellow-400 font-bold">{interviewingJobs} Roles</span>
+                    <span className="text-status-interviewing font-semibold">{interviewingJobs} Roles</span>
                   </div>
-                  <div className="w-full h-3 bg-zinc-800 rounded-full overflow-hidden">
-                    <div className="h-full bg-yellow-500 transition-all duration-1000" style={{ width: `${totalJobs > 0 ? (interviewingJobs / totalJobs) * 100 : 0}%` }} />
+                  <div className="w-full h-2 bg-secondary rounded-full overflow-hidden">
+                    <div className="h-full bg-status-interviewing transition-all duration-700" style={{ width: `${totalJobs > 0 ? (interviewingJobs / totalJobs) * 100 : 0}%` }} />
                   </div>
                 </div>
               </div>
             </div>
-            
+
             {/* Breakdown & Sourced list */}
-            <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl">
-              <h3 className="text-lg font-bold text-white mb-6">Pipeline Breakdown</h3>
+            <div className="bg-card rounded-lg border border-border p-6">
+              <h3 className="text-base font-semibold text-foreground mb-6">Pipeline Breakdown</h3>
               <div className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -308,16 +332,16 @@ export function AnalyticsPage() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
-                    <RechartsTooltip 
-                      contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
-                      itemStyle={{ color: '#fff' }}
+                    <RechartsTooltip
+                      contentStyle={{ backgroundColor: '#151310', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#f2ede4' }}
+                      itemStyle={{ color: '#f2ede4' }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
               <div className="flex flex-wrap justify-center gap-4 mt-2">
                 {pieData.map((d, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs text-zinc-300">
+                  <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }}></div>
                     {d.name} ({d.value})
                   </div>
@@ -326,42 +350,42 @@ export function AnalyticsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Weekly Velocity Chart */}
-            <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-6">
-                <TrendingUp className="w-5 h-5 text-emerald-400" />
+            <div className="bg-card rounded-lg border border-border p-6">
+              <h3 className="text-base font-semibold text-foreground flex items-center gap-2 mb-6">
+                <TrendingUp className="w-4 h-4 text-status-interviewing" />
                 Weekly Sourcing Velocity
               </h3>
               <div className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={jobsByDay} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                    <XAxis dataKey="name" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                    <RechartsTooltip 
-                      contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} vertical={false} />
+                    <XAxis dataKey="name" stroke={CHART_COLORS.tick} fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke={CHART_COLORS.tick} fontSize={12} tickLine={false} axisLine={false} />
+                    <RechartsTooltip
+                      contentStyle={{ backgroundColor: '#151310', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#f2ede4' }}
                     />
-                    <Line type="monotone" dataKey="Count" stroke="#10b981" strokeWidth={3} dot={{ r: 4, fill: '#10b981' }} activeDot={{ r: 6 }} />
+                    <Line type="monotone" dataKey="Count" stroke={CHART_COLORS.interviewing} strokeWidth={3} dot={{ r: 4, fill: CHART_COLORS.interviewing }} activeDot={{ r: 6 }} />
                   </LineChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
             {/* Top Sourced Companies */}
-            <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl">
-              <h3 className="text-lg font-bold text-white mb-6">Top Sourced Companies</h3>
+            <div className="bg-card rounded-lg border border-border p-6">
+              <h3 className="text-base font-semibold text-foreground mb-6">Top Sourced Companies</h3>
               <div className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={barData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                    <XAxis dataKey="name" stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                    <YAxis stroke="#52525b" fontSize={12} tickLine={false} axisLine={false} />
-                    <RechartsTooltip 
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_COLORS.grid} vertical={false} />
+                    <XAxis dataKey="name" stroke={CHART_COLORS.tick} fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke={CHART_COLORS.tick} fontSize={12} tickLine={false} axisLine={false} />
+                    <RechartsTooltip
                       cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                      contentStyle={{ backgroundColor: '#000', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#fff' }}
+                      contentStyle={{ backgroundColor: '#151310', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#f2ede4' }}
                     />
-                    <Bar dataKey="jobs" fill="#4f46e5" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="jobs" fill={CHART_COLORS.new} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -373,62 +397,62 @@ export function AnalyticsPage() {
       {activeTab === 'ai' && (
         <div className="max-w-2xl">
           {/* AI API Usage Telemetry */}
-          <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl flex flex-col justify-between">
+          <div className="bg-card rounded-lg border border-border p-6 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 text-lg font-bold text-white">
-                  <Cpu className="w-5 h-5 text-purple-400" />
+                <div className="flex items-center gap-2 text-base font-semibold text-foreground">
+                  <Cpu className="w-4 h-4 text-primary" />
                   AI API Telemetry
                 </div>
                 {settings?.is_free_tier && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25">
                     Tag: {settings.api_key_tag}
                   </span>
                 )}
               </div>
               <div className="flex justify-between items-center mb-4">
-                <p className="text-xs text-zinc-400">Real-time tracking of tokens & API limits.</p>
-                <button 
-                  onClick={toggleTier} 
-                  className={`text-[10px] px-2 py-1 rounded border transition-colors ${isFreeTier ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20' : 'bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700'}`}
+                <p className="text-xs text-muted-foreground">Real-time tracking of tokens & API limits.</p>
+                <button
+                  onClick={toggleTier}
+                  className={`text-[10px] px-2 py-1 rounded border transition-colors ${isFreeTier ? 'bg-status-interviewing/10 border-status-interviewing/25 text-status-interviewing hover:bg-status-interviewing/20' : 'bg-secondary border-border text-foreground hover:bg-accent'}`}
                 >
                   {isFreeTier ? "Free Tier" : "Pay-as-you-go"}
                 </button>
               </div>
               <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="bg-black/30 border border-white/5 rounded-xl p-4">
-                  <span className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Requests</span>
-                  <span className="text-lg font-bold text-white font-mono">{totalRequests}</span>
+                <div className="bg-secondary border border-border rounded-md p-4">
+                  <span className="block text-[10px] font-semibold text-muted-foreground mb-1">Requests</span>
+                  <span className="text-lg font-semibold text-foreground font-mono">{totalRequests}</span>
                 </div>
-                <div className="bg-black/30 border border-white/5 rounded-xl p-4">
-                  <span className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Input Tokens</span>
-                  <span className="text-lg font-bold text-white font-mono">{promptTokens.toLocaleString()}</span>
+                <div className="bg-secondary border border-border rounded-md p-4">
+                  <span className="block text-[10px] font-semibold text-muted-foreground mb-1">Input Tokens</span>
+                  <span className="text-lg font-semibold text-foreground font-mono">{promptTokens.toLocaleString()}</span>
                 </div>
-                <div className="bg-black/30 border border-white/5 rounded-xl p-4">
-                  <span className="block text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Output Tokens</span>
-                  <span className="text-lg font-bold text-white font-mono">{candidateTokens.toLocaleString()}</span>
+                <div className="bg-secondary border border-border rounded-md p-4">
+                  <span className="block text-[10px] font-semibold text-muted-foreground mb-1">Output Tokens</span>
+                  <span className="text-lg font-semibold text-foreground font-mono">{candidateTokens.toLocaleString()}</span>
                 </div>
               </div>
 
-              <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Model Breakdown</div>
-              <div className="space-y-3 pr-2">
+              <div className="text-xs font-semibold text-muted-foreground mb-3">Model Breakdown</div>
+              <div className="space-y-3">
                 {modelStats.length === 0 ? (
-                  <div className="text-zinc-500 text-sm">No telemetry data available yet.</div>
+                  <div className="text-muted-foreground text-sm">No telemetry data available yet.</div>
                 ) : (
                   modelStats.map(stats => (
-                    <div key={stats.model} className="p-4 bg-blue-900/10 border border-blue-500/20 rounded-xl flex flex-col gap-2">
+                    <div key={stats.model} className="p-4 bg-primary/5 border border-primary/20 rounded-md flex flex-col gap-2">
                       <div className="flex justify-between items-center">
-                        <span className="font-mono text-blue-400 font-semibold text-sm">{stats.model}</span>
-                        <span className="font-bold text-white whitespace-nowrap">${stats.cost.toFixed(2)}</span>
+                        <span className="font-mono text-primary font-semibold text-sm">{stats.model}</span>
+                        <span className="font-semibold text-foreground whitespace-nowrap">${stats.cost.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between items-center text-xs">
-                        <span className="text-zinc-400">
+                        <span className="text-muted-foreground">
                           {stats.requests.toLocaleString()} reqs &bull; {stats.promptTokens.toLocaleString()} in / {stats.candidateTokens.toLocaleString()} out
                         </span>
                         <span
                           title={stats.dailyLimit === -1 ? "Alias model — limit depends on resolved version" : undefined}
                           className={`font-semibold text-right whitespace-nowrap ${
-                            stats.dailyLimit !== -1 && stats.requestsLeft < 5 ? "text-red-400" : "text-blue-300"
+                            stats.dailyLimit !== -1 && stats.requestsLeft < 5 ? "text-destructive" : "text-primary"
                           }`}
                         >
                           {stats.todayRequests.toLocaleString()} / {stats.dailyLimit === -1 ? "? (alias)" : stats.dailyLimit.toLocaleString()} reqs today
@@ -436,9 +460,9 @@ export function AnalyticsPage() {
                       </div>
                       {/* Per-model quota bar */}
                       {stats.dailyLimit > 0 && (
-                        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div className="w-full h-1 bg-border rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all ${stats.requestsLeft < 5 ? "bg-red-500" : "bg-blue-500"}`}
+                            className={`h-full rounded-full transition-all ${stats.requestsLeft < 5 ? "bg-destructive" : "bg-primary"}`}
                             style={{ width: `${Math.min(100, (stats.todayRequests / stats.dailyLimit) * 100)}%` }}
                           />
                         </div>
@@ -457,35 +481,35 @@ export function AnalyticsPage() {
                 const pct = totalCap > 0 ? Math.min(100, (totalUsed / totalCap) * 100) : 0
                 if (totalCap === 0) return null
                 return (
-                  <div className="mt-3 p-3 bg-emerald-900/10 border border-emerald-500/20 rounded-xl">
+                  <div className="mt-3 p-3 bg-status-interviewing/5 border border-status-interviewing/20 rounded-md">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-semibold text-emerald-400">Combined Fallback Capacity</span>
-                      <span className="text-xs text-zinc-400 font-mono">
-                        {totalUsed.toLocaleString()} used / <span className="text-white font-semibold">{totalLeft.toLocaleString()} left</span>
+                      <span className="text-xs font-semibold text-status-interviewing">Combined Fallback Capacity</span>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        {totalUsed.toLocaleString()} used / <span className="text-foreground font-semibold">{totalLeft.toLocaleString()} left</span>
                       </span>
                     </div>
-                    {/* Segmented bar — each model gets a coloured segment */}
-                    <div className="w-full h-2 bg-white/5 rounded-full overflow-hidden flex gap-px">
+                    {/* Segmented bar — each model gets its own shade of the primary accent */}
+                    <div className="w-full h-2 bg-border rounded-full overflow-hidden flex gap-px">
                       {known.map((s, i) => {
-                        const colours = ["bg-blue-500","bg-violet-500","bg-cyan-500","bg-indigo-500","bg-sky-500"]
                         const segPct = (s.dailyLimit / totalCap) * 100
                         const usedPct = s.dailyLimit > 0 ? Math.min(100, (s.todayRequests / s.dailyLimit) * 100) : 0
+                        const opacity = 1 - (i % 5) * 0.15
                         return (
                           <div key={s.model} className="relative overflow-hidden rounded-sm" style={{ width: `${segPct}%` }}
                             title={`${s.model}: ${s.todayRequests}/${s.dailyLimit} req/day`}>
-                            <div className="w-full h-full bg-white/5" />
-                            <div className={`absolute inset-y-0 left-0 ${colours[i % colours.length]} opacity-80`}
-                              style={{ width: `${usedPct}%` }} />
+                            <div className="w-full h-full bg-secondary" />
+                            <div className="absolute inset-y-0 left-0 bg-primary"
+                              style={{ width: `${usedPct}%`, opacity }} />
                           </div>
                         )
                       })}
                     </div>
                     <div className="flex justify-between mt-1.5">
-                      <span className="text-[10px] text-zinc-600">Each segment = one model's quota</span>
-                      <span className="text-[10px] text-emerald-500 font-semibold">{totalCap.toLocaleString()} req/day total</span>
+                      <span className="text-[10px] text-muted-foreground">Each segment = one model's quota</span>
+                      <span className="text-[10px] text-status-interviewing font-semibold">{totalCap.toLocaleString()} req/day total</span>
                     </div>
                     {pct < 100 && (
-                      <p className="text-[10px] text-zinc-600 mt-1">
+                      <p className="text-[10px] text-muted-foreground mt-1">
                         Fallback order: {known.map(s => s.model.replace("gemini-","")).join(" → ")}
                       </p>
                     )}
@@ -493,12 +517,12 @@ export function AnalyticsPage() {
                 )
               })()}
             </div>
-            <div className="bg-purple-950/20 border border-purple-500/20 rounded-xl p-4 flex items-center justify-between mt-4">
+            <div className="bg-primary/5 border border-primary/20 rounded-md p-4 flex items-center justify-between mt-4">
               <div>
-                <span className="block text-[10px] font-bold text-purple-400 uppercase tracking-wider">Estimated Project Cost</span>
-                <span className="text-xs text-zinc-500">{isFreeTier ? "Using Free Tier Limits" : "Based on model-specific API rates"}</span>
+                <span className="block text-[10px] font-bold text-primary">Estimated Project Cost</span>
+                <span className="text-xs text-muted-foreground">{isFreeTier ? "Using Free Tier Limits" : "Based on model-specific API rates"}</span>
               </div>
-              <span className="text-2xl font-bold text-white font-mono">{isFreeTier ? "$0.00" : `$${estCost.toFixed(5)}`}</span>
+              <span className="text-2xl font-semibold text-foreground font-mono">{isFreeTier ? "$0.00" : `$${estCost.toFixed(5)}`}</span>
             </div>
           </div>
         </div>
@@ -506,20 +530,20 @@ export function AnalyticsPage() {
 
       {activeTab === 'health' && (
         <div className="max-w-2xl">
-          <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl">
-            <div className="flex items-center gap-2 text-lg font-bold text-white mb-1">
-              <HeartPulse className="w-5 h-5 text-red-400" />
+          <div className="bg-card rounded-lg border border-border p-6">
+            <div className="flex items-center gap-2 text-base font-semibold text-foreground mb-1">
+              <HeartPulse className="w-4 h-4 text-destructive" />
               Target Health
             </div>
-            <p className="text-xs text-zinc-400 mb-6">
+            <p className="text-xs text-muted-foreground mb-6">
               Success rate per company across the last {targetHealth.reduce((a, t) => Math.max(a, t.runs_seen), 0) || 20} scrape runs.
               A company failing several runs in a row usually means its site markup changed —
               but a broken selector often doesn't throw at all, it just quietly returns 0 jobs.
-              The <span className="text-violet-400 font-semibold">violet</span> flag below catches that case too.
+              The <span className="text-primary font-semibold">highlighted</span> flag below catches that case too.
             </p>
 
             {targetHealth.length === 0 ? (
-              <div className="text-zinc-500 text-sm">No scrape history yet — run the scraper at least once.</div>
+              <div className="text-muted-foreground text-sm">No scrape history yet — run the scraper at least once.</div>
             ) : (
               <div className="space-y-3">
                 {targetHealth.map(t => {
@@ -529,50 +553,88 @@ export function AnalyticsPage() {
                   return (
                     <div
                       key={t.company}
-                      className={`p-4 rounded-xl border flex flex-col gap-1.5 ${
-                        isBroken ? "bg-red-900/10 border-red-500/20" :
-                        isSilentFailure ? "bg-violet-900/10 border-violet-500/20" :
-                        isWarning ? "bg-amber-900/10 border-amber-500/20" :
-                        "bg-black/30 border-white/5"
+                      className={`p-4 rounded-md border flex flex-col gap-1.5 ${
+                        isBroken ? "bg-destructive/5 border-destructive/20" :
+                        isSilentFailure ? "bg-primary/5 border-primary/20" :
+                        isWarning ? "bg-status-applied/5 border-status-applied/20" :
+                        "bg-secondary/40 border-border"
                       }`}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="font-semibold text-sm text-white flex items-center gap-1.5">
-                          {isBroken && <AlertTriangle className="w-3.5 h-3.5 text-red-400" />}
-                          {!isBroken && isSilentFailure && <AlertTriangle className="w-3.5 h-3.5 text-violet-400" />}
+                        <span className="font-semibold text-sm text-foreground flex items-center gap-1.5">
+                          {isBroken && <AlertTriangle className="w-3.5 h-3.5 text-destructive" />}
+                          {!isBroken && isSilentFailure && <AlertTriangle className="w-3.5 h-3.5 text-primary" />}
                           {t.company}
                         </span>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${
                           t.last_status === "SUCCESS"
-                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
-                            : "bg-red-500/10 text-red-400 border-red-500/30"
+                            ? "bg-status-interviewing/10 text-status-interviewing border-status-interviewing/30"
+                            : "bg-destructive/10 text-destructive border-destructive/30"
                         }`}>
                           {t.last_status}
                         </span>
                       </div>
-                      <div className="flex justify-between items-center text-xs text-zinc-400">
+                      <div className="flex justify-between items-center text-xs text-muted-foreground">
                         <span>
                           {Math.round(t.success_rate * 100)}% success &bull; {t.runs_seen} run{t.runs_seen === 1 ? "" : "s"} seen
                         </span>
                         {t.consecutive_failures > 0 && (
-                          <span className={`font-semibold ${isBroken ? "text-red-400" : "text-amber-400"}`}>
+                          <span className={`font-semibold ${isBroken ? "text-destructive" : "text-status-applied"}`}>
                             {t.consecutive_failures} failed in a row
                           </span>
                         )}
                       </div>
                       {isSilentFailure && (
-                        <p className="text-[11px] text-violet-400 font-semibold">
-                          ⚠ {t.zero_streak} runs in a row found 0 jobs — normally averages {t.historical_avg_jobs_found}. Likely a broken selector, not a real dry spell.
+                        <p className="text-[11px] text-primary font-semibold">
+                          {t.zero_streak} runs in a row found 0 jobs — normally averages {t.historical_avg_jobs_found}. Likely a broken selector, not a real dry spell.
                         </p>
                       )}
                       {t.last_status === "FAILED" && t.last_message && (
-                        <p className="text-[11px] text-zinc-500 font-mono truncate" title={t.last_message}>
+                        <p className="text-[11px] text-muted-foreground font-mono truncate" title={t.last_message}>
                           {t.last_message}
                         </p>
                       )}
                     </div>
                   )
                 })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    
+
+      {activeTab === 'crowdsource' && (
+        <div className="max-w-3xl space-y-6">
+          <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Database className="w-4 h-4 text-primary" />
+              Crowdsourcing API Analytics
+            </h3>
+            
+            {!csStats ? (
+              <div className="bg-secondary/40 border border-border rounded-md p-6 text-center">
+                <p className="text-muted-foreground text-sm">Not connected to the crowdsourcing network or data unavailable.</p>
+                <p className="text-xs text-muted-foreground mt-2">Sign in using Google/GitHub, or manually add your Cloud Token in Settings &rarr; Integrations.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-secondary rounded-lg border border-border p-5 flex flex-col items-center justify-center">
+                  <p className="text-muted-foreground text-sm font-medium mb-1">Available Credits</p>
+                  <p className="text-3xl font-semibold text-primary">{csStats.current_credits || 0}</p>
+                </div>
+                <div className="bg-secondary rounded-lg border border-border p-5 flex flex-col items-center justify-center">
+                  <p className="text-muted-foreground text-sm font-medium mb-1">Total Pushed Jobs</p>
+                  <p className="text-3xl font-semibold text-foreground">{csStats.total_pushed || 0}</p>
+                </div>
+                <div className="bg-secondary rounded-lg border border-border p-5 flex flex-col items-center justify-center">
+                  <p className="text-muted-foreground text-sm font-medium mb-1">Total Pulled Jobs</p>
+                  <p className="text-3xl font-semibold text-foreground">{csStats.total_pulled || 0}</p>
+                </div>
+                <div className="bg-secondary rounded-lg border border-border p-5 flex flex-col items-center justify-center">
+                  <p className="text-muted-foreground text-sm font-medium mb-1">Daily Quota Remaining</p>
+                  <p className="text-3xl font-semibold text-status-new">{csStats.daily_quota_remaining || 0} pulls</p>
+                </div>
               </div>
             )}
           </div>

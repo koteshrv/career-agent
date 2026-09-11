@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { X, Trash2, Terminal } from "lucide-react"
-import { api, API_BASE } from "@/lib/api"
+import { api, API_BASE, getToken } from "@/lib/api"
 
 interface LiveLogsModalProps {
   isOpen: boolean
@@ -36,7 +36,9 @@ export function LiveLogsModal({ isOpen, onClose }: LiveLogsModalProps) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
     const host = window.location.host
     const wsBase = API_BASE ? API_BASE.replace(/^http/, "ws") : `${protocol}//${host}`
-    const wsUrl = `${wsBase}/api/ws/logs`
+    // The backend authenticates this connection itself via a token query param — a
+    // browser WebSocket can't set a custom Authorization header.
+    const wsUrl = `${wsBase}/api/ws/logs?token=${encodeURIComponent(getToken() || "")}`
 
     let socket: WebSocket | null = null
     let reconnectAttempts = 0
@@ -92,9 +94,9 @@ export function LiveLogsModal({ isOpen, onClose }: LiveLogsModalProps) {
 
   // Helper to colorize log levels
   const formatLogLine = (line: string, index: number) => {
-    let colorClass = "text-zinc-300"
+    let colorClass = "text-foreground"
     if (line.includes("- ERROR -") || line.includes("Exception")) {
-      colorClass = "text-red-400"
+      colorClass = "text-destructive"
     } else if (line.includes("- WARNING -")) {
       colorClass = "text-yellow-400"
     } else if (line.includes("- INFO -")) {
@@ -110,25 +112,25 @@ export function LiveLogsModal({ isOpen, onClose }: LiveLogsModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-[#0f1115] border border-white/10 rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-popover border border-border rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 bg-[#16191f]">
-          <div className="flex items-center gap-2 text-white">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-secondary">
+          <div className="flex items-center gap-2 text-foreground">
             <Terminal className="w-4 h-4 text-emerald-400" />
             <h3 className="text-sm font-semibold tracking-wide">Live System Logs</h3>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setLogs([])}
-              className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
               title="Clear Terminal"
             >
               <Trash2 className="w-4 h-4" />
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded transition-colors"
+              className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -136,9 +138,9 @@ export function LiveLogsModal({ isOpen, onClose }: LiveLogsModalProps) {
         </div>
 
         {/* Terminal Window */}
-        <div className="flex-1 overflow-y-auto p-4 bg-[#0a0a0c]">
+        <div className="flex-1 overflow-y-auto p-4 bg-card">
           {logs.length === 0 ? (
-            <div className="text-zinc-600 text-xs font-mono italic">Waiting for log stream...</div>
+            <div className="text-muted-foreground text-xs font-mono italic">Waiting for log stream...</div>
           ) : (
             logs.map((line, i) => formatLogLine(line, i))
           )}

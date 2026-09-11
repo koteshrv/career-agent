@@ -3,15 +3,21 @@ import {
   MOCK_JOBS, MOCK_SETTINGS, MOCK_RUN_HISTORY,
   MOCK_RESUMES, MOCK_TOKEN_VALIDATE, MOCK_COMPANIES,
 } from "./mock-data"
+import { runtimeConfig } from "./runtime-config"
 
 // ── Demo mode ──────────────────────────────────────────────────────────────────
 // When VITE_DEMO_MODE=true (set at GitHub Pages build time), all API calls
-// return static mock data so the site works without a running backend.
+// return static mock data so the site works without a running backend. This is a
+// distinct, one-off static build (see .github/workflows/deploy.yml), not the shared
+// prebuilt image every self-hoster runs, so it's fine for this one flag to stay a
+// Vite build-time env var rather than runtime config.
 export const IS_DEMO = import.meta.env.VITE_DEMO_MODE === "true"
 
-// Centralized API base URL. Defaulting to empty string allows relative URLs
-// which makes the frontend agnostic to the host port in Docker via reverse proxy.
-export const API_BASE = import.meta.env.VITE_API_URL || ""
+// Centralized API base URL, loaded at runtime (see lib/runtime-config.ts) — main.tsx
+// awaits loadRuntimeConfig() before this module is ever imported. Defaulting to empty
+// string allows relative URLs, which makes the frontend agnostic to the host port in
+// Docker via reverse proxy.
+export const API_BASE = runtimeConfig.apiUrl
 
 export const api = axios.create({ baseURL: API_BASE })
 

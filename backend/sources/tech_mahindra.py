@@ -9,7 +9,7 @@ from .common import _extract_jobs_from_text, has_been_notified
 
 logger = logging.getLogger(__name__)
 
-def process_tech_mahindra(db: Session, target: dict, keywords: List[str], new_jobs: list, company_logs: list):
+def process_tech_mahindra(db: Session, user_id: int, target: dict, keywords: List[str], new_jobs: list, company_logs: list):
     company = target.get("company", "Tech Mahindra")
     url = target.get("url", "https://careers.techmahindra.com/")
     no_results_text = target.get("no_results_text", "0 results").lower()
@@ -67,7 +67,7 @@ def process_tech_mahindra(db: Session, target: dict, keywords: List[str], new_jo
                         title = job.get("title", "")
                         job_url = job.get("href", "")
                         if title and job_url:
-                            if not has_been_notified(db, job_url):
+                            if not has_been_notified(db, user_id, job_url):
                                 new_jobs.append({"company": company, "title": title, "url": job_url, "location": ""})
                                 jobs_found_count += 1
         except Exception as e:

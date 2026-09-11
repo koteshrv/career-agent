@@ -1,14 +1,29 @@
-from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean
+from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, UniqueConstraint, ForeignKey
 from sqlalchemy.sql import func
 from .database import Base
 
-class Job(Base):
-    __tablename__ = "jobs"
+class User(Base):
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=True)     # SSO users
+    username = Column(String, unique=True, index=True, nullable=True)  # local admin only
+    auth_method = Column(String, default="local")  # "local" | "sso"
+    sso_provider = Column(String, nullable=True)    # "google" | "github"
+    role = Column(String, default="USER")           # "ADMIN" | "USER"
+    status = Column(String, default="PENDING")      # "PENDING" | "ACTIVE" | "REJECTED"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    approved_at = Column(DateTime(timezone=True), nullable=True)
+
+class Job(Base):
+    __tablename__ = "jobs"
+    __table_args__ = (UniqueConstraint("user_id", "url", name="ix_jobs_user_url"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     company = Column(String, index=True)
     title = Column(String, index=True)
-    url = Column(String, unique=True, index=True)
+    url = Column(String, index=True)
     location = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     
@@ -39,11 +54,13 @@ class Job(Base):
 
 class Settings(Base):
     __tablename__ = "settings"
-    
+
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True, nullable=False, index=True)
     telegram_chat_id = Column(String, nullable=True)
     telegram_bot_token = Column(String, nullable=True) # Encrypted
     telegram_alerts_enabled = Column(Boolean, default=True)
+    healthcheck_ping_url = Column(String, nullable=True) # healthchecks.io-style dead-man's-switch URL
     gemini_api_key = Column(String, nullable=True) # Encrypted
     gemini_model = Column(String, default="gemini-2.5-flash, gemini-flash-latest, gemini-2.5-pro")
     cron_schedule = Column(String, default="0 */12 * * *")
@@ -76,8 +93,9 @@ class Settings(Base):
 
 class ScraperLog(Base):
     __tablename__ = "scraper_logs"
-    
+
     id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     timestamp = Column(DateTime(timezone=True), server_default=func.now())
     jobs_found = Column(Integer, default=0)
     status = Column(String) # "SUCCESS", "FAILED"
@@ -88,8 +106,11 @@ class ScraperLog(Base):
 
 class ScraperHealth(Base):
     __tablename__ = "scraper_health"
-    
-    provider_name = Column(String, primary_key=True, index=True)
+    __table_args__ = (UniqueConstraint("user_id", "provider_name", name="ix_scraper_health_user_provider"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    provider_name = Column(String, index=True)
     status = Column(String, default="OPERATIONAL") # OPERATIONAL, DEGRADED, BLOCKED, BROKEN
     error_message = Column(Text, nullable=True)
     last_run_at = Column(DateTime(timezone=True), nullable=True)

@@ -4,9 +4,19 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CareerAgent - Your Personal AI Career Agent</title>
+    <title>CareerAgent</title>
+  
+    <script>
+      (function() {
+        const stored = localStorage.getItem('career_agent_theme');
+        if (stored === 'light' || (!stored && window.matchMedia('(prefers-color-scheme: light)').matches)) {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
   </head>
-  <body class="bg-[#09090b] text-zinc-100 antialiased selection:bg-blue-500/30">
+
+  <body class="bg-background text-foreground antialiased selection:bg-blue-500/30">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

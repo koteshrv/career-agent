@@ -104,10 +104,19 @@ The easiest way to run CareerAgent is using our pre-built GitHub Container Regis
 # 1. Download the docker-compose file
 curl -O https://raw.githubusercontent.com/koteshrv/career-agent/main/docker-compose.yml
 
-# 2. Start the application in the background
+# 2. Set your own login credentials (defaults to admin/admin otherwise — change this
+#    before exposing the app past localhost)
+echo '{"app_username": "admin", "app_password": "change-me"}' > backend-config.json
+
+# 3. (Optional) Enable "Sign in with Google/GitHub" by copying in your own OAuth client IDs
+curl -o frontend-config.json https://raw.githubusercontent.com/koteshrv/career-agent/main/frontend/public/runtime-config.json
+
+# 4. Start the application in the background
 docker compose up -d
 ```
 *Visit `http://localhost:5173` to access the dashboard. Your database and files will be safely stored in the local directory via Docker volumes.*
+
+**Multi-user note:** CareerAgent supports more than one person using the same instance, each with their own isolated jobs, resume, and settings. The username/password from step 2 always logs in as the administrator. If you enabled Google/GitHub sign-in in step 3, the **first** Google/GitHub account to ever sign in also becomes an administrator automatically — this is the easiest way to get started if you'd rather not touch `backend-config.json` at all. Every sign-in after that first one lands in a pending state until an administrator approves it from the Settings page.
 
 ---
 

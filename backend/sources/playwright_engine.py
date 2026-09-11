@@ -119,7 +119,7 @@ async def dismiss_popups(page) -> None:
         pass
 
 
-async def extract_playwright_jobs(page, keyword: str, source_url: str, max_pages: int = 10, infinite_scroll: bool = False, job_url_pattern: str = None, next_btn_selector: str = None, force_url_pagination: bool = False):
+async def extract_playwright_jobs(page, user_id: int, keyword: str, source_url: str, max_pages: int = 10, infinite_scroll: bool = False, job_url_pattern: str = None, next_btn_selector: str = None, force_url_pagination: bool = False):
     """Pull all links from a rendered page (with pagination or infinite scroll) and let Gemini filter.
 
     Returns (jobs, error). `jobs` holds whatever was collected before a failure — a mid-run
@@ -162,7 +162,7 @@ Markdown Content:
 ---
 """
             try:
-                response_text = await asyncio.to_thread(_generate, prompt)
+                response_text = await asyncio.to_thread(_generate, prompt, None, None, user_id)
                 cleaned_text = response_text.strip()
                 if cleaned_text.startswith("```json"):
                     cleaned_text = cleaned_text[7:]
@@ -321,7 +321,7 @@ Markdown Content:
 # search + selector + pagination pipeline can still find *something*.
 CANARY_KEYWORDS = ("engineer", "manager", "analyst")
 
-async def probe_extraction_pipeline(page, company: str, url_template: str, search_input_selector: str = None,
+async def probe_extraction_pipeline(page, user_id: int, company: str, url_template: str, search_input_selector: str = None,
                                      search_btn_selector: str = None, no_results_text: str = "0 results",
                                      job_url_pattern: str = None, next_btn_selector: str = None,
                                      force_url_pagination: bool = False) -> bool:
@@ -370,7 +370,7 @@ async def probe_extraction_pipeline(page, company: str, url_template: str, searc
                 continue
 
             jobs, _ = await extract_playwright_jobs(
-                page, canary, url, max_pages=1,
+                page, user_id, canary, url, max_pages=1,
                 job_url_pattern=job_url_pattern,
                 next_btn_selector=next_btn_selector,
                 force_url_pagination=force_url_pagination,
@@ -545,9 +545,9 @@ async def fetch_job_description(url: str) -> str:
             except Exception:
                 pass
 
-async def process_playwright(db: Session, targets: List[dict], keywords: List[str], new_jobs: list, company_logs: list, headless: bool = True):
+async def process_playwright(db: Session, user_id: int, targets: List[dict], keywords: List[str], new_jobs: list, company_logs: list, headless: bool = True):
     from .. import crud
-    settings = crud.get_settings(db)
+    settings = crud.get_settings(db, user_id)
     max_pages_limit = settings.max_pages if settings and settings.max_pages else 3
 
     display = None
@@ -650,7 +650,7 @@ async def process_playwright(db: Session, targets: List[dict], keywords: List[st
                     content = (await page.content()).lower()
                     if no_results_text not in content:
                         intersect_extracted, intersect_error = await extract_playwright_jobs(
-                            page, "intersection", intersect_with, max_pages=max_pages_limit,
+                            page, user_id, "intersection", intersect_with, max_pages=max_pages_limit,
                             infinite_scroll=infinite_scroll,
                             job_url_pattern=job_url_pattern,
                             next_btn_selector=next_btn_selector,
@@ -759,7 +759,7 @@ async def process_playwright(db: Session, targets: List[dict], keywords: List[st
                         logger.debug(f"[{company}] No results for keyword '{keyword}' (found no_results_text)")
                     else:
                         extracted, extraction_error = await extract_playwright_jobs(
-                            page, keyword, url, max_pages=max_pages_limit,
+                            page, user_id, keyword, url, max_pages=max_pages_limit,
                             infinite_scroll=infinite_scroll,
                             job_url_pattern=job_url_pattern,
                             next_btn_selector=next_btn_selector,
@@ -774,7 +774,7 @@ async def process_playwright(db: Session, targets: List[dict], keywords: List[st
                                     logger.debug(f"[{company}] Skipping duplicate URL: {href[:80]}")
                                     continue
                                 company_seen.add(href)
-                                if not has_been_notified(db, href):
+                                if not has_been_notified(db, user_id, href):
                                     skip_ai = job.get("skip_ai", False)
                                     new_jobs.append({"company": company, "title": job["title"], "url": href, "location": "", "source_url": url, "skip_ai": skip_ai})
                                     jobs_found_count += 1
@@ -802,7 +802,7 @@ async def process_playwright(db: Session, targets: List[dict], keywords: List[st
                             if href in company_seen:
                                 continue
                             company_seen.add(href)
-                            if not has_been_notified(db, href):
+                            if not has_been_notified(db, user_id, href):
                                 logger.debug(f"[{company}] Interceptor adding new job: {href}")
                                 new_jobs.append({"company": company, "title": job["title"], "url": href, "location": "", "source_url": url, "skip_ai": False})
                                 jobs_found_count += 1
@@ -836,7 +836,7 @@ async def process_playwright(db: Session, targets: List[dict], keywords: List[st
             if not has_error and jobs_found_count == 0:
                 try:
                     pipeline_healthy = await probe_extraction_pipeline(
-                        page, company, url_template,
+                        page, user_id, company, url_template,
                         search_input_selector=search_input_selector,
                         search_btn_selector=search_btn_selector,
                         no_results_text=no_results_text,

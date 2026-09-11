@@ -6,27 +6,56 @@
 
 @layer base {
   :root {
+    color-scheme: light;
+    --background: 240 5% 96%;
+    --foreground: 30 20% 12%;
+    --card: 40 20% 100%;
+    --card-foreground: 30 20% 12%;
+    --popover: 40 20% 100%;
+    --popover-foreground: 30 20% 12%;
+    --primary: 32 85% 58%;
+    --primary-foreground: 40 20% 98%;
+    --secondary: 240 5% 92%;
+    --secondary-foreground: 30 20% 18%;
+    --muted: 40 10% 92%;
+    --muted-foreground: 30 10% 45%;
+    --accent: 40 10% 89%;
+    --accent-foreground: 30 20% 18%;
+    --destructive: 6 70% 45%;
+    --destructive-foreground: 40 20% 98%;
+    --border: 40 10% 93%;
+    --input: 40 10% 93%;
+    --ring: 32 85% 58%;
+    --radius: 0.5rem;
+
+    --status-new: 217 91% 55%;
+    --status-applied: 32 85% 50%;
+    --status-interviewing: 142 71% 40%;
+    --status-rejected: 6 70% 45%;
+    --status-ignored: 30 5% 45%;
+  }
+
+  .dark {
     color-scheme: dark;
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --radius: 0.75rem;
+    --background: 30 8% 7%;
+    --foreground: 40 15% 92%;
+    --card: 30 8% 9.5%;
+    --card-foreground: 40 15% 92%;
+    --popover: 30 8% 9%;
+    --popover-foreground: 40 15% 92%;
+    --primary: 32 85% 58%;
+    --primary-foreground: 30 20% 8%;
+    --secondary: 30 6% 15%;
+    --secondary-foreground: 40 15% 92%;
+    --muted: 30 6% 14%;
+    --muted-foreground: 30 8% 60%;
+    --accent: 30 6% 17%;
+    --accent-foreground: 40 15% 92%;
+    --destructive: 6 70% 45%;
+    --destructive-foreground: 40 15% 96%;
+    --border: 30 8% 17%;
+    --input: 30 8% 17%;
+    --ring: 32 85% 58%;
   }
 }
 
@@ -37,14 +66,10 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Google Sans', sans-serif;
-    background-color: #030303;
-    background-image: 
-      radial-gradient(circle at 15% 50%, rgba(30, 58, 138, 0.15), transparent 25%),
-      radial-gradient(circle at 85% 30%, rgba(124, 58, 237, 0.15), transparent 25%);
-    background-attachment: fixed;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Google Sans', sans-serif;
+    letter-spacing: -0.01em;
   }
 }
 

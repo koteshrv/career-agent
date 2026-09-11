@@ -8,13 +8,15 @@ from backend.database import SessionLocal
 from backend import crud
 from backend.rag_engine import retrieve_relevant_experience, list_context
 
+DIAGNOSTIC_USER_ID = 1  # bootstrap admin — this is a manual dev script
+
 def main():
     print("--- Testing RAG Engine ---")
-    
+
     # 1. Get API Key
     print("1. Fetching API key from database...")
     db = SessionLocal()
-    settings = crud.get_settings(db)
+    settings = crud.get_settings(db, DIAGNOSTIC_USER_ID)
     db.close()
     
     if not settings or not settings.gemini_api_key:
@@ -27,7 +29,7 @@ def main():
     # 2. Check total chunks in Knowledge Base
     print("\n2. Checking Knowledge Base...")
     try:
-        chunks = list_context()
+        chunks = list_context(DIAGNOSTIC_USER_ID)
         print(f"✅ Found {len(chunks)} chunks in the vector database.")
         if len(chunks) == 0:
             print("⚠️ Warning: Your Knowledge Base is empty! Please add some context in the UI first.")
@@ -52,7 +54,7 @@ def main():
     
     try:
         # Retrieve top 3 relevant chunks
-        results = retrieve_relevant_experience(job_description, top_k=3, api_key=api_key)
+        results = retrieve_relevant_experience(DIAGNOSTIC_USER_ID, job_description, top_k=3, api_key=api_key)
         
         if not results:
             print("❌ No relevant experiences returned.")

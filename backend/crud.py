@@ -4,25 +4,19 @@ from . import models, schemas
 from .crypto import encrypt_value, decrypt_value
 from datetime import datetime, timedelta, timezone
 
-def get_jobs(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Job).filter(models.Job.status != 'FALSE_POSITIVE').order_by(models.Job.created_at.desc()).offset(skip).limit(limit).all()
+def get_jobs(db: Session, user_id: int, skip: int = 0, limit: int = 100):
+    return (
+        db.query(models.Job)
+        .filter(models.Job.user_id == user_id, models.Job.status != 'FALSE_POSITIVE')
+        .order_by(models.Job.created_at.desc())
+        .offset(skip).limit(limit).all()
+    )
 
-def get_job(db: Session, job_id: int):
-    return db.query(models.Job).filter(models.Job.id == job_id).first()
+def get_job(db: Session, user_id: int, job_id: int):
+    return db.query(models.Job).filter(models.Job.id == job_id, models.Job.user_id == user_id).first()
 
-def create_job(db: Session, job: schemas.JobCreate):
-    # Check if exists
-    db_job = db.query(models.Job).filter(models.Job.url == job.url).first()
-    if db_job:
-        return db_job
-    db_job = models.Job(**job.model_dump())
-    db.add(db_job)
-    db.commit()
-    db.refresh(db_job)
-    return db_job
-
-def update_job_status(db: Session, job_id: int, job_update: schemas.JobUpdate):
-    db_job = get_job(db, job_id)
+def update_job_status(db: Session, user_id: int, job_id: int, job_update: schemas.JobUpdate):
+    db_job = get_job(db, user_id, job_id)
     if db_job:
         update_data = job_update.model_dump(exclude_unset=True)
         for key, value in update_data.items():
@@ -31,25 +25,27 @@ def update_job_status(db: Session, job_id: int, job_update: schemas.JobUpdate):
         db.refresh(db_job)
     return db_job
 
-def delete_job(db: Session, job_id: int) -> bool:
-    db_job = get_job(db, job_id)
+def delete_job(db: Session, user_id: int, job_id: int) -> bool:
+    db_job = get_job(db, user_id, job_id)
     if db_job:
         db.delete(db_job)
         db.commit()
         return True
     return False
 
-def delete_all_jobs(db: Session) -> int:
-    count = db.query(models.Job).delete()
+def delete_all_jobs(db: Session, user_id: int) -> int:
+    count = db.query(models.Job).filter(models.Job.user_id == user_id).delete()
     db.commit()
     return count
 
-def empty_trash(db: Session) -> int:
-    count = db.query(models.Job).filter(models.Job.status == "TRASH").delete(synchronize_session=False)
+def empty_trash(db: Session, user_id: int) -> int:
+    count = db.query(models.Job).filter(
+        models.Job.user_id == user_id, models.Job.status == "TRASH"
+    ).delete(synchronize_session=False)
     db.commit()
     return count
 
-def clean_old_trash(db: Session, retention_days: int) -> int:
+def clean_old_trash(db: Session, user_id: int, retention_days: int) -> int:
     from sqlalchemy import func
 
     # created_at/updated_at are written by func.now(), which SQLite records in UTC — a naive
@@ -57,6 +53,7 @@ def clean_old_trash(db: Session, retention_days: int) -> int:
     # trash early (or late). Matches delete_old_scraper_logs below.
     cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
     count = db.query(models.Job).filter(
+        models.Job.user_id == user_id,
         models.Job.status == "TRASH",
         # Fallback to created_at if updated_at is null (for older items)
         func.coalesce(models.Job.updated_at, models.Job.created_at) < cutoff
@@ -64,14 +61,17 @@ def clean_old_trash(db: Session, retention_days: int) -> int:
     db.commit()
     return count
 
-def bulk_update_status(db: Session, ids: list, status: str) -> int:
-    count = db.query(models.Job).filter(models.Job.id.in_(ids)).update(
-        {models.Job.status: status}, synchronize_session=False)
+def bulk_update_status(db: Session, user_id: int, ids: list, status: str) -> int:
+    count = db.query(models.Job).filter(
+        models.Job.id.in_(ids), models.Job.user_id == user_id
+    ).update({models.Job.status: status}, synchronize_session=False)
     db.commit()
     return count
 
-def bulk_delete_jobs(db: Session, ids: list) -> int:
-    count = db.query(models.Job).filter(models.Job.id.in_(ids)).delete(synchronize_session=False)
+def bulk_delete_jobs(db: Session, user_id: int, ids: list) -> int:
+    count = db.query(models.Job).filter(
+        models.Job.id.in_(ids), models.Job.user_id == user_id
+    ).delete(synchronize_session=False)
     db.commit()
     return count
 
@@ -82,10 +82,10 @@ ENCRYPTED_FIELDS = {
     "career_agent_cloud_token",
 }
 
-def get_settings(db: Session):
-    settings = db.query(models.Settings).first()
+def get_settings(db: Session, user_id: int):
+    settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
     if not settings:
-        settings = models.Settings()
+        settings = models.Settings(user_id=user_id)
         db.add(settings)
         db.commit()
         db.refresh(settings)
@@ -97,10 +97,10 @@ def get_settings(db: Session):
             setattr(decrypted, field, decrypt_value(value))
     return decrypted
 
-def update_settings(db: Session, settings: schemas.SettingsBase):
-    db_settings = db.query(models.Settings).first()
+def update_settings(db: Session, user_id: int, settings: schemas.SettingsBase):
+    db_settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
     if not db_settings:
-        db_settings = models.Settings()
+        db_settings = models.Settings(user_id=user_id)
         db.add(db_settings)
 
     # Only touch fields the client actually sent, so a partial update (e.g. saving
@@ -115,43 +115,54 @@ def update_settings(db: Session, settings: schemas.SettingsBase):
 
     db.commit()
     db.refresh(db_settings)
-    return get_settings(db)
+    return get_settings(db, user_id)
 
-def get_unpushed_jobs(db: Session, limit: int = 1000) -> list:
+def get_unpushed_jobs(db: Session, user_id: int, limit: int = 1000) -> list:
     """Jobs never yet pushed to the crowdsourcing API. Ordered oldest-first so the backlog
     drains in order across successive push cycles rather than the same newest N repeating."""
     return (
         db.query(models.Job)
-        .filter(models.Job.crowdsource_pushed_at.is_(None))
+        .filter(models.Job.user_id == user_id, models.Job.crowdsource_pushed_at.is_(None))
         .order_by(models.Job.created_at.asc())
         .limit(limit)
         .all()
     )
 
-def mark_jobs_crowdsource_pushed(db: Session, job_ids: list) -> None:
+def mark_jobs_crowdsource_pushed(db: Session, user_id: int, job_ids: list) -> None:
     if not job_ids:
         return
-    db.query(models.Job).filter(models.Job.id.in_(job_ids)).update(
-        {models.Job.crowdsource_pushed_at: datetime.now(timezone.utc)}, synchronize_session=False)
+    db.query(models.Job).filter(
+        models.Job.id.in_(job_ids), models.Job.user_id == user_id
+    ).update({models.Job.crowdsource_pushed_at: datetime.now(timezone.utc)}, synchronize_session=False)
     db.commit()
 
-def has_running_scrape(db: Session) -> bool:
-    """True if a scraper run is already in flight (cron and manual can otherwise overlap)."""
-    return db.query(models.ScraperLog).filter(models.ScraperLog.status == "RUNNING").first() is not None
+def has_running_scrape(db: Session, user_id: int) -> bool:
+    """True if this user already has a scrape in flight (cron and manual can otherwise
+    overlap). Per-user: one user's scrape no longer blocks another's."""
+    return db.query(models.ScraperLog).filter(
+        models.ScraperLog.user_id == user_id, models.ScraperLog.status == "RUNNING"
+    ).first() is not None
 
-def get_scraper_logs(db: Session, limit: int = 50):
-    return db.query(models.ScraperLog).order_by(models.ScraperLog.timestamp.desc()).limit(limit).all()
+def get_scraper_logs(db: Session, user_id: int, limit: int = 50):
+    return (
+        db.query(models.ScraperLog)
+        .filter(models.ScraperLog.user_id == user_id)
+        .order_by(models.ScraperLog.timestamp.desc())
+        .limit(limit)
+        .all()
+    )
 
-def create_scraper_log(db: Session, log: schemas.ScraperLogBase):
-    db_log = models.ScraperLog(**log.model_dump())
+def create_scraper_log(db: Session, user_id: int, log: schemas.ScraperLogBase):
+    db_log = models.ScraperLog(**log.model_dump(), user_id=user_id)
     db.add(db_log)
     db.commit()
     db.refresh(db_log)
     return db_log
 
 def fail_orphaned_running_logs(db: Session) -> int:
-    """Mark any lingering RUNNING logs as FAILED. A RUNNING log at startup means a
-    previous process died mid-scrape, so it would otherwise hang forever."""
+    """Mark any lingering RUNNING logs as FAILED, across every user. A RUNNING log at
+    startup means a previous process died mid-scrape, so it would otherwise hang forever —
+    this is a global maintenance sweep, not scoped to a single request's user."""
     orphans = db.query(models.ScraperLog).filter(models.ScraperLog.status == "RUNNING").all()
     for log in orphans:
         log.status = "FAILED"
@@ -177,9 +188,11 @@ def update_scraper_log(db: Session, log_id: int, status: str = None, jobs_found:
         db.refresh(log)
     return log
 
-def delete_old_scraper_logs(db: Session, days: int = 14) -> int:
+def delete_old_scraper_logs(db: Session, user_id: int, days: int = 14) -> int:
     cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
-    old_logs = db.query(models.ScraperLog).filter(models.ScraperLog.timestamp < cutoff_date).all()
+    old_logs = db.query(models.ScraperLog).filter(
+        models.ScraperLog.user_id == user_id, models.ScraperLog.timestamp < cutoff_date
+    ).all()
     count = len(old_logs)
     if count > 0:
         for log in old_logs:
@@ -187,8 +200,8 @@ def delete_old_scraper_logs(db: Session, days: int = 14) -> int:
         db.commit()
     return count
 
-def delete_all_scraper_logs(db: Session) -> int:
-    count = db.query(models.ScraperLog).delete()
+def delete_all_scraper_logs(db: Session, user_id: int) -> int:
+    count = db.query(models.ScraperLog).filter(models.ScraperLog.user_id == user_id).delete()
     db.commit()
     return count
 
@@ -198,8 +211,8 @@ def delete_all_scraper_logs(db: Session) -> int:
 # this catches the failure mode that never throws at all — it just quietly returns nothing.
 ZERO_STREAK_ALERT_THRESHOLD = 3
 
-def get_target_health(db: Session, run_limit: int = 20) -> list:
-    """Aggregate per-company scrape health across the most recent `run_limit` runs.
+def get_target_health(db: Session, user_id: int, run_limit: int = 20) -> list:
+    """Aggregate per-company scrape health across this user's most recent `run_limit` runs.
 
     With 40+ scraped targets, a site's markup silently breaking usually doesn't raise an
     exception at all — it just returns 0 jobs, which looks identical to "no openings today"
@@ -208,7 +221,7 @@ def get_target_health(db: Session, run_limit: int = 20) -> list:
     """
     logs = (
         db.query(models.ScraperLog)
-        .filter(models.ScraperLog.detailed_logs.isnot(None))
+        .filter(models.ScraperLog.user_id == user_id, models.ScraperLog.detailed_logs.isnot(None))
         .order_by(models.ScraperLog.timestamp.desc())
         .limit(run_limit)
         .all()

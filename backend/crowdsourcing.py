@@ -15,19 +15,19 @@ interactive SSO round-trip in the browser — so push/pull will start failing wi
 after connecting until the user reconnects from the Login page.
 """
 import logging
-import os
 
 import requests
 from sqlalchemy.orm import Session
 
 from . import crud, models
+from .config import config
 from .sources.common import record_job
 from .scraper_core import bulk_evaluate_jobs
 from .tasks import task_manager
 
 logger = logging.getLogger(__name__)
 
-CROWDSOURCE_API_URL = os.getenv("CROWDSOURCE_API_URL", "https://career-agent-api.kotesh-rv.workers.dev")
+CROWDSOURCE_API_URL = config["crowdsource_api_url"] or "https://api.careeragent.fyi"
 
 # career-agent-api caps a single push request at 1000 jobs (openapi.yaml).
 PUSH_BATCH_LIMIT = 1000
@@ -35,8 +35,8 @@ PUSH_BATCH_LIMIT = 1000
 REQUEST_TIMEOUT_SECONDS = 30
 
 
-def _get_cloud_token(db: Session) -> str:
-    settings = crud.get_settings(db)
+def _get_cloud_token(db: Session, user_id: int) -> str:
+    settings = crud.get_settings(db, user_id)
     if settings and getattr(settings, 'crowdsourcing_enabled', True):
         return settings.career_agent_cloud_token
     return None
@@ -56,16 +56,15 @@ def _auth_error(resp: requests.Response) -> dict:
     }
 
 
-def push_jobs(db: Session) -> dict:
+def push_jobs(db: Session, user_id: int) -> dict:
     """Push jobs never previously pushed."""
-    """Push jobs never previously pushed."""
-    task_id = task_manager.start_task("Crowdsource Push", "Uploading local jobs...")
-    token = _get_cloud_token(db)
+    task_id = task_manager.start_task("Crowdsource Push", "Uploading local jobs...", user_id)
+    token = _get_cloud_token(db, user_id)
     if not token:
         task_manager.complete_task(task_id, success=False, error="Not connected")
         return _not_connected()
 
-    unpushed = crud.get_unpushed_jobs(db, limit=PUSH_BATCH_LIMIT)
+    unpushed = crud.get_unpushed_jobs(db, user_id, limit=PUSH_BATCH_LIMIT)
     if not unpushed:
         task_manager.update_task(task_id, description="Nothing new to push.")
         task_manager.complete_task(task_id, success=True)
@@ -80,7 +79,7 @@ def push_jobs(db: Session) -> dict:
 
     try:
         resp = requests.post(
-            f"{CROWDSOURCE_API_URL}/api/jobs/push",
+            f"{CROWDSOURCE_API_URL}/v1/jobs/push",
             json=payload,
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
@@ -96,25 +95,24 @@ def push_jobs(db: Session) -> dict:
         return _auth_error(resp)
 
     data = resp.json()
-    crud.mark_jobs_crowdsource_pushed(db, [j.id for j in unpushed])
+    crud.mark_jobs_crowdsource_pushed(db, user_id, [j.id for j in unpushed])
     logger.info(f"[Crowdsource] Pushed {len(unpushed)} jobs — {data.get('credits_earned', 0)} credits earned.")
     task_manager.update_task(task_id, description=f"Pushed {len(unpushed)} jobs, earned {data.get('credits_earned', 0)} credits.")
     task_manager.complete_task(task_id, success=True)
     return {"success": True, "skipped": False, "jobs_sent": len(unpushed), **data}
 
 
-def pull_jobs(db: Session, limit: int = 100) -> dict:
-    """Pull jobs from the shared pool"""
+def pull_jobs(db: Session, user_id: int, limit: int = 100) -> dict:
     """Pull jobs from the shared pool."""
-    task_id = task_manager.start_task("Crowdsource Pull", "Pulling shared jobs...")
-    token = _get_cloud_token(db)
+    task_id = task_manager.start_task("Crowdsource Pull", "Pulling shared jobs...", user_id)
+    token = _get_cloud_token(db, user_id)
     if not token:
         task_manager.complete_task(task_id, success=False, error="Not connected")
         return _not_connected()
 
     try:
         resp = requests.get(
-            f"{CROWDSOURCE_API_URL}/api/jobs/pull",
+            f"{CROWDSOURCE_API_URL}/v1/jobs/pull",
             params={"limit": limit},
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
@@ -137,12 +135,14 @@ def pull_jobs(db: Session, limit: int = 100) -> dict:
     # revive a REJECTED/TRASH'd job), so "how many are actually new" has to be determined
     # before inserting, not from record_job's return value.
     already_known = {
-        row[0] for row in db.query(models.Job.url).filter(models.Job.url.in_(pulled_urls)).all()
+        row[0] for row in db.query(models.Job.url).filter(
+            models.Job.user_id == user_id, models.Job.url.in_(pulled_urls)
+        ).all()
     }
 
     newly_added_jobs = []
     for job in pulled:
-        db_job = record_job(db, job["company"], job["title"], job["url"], job.get("location") or "")
+        db_job = record_job(db, user_id, job["company"], job["title"], job["url"], job.get("location") or "")
         if job.get("id"):
             db_job.external_id = job["id"]
         if job["url"] not in already_known:
@@ -154,7 +154,7 @@ def pull_jobs(db: Session, limit: int = 100) -> dict:
 
     if newly_added_jobs:
         logger.info(f"[Crowdsource] Passing {jobs_added} new jobs to AI for evaluation...")
-        bulk_evaluate_jobs(db, newly_added_jobs)
+        bulk_evaluate_jobs(db, user_id, newly_added_jobs)
     task_manager.update_task(task_id, description=f"Pulled {jobs_added} new jobs ({len(pulled)} checked).")
     task_manager.complete_task(task_id, success=True)
     return {
@@ -163,14 +163,39 @@ def pull_jobs(db: Session, limit: int = 100) -> dict:
         **{k: v for k, v in data.items() if k != "jobs"},
     }
 
-def get_account_info(db: Session) -> dict:
-    token = _get_cloud_token(db)
+def verify_cloud_identity(token: str) -> str | None:
+    """Confirms a career-agent-api JWT is genuine — by asking career-agent-api itself to
+    validate it, never by decoding it client/server-side without checking the signature —
+    and returns the verified email, or None. This gates real local-dashboard sessions (see
+    routers/users.py's /api/auth/sso), unlike the display-only decode in Login.tsx, so it
+    must not be skipped or replaced with an unverified decode."""
+    try:
+        resp = requests.get(
+            f"{CROWDSOURCE_API_URL}/v1/me",
+            headers={"Authorization": f"Bearer {token}"},
+            timeout=REQUEST_TIMEOUT_SECONDS,
+        )
+    except Exception as e:
+        logger.warning(f"[Crowdsource] Identity verification failed: {e}")
+        return None
+    if resp.status_code != 200:
+        logger.warning(f"[Crowdsource] Identity verification rejected ({resp.status_code}): {resp.text[:200]}")
+        return None
+    # career-agent-api's /v1/me response uses "cloud_email" (confirmed by the frontend's
+    # own demo-mode mock for this same endpoint, get_account_info() passes it through
+    # unmodified) — "email" kept as a fallback in case that ever changes upstream.
+    data = resp.json()
+    return data.get("cloud_email") or data.get("email") or None
+
+
+def get_account_info(db: Session, user_id: int) -> dict:
+    token = _get_cloud_token(db, user_id)
     if not token:
         return _not_connected()
 
     try:
         resp = requests.get(
-            f"{CROWDSOURCE_API_URL}/api/me",
+            f"{CROWDSOURCE_API_URL}/v1/me",
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
@@ -184,14 +209,14 @@ def get_account_info(db: Session) -> dict:
     return {"success": True, "skipped": False, **data}
 
 
-def report_job(db: Session, job_id: str, reason: str) -> dict:
-    token = _get_cloud_token(db)
+def report_job(db: Session, user_id: int, job_id: str, reason: str) -> dict:
+    token = _get_cloud_token(db, user_id)
     if not token:
         return _not_connected()
 
     try:
         resp = requests.post(
-            f"{CROWDSOURCE_API_URL}/api/jobs/report",
+            f"{CROWDSOURCE_API_URL}/v1/jobs/report",
             json={"job_id": job_id, "reason": reason},
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,

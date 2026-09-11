@@ -60,15 +60,28 @@ Pushes/pulls jobs to/from `career-agent-api` (a **separate sibling repo**, not p
 backend — a Cloudflare Worker running the "Give-to-Get" credit economy). See
 `CAREERAGENT_MANUAL.md` § 17 for the full design.
 
-**The one rule that matters here:** `POST /api/auth/sso` and `POST /api/crowdsource/connect`
-must never mint or accept anything that grants *local dashboard* access. Local auth is
-`POST /api/login` only — full stop. An earlier version of the SSO endpoint minted a local
-session for any Google/GitHub account holder with no allowlist; that was a real
-vulnerability, not a shortcut worth reintroducing. If you're touching auth in this area,
-re-read `CLAUDE.md`'s "two separate trust boundaries" note first.
+**The one rule that matters here:** `POST /api/crowdsource/connect` must never mint or accept
+anything that grants *local dashboard* access. Local auth is `POST /api/login` only — full
+stop. This endpoint now requires the normal local bearer token like every other `/api/*`
+route (it used to be public, which let anyone unauthenticated hijack the crowdsourcing
+identity this instance pushes/pulls as — don't put it back in `PUBLIC_PATHS`). An earlier
+version of the SSO flow also minted a local session for any Google/GitHub account holder
+with no allowlist, and a later version leaked the local bearer token to `career-agent-api`
+by routing the SSO exchange through the shared, token-injecting `api` axios instance instead
+of a bare `axios` call — neither was a shortcut worth reintroducing. If you're touching auth
+in this area, re-read `CLAUDE.md`'s "two separate trust boundaries" note first.
 
-- `push_jobs(db)` / `pull_jobs(db)` are the only two entry points that talk to
-  `career-agent-api`. Both are called from `backend/scheduler.py`'s 10-minute interval jobs
+`POST /api/auth/sso` (`backend/routers/users.py`) is NOT a GitHub-code-exchange endpoint —
+`career-agent-api` holds the GitHub OAuth app secret and exchanges the authorization code
+itself; this backend has no GitHub OAuth config at all. Instead it's the multi-user
+sign-in/approval endpoint: it re-verifies the career-agent-api cloud token
+(`crowdsourcing.verify_cloud_identity()`, never a client-decoded JWT) and only issues a
+local dashboard token if that email is already an `ACTIVE` `models.User` — see CLAUDE.md's
+"Multi-user model" section.
+
+- `push_jobs(db, user_id)` / `pull_jobs(db, user_id)` are the only two entry points that talk
+  to `career-agent-api`, one connected account per user. Both are called from
+  `backend/scheduler.py`'s per-user 10-minute interval jobs (`scheduler.activate_user()`)
   *and* from the on-demand `/api/crowdsource/push`/`/pull` routes — keep that shared, don't
   fork the logic between the two callers.
 - `push_jobs()` must only mark a job `crowdsource_pushed_at` on a confirmed HTTP 200. If you
@@ -76,9 +89,12 @@ re-read `CLAUDE.md`'s "two separate trust boundaries" note first.
   retry on the next cycle instead of silently losing them from the backlog.
 - The crowdsourcing JWT has no refresh (§17, §19 of the manual) — don't build retry logic
   that assumes 401 is transient; it means the user needs to reconnect from the Login page.
-- If you touch the request/response shape of `/api/jobs/push` or `/api/jobs/pull`, check
-  `~/career-agent-api/openapi.yaml` first — that's the authoritative contract, and it lives
-  in the other repo, so it's easy to miss.
+- If you touch the request/response shape of `/v1/jobs/push` or `/v1/jobs/pull` (career-agent-api's
+  own paths — everything this backend sends there uses a `/v1/` prefix, not `/api/`, a
+  mismatch that silently 404'd every push/pull/report/me call and the SSO identity check
+  until it was caught), check `openapi.yaml` in this repo's root first — it's a Postman
+  collection documenting career-agent-api's actual contract, checked in here for
+  convenience; the sibling repo's own copy is still the source of truth if they ever diverge.
 
 # Frontend Developer Instructions
 

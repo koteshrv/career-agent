@@ -4,9 +4,9 @@ info:
   description: A centralized crowdsourcing API for an open-source job scraping tool featuring a Give-to-Get credit economy.
   version: 1.0.0
 servers:
-  - url: https://career-agent-api.kotesh-rv.workers.dev
-    description: Production Server
-  - url: http://localhost:8787
+  - url: https://api.careeragent.fyi
+    description: Live community instance
+  - url: http://localhost:3000
     description: Local Development Server
 
 components:
@@ -60,7 +60,34 @@ security:
   - bearerAuth: []
 
 paths:
-  /api/auth/login:
+  /:
+    get:
+      summary: Root
+      description: Unauthenticated. Basic API metadata and links — not part of the versioned API surface.
+      security: []
+      responses:
+        '200':
+          description: API metadata
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    example: CareerAgent API
+                  version:
+                    type: string
+                    description: The deployed image's git commit hash, or "unknown".
+                  docs:
+                    type: string
+                  repo:
+                    type: string
+                  health:
+                    type: string
+                    example: /health
+
+  /v1/auth/login:
     post:
       summary: SSO Login
       description: >
@@ -105,11 +132,40 @@ paths:
                     type: integer
                     example: 604800
         '400':
-          description: Missing parameters or failed to extract email from IdP.
+          description: Missing parameters or failed to extract email/account id from IdP.
         '401':
           description: Invalid IdP token or GitHub code exchange failed.
+        '429':
+          description: Too Many Requests (rate limited — a tighter 20/60s budget applies to this route specifically)
+        '500':
+          description: Server misconfiguration (GOOGLE_CLIENT_ID, or GITHUB_CLIENT_ID/GITHUB_CLIENT_SECRET, not set for the requested provider)
 
-  /api/jobs/push:
+  /v1/auth/logout-all:
+    post:
+      summary: Log Out Everywhere
+      description: >
+        Invalidates every previously-issued JWT for this account, including
+        the one used to call this endpoint. JWTs are stateless and not
+        tracked individually, so revocation is all-or-nothing per account —
+        there is no way to revoke a single session.
+      responses:
+        '200':
+          description: All tokens for this account are now invalid.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        '401':
+          description: Missing, invalid, expired, or already-revoked token.
+        '403':
+          description: User is banned.
+
+  /v1/jobs/push:
     post:
       summary: Push Scraped Jobs
       description: >
@@ -172,10 +228,10 @@ paths:
         '429':
           description: Too Many Requests (rate limited)
 
-  /api/jobs/pull:
+  /v1/jobs/pull:
     get:
       summary: Pull Jobs
-      description: Consume jobs from the database. Deducts 1 API credit per job. Falls back to a strict daily quota (50 jobs/day) if credits are 0. Each user is only ever served a given job once — already-pulled jobs are excluded from future pulls.
+      description: Consume jobs from the database. Deducts 1 API credit per job. Falls back to a strict daily quota (50 jobs/day) if credits are 0. Each user is only ever served a given job once — already-pulled jobs are excluded from future pulls. Jobs older than 60 days are excluded by default (soft staleness — see include_stale).
       parameters:
         - in: query
           name: limit
@@ -185,6 +241,12 @@ paths:
             minimum: 1
             maximum: 100
           description: Maximum number of jobs to return.
+        - in: query
+          name: include_stale
+          schema:
+            type: string
+            enum: ["true"]
+          description: Include jobs older than 60 days, which are excluded by default.
       responses:
         '200':
           description: Jobs retrieved
@@ -209,6 +271,13 @@ paths:
                   quota_used:
                     type: integer
                     description: Number of free quota jobs used if user has 0 credits.
+                  has_more:
+                    type: boolean
+                    description: >
+                      Whether at least one more unconsumed, unflagged job existed beyond this batch at
+                      query time — a hint for whether it's worth calling again, not a hard guarantee (the
+                      pool is shared and can shift between requests). Not a cursor: calling pull() again
+                      already advances through the corpus for free, since already-pulled jobs are excluded.
         '401':
           description: Unauthorized (Missing or Invalid JWT)
         '403':
@@ -216,7 +285,7 @@ paths:
         '409':
           description: Conflict (lost a race with a concurrent pull request from the same user); safe to retry
 
-  /api/me:
+  /v1/me:
     get:
       summary: Get Account Info
       description: Returns the authenticated user's current Give-to-Get economy balance and stats.
@@ -251,7 +320,48 @@ paths:
         '401':
           description: Unauthorized (Missing or Invalid JWT)
 
-  /api/jobs/report:
+  /v1/me/export:
+    get:
+      summary: Export Account Data
+      description: >
+        Self-service data export: this account's own profile, jobs it contributed, jobs it pulled,
+        and reports it filed. Does not include community data other users generated (e.g. reports
+        filed against this account's jobs by other users).
+      responses:
+        '200':
+          description: Export retrieved
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+
+  /v1/me:
+    delete:
+      summary: Delete Account
+      description: >
+        Self-service account deletion. Erases this account's own row (email, IP, credit/stat
+        history) and its own activity records (jobs pulled, reports filed). Jobs this account
+        contributed are NOT deleted — they're a shared resource other users may already rely on;
+        attribution is detached instead (`scraped_by_user_id` becomes null). Immediately invalidates
+        every JWT for the account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirm]
+              properties:
+                confirm:
+                  type: boolean
+                  description: Must be `true` — a bare DELETE with no body is rejected, to guard against an accidental call.
+      responses:
+        '200':
+          description: Account deleted
+        '400':
+          description: Missing confirm:true
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+
+  /v1/jobs/report:
     post:
       summary: Report a Job
       description: >
@@ -306,10 +416,209 @@ paths:
         '404':
           description: Job not found
 
+  /v1/admin/users:
+    get:
+      summary: "[Admin] Look Up Users By Email"
+      description: >
+        Requires an admin account (no self-service way to become one — see DATABASE_QUERIES.md).
+        A non-admin gets 404, not 403, so these routes can't be distinguished from a typo'd path.
+        Email is not unique (see the SSO identity model note above), so this can return more than
+        one account.
+      parameters:
+        - in: query
+          name: email
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Matching accounts (possibly empty)
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account
+
+  /v1/admin/users/{id}:
+    get:
+      summary: "[Admin] Get User"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Account found
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or user not found
+
+  /v1/admin/users/{id}/credits:
+    post:
+      summary: "[Admin] Set Credit Balance"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [credits]
+              properties:
+                credits:
+                  type: integer
+                  minimum: 0
+                  description: Sets the absolute balance (not a delta).
+      responses:
+        '200':
+          description: Balance set
+        '400':
+          description: credits out of range
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or user not found
+
+  /v1/admin/users/{id}/ban:
+    post:
+      summary: "[Admin] Ban User"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User banned
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or user not found
+
+  /v1/admin/users/{id}/unban:
+    post:
+      summary: "[Admin] Unban User"
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User unbanned
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or user not found
+
+  /v1/admin/jobs/flagged:
+    get:
+      summary: "[Admin] List Flagged Jobs"
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: Flagged jobs
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account
+
+  /v1/admin/jobs/{id}/unflag:
+    post:
+      summary: "[Admin] Un-flag a Job"
+      description: Restores a job to circulation, e.g. after review finds a report was a false positive.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Job un-flagged
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or job not found
+
+  /v1/admin/jobs/{id}/reports:
+    get:
+      summary: "[Admin] Who Reported a Job, and Why"
+      description: >
+        Works for any job, not just already-flagged ones, so a borderline case can be reviewed
+        before it hits the auto-flag threshold.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Reports for this job (possibly empty)
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account, or job not found
+
+  /v1/admin/audit-log:
+    get:
+      summary: "[Admin] Audit Log"
+      description: Every write made through /v1/admin/* — who did what, when.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+      responses:
+        '200':
+          description: Recent admin actions, newest first
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account
+
+  /v1/admin/stats:
+    get:
+      summary: "[Admin] Aggregate System Metrics"
+      description: Total users/jobs/reports/flags/stale jobs, plus the top 10 contributors by jobs pushed.
+      responses:
+        '200':
+          description: Aggregate stats
+        '401':
+          description: Unauthorized (Missing or Invalid JWT)
+        '404':
+          description: Not an admin account
+
   /health:
     get:
       summary: Health Check
-      description: Unauthenticated liveness probe; also verifies the D1 binding responds.
+      description: Unauthenticated liveness probe; also verifies the database connection.
       security: []
       responses:
         '200':
