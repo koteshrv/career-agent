@@ -78,7 +78,7 @@ function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const current = NAV.find(n => location.pathname.startsWith(n.to))
-  const title = current?.title || "CareerAgent"
+  const title = current?.title || "Career Agent"
   const subtitle = current?.subtitle || ""
 
   const [accountEmail, setAccountEmail] = useState<string | null>(null)
@@ -125,7 +125,7 @@ function Layout() {
         {/* Sidebar Navigation */}
         <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col z-40">
           <Link to="/app/home" className="h-16 flex items-center px-6 border-b border-border hover:bg-accent/40 transition-colors">
-            <div className="flex items-center gap-2"><Zap className="w-6 h-6 text-primary fill-primary" /><span className="text-lg font-bold tracking-tight text-foreground">CareerAgent</span></div>
+            <div className="flex items-center gap-2"><img src="/favicon.svg" alt="Career Agent" className="w-6 h-6" /><span className="text-lg font-bold tracking-tight text-foreground">Career Agent</span></div>
           </Link>
 
           <nav className="flex-1 px-4 py-6 space-y-1">
@@ -159,7 +159,7 @@ function Layout() {
             <div className="absolute inset-0 bg-black/60" onClick={() => setMobileNavOpen(false)} />
             <aside className="absolute left-0 top-0 bottom-0 w-72 bg-card border-r border-border flex flex-col">
               <div className="h-16 flex items-center px-6 border-b border-border">
-                <div className="flex items-center gap-2"><Zap className="w-6 h-6 text-primary fill-primary" /><span className="text-lg font-bold tracking-tight text-foreground">CareerAgent</span></div>
+                <div className="flex items-center gap-2"><img src="/favicon.svg" alt="Career Agent" className="w-6 h-6" /><span className="text-lg font-bold tracking-tight text-foreground">Career Agent</span></div>
               </div>
               <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                 <NavItems onNavigate={() => setMobileNavOpen(false)} />
