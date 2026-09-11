@@ -58,7 +58,7 @@ export function Login() {
         if (!apiUrl) throw new Error("Crowdsourcing API URL is not configured")
         // Plain axios, NOT the shared `api` instance — that instance attaches the local
         // dashboard bearer token to every request, which must never reach a third-party host.
-        const cloudRes = await axios.post(`${apiUrl}/api/auth/login`, {
+        const cloudRes = await axios.post(`${apiUrl}/v1/auth/login`, {
           idp_token: code,
           sso_provider: "github"
         })
@@ -94,7 +94,7 @@ export function Login() {
     try {
       const apiUrl = runtimeConfig.crowdsourceApiUrl
       if (!apiUrl) throw new Error("Crowdsourcing API URL is not configured")
-      const cloudRes = await axios.post(`${apiUrl}/api/auth/login`, {
+      const cloudRes = await axios.post(`${apiUrl}/v1/auth/login`, {
         idp_token: credentialResponse.credential,
         sso_provider: "google"
       })

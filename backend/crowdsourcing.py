@@ -79,7 +79,7 @@ def push_jobs(db: Session, user_id: int) -> dict:
 
     try:
         resp = requests.post(
-            f"{CROWDSOURCE_API_URL}/api/jobs/push",
+            f"{CROWDSOURCE_API_URL}/v1/jobs/push",
             json=payload,
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
@@ -112,7 +112,7 @@ def pull_jobs(db: Session, user_id: int, limit: int = 100) -> dict:
 
     try:
         resp = requests.get(
-            f"{CROWDSOURCE_API_URL}/api/jobs/pull",
+            f"{CROWDSOURCE_API_URL}/v1/jobs/pull",
             params={"limit": limit},
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
@@ -171,7 +171,7 @@ def verify_cloud_identity(token: str) -> str | None:
     must not be skipped or replaced with an unverified decode."""
     try:
         resp = requests.get(
-            f"{CROWDSOURCE_API_URL}/api/me",
+            f"{CROWDSOURCE_API_URL}/v1/me",
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
@@ -179,8 +179,13 @@ def verify_cloud_identity(token: str) -> str | None:
         logger.warning(f"[Crowdsource] Identity verification failed: {e}")
         return None
     if resp.status_code != 200:
+        logger.warning(f"[Crowdsource] Identity verification rejected ({resp.status_code}): {resp.text[:200]}")
         return None
-    return resp.json().get("email") or None
+    # career-agent-api's /v1/me response uses "cloud_email" (confirmed by the frontend's
+    # own demo-mode mock for this same endpoint, get_account_info() passes it through
+    # unmodified) — "email" kept as a fallback in case that ever changes upstream.
+    data = resp.json()
+    return data.get("cloud_email") or data.get("email") or None
 
 
 def get_account_info(db: Session, user_id: int) -> dict:
@@ -190,7 +195,7 @@ def get_account_info(db: Session, user_id: int) -> dict:
 
     try:
         resp = requests.get(
-            f"{CROWDSOURCE_API_URL}/api/me",
+            f"{CROWDSOURCE_API_URL}/v1/me",
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
@@ -211,7 +216,7 @@ def report_job(db: Session, user_id: int, job_id: str, reason: str) -> dict:
 
     try:
         resp = requests.post(
-            f"{CROWDSOURCE_API_URL}/api/jobs/report",
+            f"{CROWDSOURCE_API_URL}/v1/jobs/report",
             json={"job_id": job_id, "reason": reason},
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,

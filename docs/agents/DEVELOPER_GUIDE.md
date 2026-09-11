@@ -89,9 +89,12 @@ local dashboard token if that email is already an `ACTIVE` `models.User` — see
   retry on the next cycle instead of silently losing them from the backlog.
 - The crowdsourcing JWT has no refresh (§17, §19 of the manual) — don't build retry logic
   that assumes 401 is transient; it means the user needs to reconnect from the Login page.
-- If you touch the request/response shape of `/api/jobs/push` or `/api/jobs/pull`, check
-  `~/career-agent-api/openapi.yaml` first — that's the authoritative contract, and it lives
-  in the other repo, so it's easy to miss.
+- If you touch the request/response shape of `/v1/jobs/push` or `/v1/jobs/pull` (career-agent-api's
+  own paths — everything this backend sends there uses a `/v1/` prefix, not `/api/`, a
+  mismatch that silently 404'd every push/pull/report/me call and the SSO identity check
+  until it was caught), check `openapi.yaml` in this repo's root first — it's a Postman
+  collection documenting career-agent-api's actual contract, checked in here for
+  convenience; the sibling repo's own copy is still the source of truth if they ever diverge.
 
 # Frontend Developer Instructions
 
