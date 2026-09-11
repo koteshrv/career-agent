@@ -116,6 +116,8 @@ docker compose up -d
 ```
 *Visit `http://localhost:5173` to access the dashboard. Your database and files will be safely stored in the local directory via Docker volumes.*
 
+**Multi-user note:** CareerAgent supports more than one person using the same instance, each with their own isolated jobs, resume, and settings. The username/password from step 2 always logs in as the administrator. If you enabled Google/GitHub sign-in in step 3, the **first** Google/GitHub account to ever sign in also becomes an administrator automatically — this is the easiest way to get started if you'd rather not touch `backend-config.json` at all. Every sign-in after that first one lands in a pending state until an administrator approves it from the Settings page.
+
 ---
 
 ### Method 2: Manual Installation (For Developers)

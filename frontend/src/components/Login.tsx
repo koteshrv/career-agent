@@ -229,7 +229,7 @@ export function Login() {
               </button>
 
               <p className="text-[11px] leading-relaxed text-zinc-500 text-center mt-2 pt-2">
-                New Google/GitHub accounts need the administrator's approval before they can sign in.
+                First time setting up this instance? The first Google/GitHub account to sign in becomes the administrator. After that, new sign-ins need the administrator's approval.
               </p>
 
               {error && (
