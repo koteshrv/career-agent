@@ -1,5 +1,5 @@
 """Sync with career-agent-api, the "Give-to-Get" crowdsourcing credit economy (a sibling
-project — a Cloudflare Worker, not part of this backend). Two directions:
+project — a self-hosted Node/Fastify service, not part of this backend). Two directions:
 
   - push: upload locally scraped jobs the API hasn't seen yet, earning credits.
   - pull: consume jobs other users have pushed, spending credits.
@@ -27,7 +27,7 @@ from .tasks import task_manager
 
 logger = logging.getLogger(__name__)
 
-CROWDSOURCE_API_URL = os.getenv("CROWDSOURCE_API_URL", "https://career-agent-api.kotesh-rv.workers.dev")
+CROWDSOURCE_API_URL = os.getenv("CROWDSOURCE_API_URL", "https://api.careeragent.fyi")
 
 # career-agent-api caps a single push request at 1000 jobs (openapi.yaml).
 PUSH_BATCH_LIMIT = 1000
@@ -80,7 +80,7 @@ def push_jobs(db: Session) -> dict:
 
     try:
         resp = requests.post(
-            f"{CROWDSOURCE_API_URL}/api/jobs/push",
+            f"{CROWDSOURCE_API_URL}/v1/jobs/push",
             json=payload,
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
@@ -114,7 +114,7 @@ def pull_jobs(db: Session, limit: int = 100) -> dict:
 
     try:
         resp = requests.get(
-            f"{CROWDSOURCE_API_URL}/api/jobs/pull",
+            f"{CROWDSOURCE_API_URL}/v1/jobs/pull",
             params={"limit": limit},
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
@@ -170,7 +170,7 @@ def get_account_info(db: Session) -> dict:
 
     try:
         resp = requests.get(
-            f"{CROWDSOURCE_API_URL}/api/me",
+            f"{CROWDSOURCE_API_URL}/v1/me",
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
@@ -191,7 +191,7 @@ def report_job(db: Session, job_id: str, reason: str) -> dict:
 
     try:
         resp = requests.post(
-            f"{CROWDSOURCE_API_URL}/api/jobs/report",
+            f"{CROWDSOURCE_API_URL}/v1/jobs/report",
             json={"job_id": job_id, "reason": reason},
             headers={"Authorization": f"Bearer {token}"},
             timeout=REQUEST_TIMEOUT_SECONDS,

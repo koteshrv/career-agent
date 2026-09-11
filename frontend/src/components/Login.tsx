@@ -22,7 +22,7 @@ export function Login() {
       try {
         const apiUrl = import.meta.env.VITE_CROWDSOURCE_API_URL
         if (!apiUrl) throw new Error("VITE_CROWDSOURCE_API_URL environment variable is missing")
-        const cloudRes = await api.post(`${apiUrl}/api/auth/login`, {
+        const cloudRes = await api.post(`${apiUrl}/v1/auth/login`, {
           idp_token: code,
           sso_provider: "github"
         })
@@ -66,7 +66,7 @@ export function Login() {
     try {
       const apiUrl = import.meta.env.VITE_CROWDSOURCE_API_URL
       if (!apiUrl) throw new Error("VITE_CROWDSOURCE_API_URL environment variable is missing")
-      const cloudRes = await api.post(`${apiUrl}/api/auth/login`, {
+      const cloudRes = await api.post(`${apiUrl}/v1/auth/login`, {
         idp_token: credentialResponse.credential,
         sso_provider: "google"
       })
