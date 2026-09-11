@@ -58,19 +58,19 @@ export function LandingPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-white overflow-x-hidden selection:bg-blue-500/30 font-sans">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden selection:bg-blue-500/30 font-sans">
       
       {/* Navbar */}
-      <nav className="w-full border-b border-white/5 bg-black/50 backdrop-blur-md fixed top-0 z-50">
+      <nav className="w-full border-b border-border bg-background/50 backdrop-blur-md fixed top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-purple-600 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-white animate-pulse" />
+              <Zap className="w-4 h-4 text-foreground animate-pulse" />
             </div>
             <span className="font-bold text-lg tracking-tight">CareerAgent</span>
           </div>
           <div className="flex items-center gap-4">
-            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-zinc-400 hover:text-white transition-colors flex items-center gap-2">
+            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors flex items-center gap-2">
               <Code2 className="w-4 h-4" />
               GitHub
             </a>
@@ -123,7 +123,7 @@ export function LandingPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-lg text-zinc-400 mb-8 leading-relaxed max-w-xl"
+                className="text-lg text-muted-foreground mb-8 leading-relaxed max-w-xl"
               >
                 CareerAgent is a sophisticated, 100% free automation platform built for ambitious IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, connects you to a global crowdsourced job network, evaluates your precise fit using your choice of AI, and programmatically compiles ATS-optimized LaTeX resumes.
               </motion.p>
@@ -144,7 +144,7 @@ export function LandingPage() {
                   href="https://github.com/koteshrv/career-agent" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 border border-white/10 text-white px-8 py-3.5 rounded-full font-bold text-lg transition-all"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 bg-secondary hover:bg-accent border border-border text-foreground px-8 py-3.5 rounded-full font-bold text-lg transition-all"
                 >
                   <Code2 className="w-5 h-5" /> View on GitHub
                 </a>
@@ -158,15 +158,15 @@ export function LandingPage() {
               transition={{ duration: 0.7, delay: 0.4 }}
               className="hidden lg:block relative"
             >
-              <div className="bg-[#0c0d12]/90 border border-white/10 rounded-2xl shadow-2xl overflow-hidden relative backdrop-blur-md p-8">
+              <div className="bg-card/90 border border-border rounded-2xl shadow-2xl overflow-hidden relative backdrop-blur-md p-8">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
                       <Target className="w-5 h-5 text-blue-400" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-white text-lg">Senior Backend Engineer</h3>
-                      <p className="text-zinc-400 text-sm">Stripe • Remote</p>
+                      <h3 className="font-bold text-foreground text-lg">Senior Backend Engineer</h3>
+                      <p className="text-muted-foreground text-sm">Stripe • Remote</p>
                     </div>
                   </div>
                   <div className="flex flex-col items-end">
@@ -186,12 +186,12 @@ export function LandingPage() {
       </div>
 
       {/* Features Grid */}
-      <div className="border-t border-white/5 bg-black/20 relative">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
+      <div className="border-t border-border bg-muted/30 relative">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(128,128,128,0.1)_1px,transparent_1px),linear-gradient(to_bottom,rgba(128,128,128,0.1)_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         <div className="max-w-7xl mx-auto px-6 py-24 relative z-10">
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">Engineered for Success.</h2>
-            <p className="text-zinc-400 max-w-2xl mx-auto">A comprehensive suite of tools to automate your job search while maintaining the highest standards of data privacy and professional formatting.</p>
+            <p className="text-muted-foreground max-w-2xl mx-auto">A comprehensive suite of tools to automate your job search while maintaining the highest standards of data privacy and professional formatting.</p>
           </div>
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -202,14 +202,14 @@ export function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className={`backdrop-blur-sm border rounded-2xl p-6 transition-all duration-300 shadow-xl ${f.highlight ? "bg-blue-500/5 border-blue-500/30 hover:bg-blue-500/10 hover:-translate-y-1 shadow-[0_0_30px_rgba(59,130,246,0.1)] relative overflow-hidden" : "bg-black/40 border-white/10 hover:bg-white/[0.04] hover:-translate-y-1"}`}
+                className={`backdrop-blur-sm border rounded-2xl p-6 transition-all duration-300 shadow-xl ${f.highlight ? "bg-blue-500/5 border-blue-500/30 hover:bg-blue-500/10 hover:-translate-y-1 shadow-[0_0_30px_rgba(59,130,246,0.1)] relative overflow-hidden" : "bg-card border-border hover:bg-accent/40 hover:-translate-y-1"}`}
               >
                 {f.highlight && <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 blur-[50px] -mr-10 -mt-10 pointer-events-none" />}
-                <div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center mb-6 relative z-10">
+                <div className="w-12 h-12 rounded-xl bg-secondary border border-border flex items-center justify-center mb-6 relative z-10">
                   {f.icon}
                 </div>
-                <h3 className="text-lg font-bold mb-3 text-white">{f.title}</h3>
-                <p className="text-sm text-zinc-400 leading-relaxed">{f.description}</p>
+                <h3 className="text-lg font-bold mb-3 text-foreground">{f.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{f.description}</p>
               </motion.div>
             ))}
           </div>
@@ -217,20 +217,20 @@ export function LandingPage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 py-12 bg-black">
+      <footer className="border-t border-border py-12 bg-background">
         <div className="max-w-7xl mx-auto px-6 flex flex-col items-center justify-center gap-6">
-          <div className="flex items-center justify-center text-sm text-zinc-400">
-            Built with <span className="mx-1.5">❤️</span> by <a href="https://github.com/koteshrv" target="_blank" rel="noopener noreferrer" className="text-white font-semibold hover:underline ml-1">Hari</a>.
+          <div className="flex items-center justify-center text-sm text-muted-foreground">
+            Built with <span className="mx-1.5">❤️</span> by <a href="https://github.com/koteshrv" target="_blank" rel="noopener noreferrer" className="text-foreground font-semibold hover:underline ml-1">Hari</a>.
           </div>
           
-          <div className="flex items-center justify-center gap-6 text-sm text-zinc-500 font-medium">
-            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-white transition-colors">
+          <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground font-medium">
+            <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-foreground transition-colors">
               <Code2 className="w-4 h-4" />
               GitHub
             </a>
-            <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
+            <span className="w-1 h-1 rounded-full bg-border"></span>
             <span className="hover:text-zinc-300 transition-colors">MIT License</span>
-            <span className="w-1 h-1 rounded-full bg-zinc-800"></span>
+            <span className="w-1 h-1 rounded-full bg-border"></span>
             <span>© {new Date().getFullYear()} CareerAgent</span>
           </div>
         </div>
