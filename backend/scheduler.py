@@ -16,6 +16,13 @@ CROWDSOURCE_PUSH_JOB_ID = "crowdsource_push"
 CROWDSOURCE_PULL_JOB_ID = "crowdsource_pull"
 CROWDSOURCE_INTERVAL_MINUTES = 10
 
+# The automatic cron schedule and crowdsource push/pull cycle are still a single global job,
+# scoped to the bootstrap admin — this preserves today's exact behavior. Multiplexing these
+# into one job per approved user (so everyone's own schedule/settings actually run
+# automatically, not just the admin's) is a later phase of the multi-user rollout; other
+# approved users can already trigger their own scrape manually via POST /api/run-scraper.
+ADMIN_USER_ID = 1
+
 class RunLogCaptureHandler(logging.Handler):
     def __init__(self):
         super().__init__()
@@ -35,43 +42,43 @@ def _scheduled_scrape():
 
     # A manual run (or a previous cron tick that's still going) can otherwise overlap
     # with this one and hit SQLite write contention / duplicate job commits.
-    if crud.has_running_scrape(db):
+    if crud.has_running_scrape(db, ADMIN_USER_ID):
         logger.warning("Skipping scheduled scrape — a scrape is already RUNNING.")
         db.close()
         return
 
-    log = crud.create_scraper_log(db, schemas.ScraperLogBase(jobs_found=0, status="RUNNING", trigger_source="CRON"))
+    log = crud.create_scraper_log(db, ADMIN_USER_ID, schemas.ScraperLogBase(jobs_found=0, status="RUNNING", trigger_source="CRON"))
 
     capture_handler = RunLogCaptureHandler()
     capture_handler.setLevel(logging.INFO)
     logging.getLogger().addHandler(capture_handler)
-    
+
     try:
-        settings = crud.get_settings(db)
+        settings = crud.get_settings(db, ADMIN_USER_ID)
         # Clean old trash before scraping
         if settings.trash_retention_days > 0:
-            deleted_trash = crud.clean_old_trash(db, settings.trash_retention_days)
+            deleted_trash = crud.clean_old_trash(db, ADMIN_USER_ID, settings.trash_retention_days)
             if deleted_trash > 0:
                 logger.info(f"Cleaned up {deleted_trash} old trash items.")
-                
+
         # Clean old scraper logs (14 days)
-        deleted_logs = crud.delete_old_scraper_logs(db, 14)
+        deleted_logs = crud.delete_old_scraper_logs(db, ADMIN_USER_ID, 14)
         if deleted_logs > 0:
             logger.info(f"Cleaned up {deleted_logs} old scraper logs.")
-                
-        new_jobs, company_logs = run_scraper(db)
-        
+
+        new_jobs, company_logs = run_scraper(db, ADMIN_USER_ID)
+
         logger.info(f"Scheduled scrape complete. Found {len(new_jobs)} new jobs.")
         raw_logs_str = "\n".join(capture_handler.logs)
         crud.update_scraper_log(db, log.id, jobs_found=len(new_jobs), status="SUCCESS", detailed_logs=json.dumps(company_logs), raw_logs=raw_logs_str)
-        notifications.notify_broken_targets(db)
-        notifications.ping_healthcheck(True)
+        notifications.notify_broken_targets(db, ADMIN_USER_ID)
+        notifications.ping_healthcheck(db, ADMIN_USER_ID, True)
     except Exception as e:
         raw_logs_str = "\n".join(capture_handler.logs)
         crud.update_scraper_log(db, log.id, status="FAILED", error_message=str(e), raw_logs=raw_logs_str)
         logger.error(f"Scheduled scrape failed: {e}")
-        notifications.notify_scrape_run_failed(db, str(e), "CRON")
-        notifications.ping_healthcheck(False)
+        notifications.notify_scrape_run_failed(db, ADMIN_USER_ID, str(e), "CRON")
+        notifications.ping_healthcheck(db, ADMIN_USER_ID, False)
     finally:
         logging.getLogger().removeHandler(capture_handler)
         db.close()
@@ -82,7 +89,7 @@ def _scheduled_crowdsource_push():
     this scheduler."""
     db = SessionLocal()
     try:
-        result = crowdsourcing.push_jobs(db)
+        result = crowdsourcing.push_jobs(db, ADMIN_USER_ID)
         if not result.get("success") and not result.get("skipped"):
             logger.warning(f"[Crowdsource] Scheduled push failed: {result.get('reason')}")
     except Exception as e:
@@ -94,7 +101,7 @@ def _scheduled_crowdsource_push():
 def _scheduled_crowdsource_pull():
     db = SessionLocal()
     try:
-        result = crowdsourcing.pull_jobs(db)
+        result = crowdsourcing.pull_jobs(db, ADMIN_USER_ID)
         if not result.get("success") and not result.get("skipped"):
             logger.warning(f"[Crowdsource] Scheduled pull failed: {result.get('reason')}")
     except Exception as e:
@@ -122,7 +129,7 @@ def start():
         scheduler.start()
     db = SessionLocal()
     try:
-        settings = crud.get_settings(db)
+        settings = crud.get_settings(db, ADMIN_USER_ID)
         reschedule(settings.cron_schedule or "0 */12 * * *")
     finally:
         db.close()

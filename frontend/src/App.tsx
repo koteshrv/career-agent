@@ -31,6 +31,11 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return getToken() ? <>{children}</> : <Navigate to="/login" replace />
 }
 
+function RedirectIfAuthed({ children }: { children: ReactNode }) {
+  if (!IS_DEMO && getToken()) return <Navigate to="/app/applications" replace />
+  return <>{children}</>
+}
+
 function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -187,7 +192,7 @@ function App() {
   return (
     <Routes>
       <Route path="/" element={IS_DEMO ? <LandingPage /> : <Navigate to="/app/applications" replace />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<RedirectIfAuthed><Login /></RedirectIfAuthed>} />
       <Route path="/app" element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index element={<Navigate to="/app/applications" replace />} />
         <Route path="applications" element={<div className="flex-1 overflow-x-auto overflow-y-hidden p-8 custom-scrollbar"><KanbanBoard /></div>} />

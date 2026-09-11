@@ -60,12 +60,20 @@ Pushes/pulls jobs to/from `career-agent-api` (a **separate sibling repo**, not p
 backend — a Cloudflare Worker running the "Give-to-Get" credit economy). See
 `CAREERAGENT_MANUAL.md` § 17 for the full design.
 
-**The one rule that matters here:** `POST /api/auth/sso` and `POST /api/crowdsource/connect`
-must never mint or accept anything that grants *local dashboard* access. Local auth is
-`POST /api/login` only — full stop. An earlier version of the SSO endpoint minted a local
-session for any Google/GitHub account holder with no allowlist; that was a real
-vulnerability, not a shortcut worth reintroducing. If you're touching auth in this area,
-re-read `CLAUDE.md`'s "two separate trust boundaries" note first.
+**The one rule that matters here:** `POST /api/crowdsource/connect` must never mint or accept
+anything that grants *local dashboard* access. Local auth is `POST /api/login` only — full
+stop. This endpoint now requires the normal local bearer token like every other `/api/*`
+route (it used to be public, which let anyone unauthenticated hijack the crowdsourcing
+identity this instance pushes/pulls as — don't put it back in `PUBLIC_PATHS`). An earlier
+version of the SSO flow also minted a local session for any Google/GitHub account holder
+with no allowlist, and a later version leaked the local bearer token to `career-agent-api`
+by routing the SSO exchange through the shared, token-injecting `api` axios instance instead
+of a bare `axios` call — neither was a shortcut worth reintroducing. If you're touching auth
+in this area, re-read `CLAUDE.md`'s "two separate trust boundaries" note first.
+
+There is no `/api/auth/sso` route in this backend — `career-agent-api` holds the GitHub OAuth
+app secret and exchanges the authorization code itself; this backend has no GitHub OAuth
+config at all.
 
 - `push_jobs(db)` / `pull_jobs(db)` are the only two entry points that talk to
   `career-agent-api`. Both are called from `backend/scheduler.py`'s 10-minute interval jobs

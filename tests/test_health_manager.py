@@ -8,24 +8,15 @@ anywhere visible, because scraper_core wraps update_health in a bare `except Exc
 from datetime import datetime, timezone, timedelta
 from unittest.mock import patch
 
-import pytest
-
 from backend import crud, health_manager, schemas
 from backend.models import ScraperHealth
 
-
-@pytest.fixture(autouse=True)
-def _clear_notification_env_vars(monkeypatch):
-    # Same rationale as tests/test_notifications.py: .env carries real Telegram values and
-    # ai_agent's import-time load_dotenv() may or may not have run yet depending on
-    # collection order. Force a deterministic slate.
-    from backend import notifications
-    for var in (notifications.ENV_TELEGRAM_BOT_TOKEN, notifications.ENV_TELEGRAM_CHAT_ID):
-        monkeypatch.delenv(var, raising=False)
+USER = 1
+OTHER_USER = 2
 
 
-def _enable_telegram(db, token="123456:REAL-BOT-TOKEN"):
-    crud.update_settings(db, schemas.SettingsBase(
+def _enable_telegram(db, user_id=USER, token="123456:REAL-BOT-TOKEN"):
+    crud.update_settings(db, user_id, schemas.SettingsBase(
         telegram_alerts_enabled=True,
         telegram_bot_token=token,
         telegram_chat_id="12345",
@@ -45,7 +36,7 @@ def test_alert_uses_decrypted_bot_token(db_session):
 
     with patch("backend.notifications.requests.post") as mock_post:
         mock_post.return_value.status_code = 200
-        health_manager.update_health(db_session, _failure_log())
+        health_manager.update_health(db_session, USER, _failure_log())
 
     assert mock_post.called, "no alert was sent for a provider's first failure"
     url = mock_post.call_args[0][0]
@@ -55,10 +46,10 @@ def test_alert_uses_decrypted_bot_token(db_session):
 
 def test_alert_respects_disabled_toggle(db_session):
     _enable_telegram(db_session)
-    crud.update_settings(db_session, schemas.SettingsBase(telegram_alerts_enabled=False))
+    crud.update_settings(db_session, USER, schemas.SettingsBase(telegram_alerts_enabled=False))
 
     with patch("backend.notifications.requests.post") as mock_post:
-        health_manager.update_health(db_session, _failure_log())
+        health_manager.update_health(db_session, USER, _failure_log())
 
     mock_post.assert_not_called()
 
@@ -71,7 +62,7 @@ def test_alert_survives_markdown_special_chars_in_error(db_session):
     with patch("backend.notifications.requests.post") as mock_post:
         mock_post.return_value.status_code = 200
         health_manager.update_health(
-            db_session, _failure_log(company="Acme_Corp", message="bad `no_results_text` *selector*")
+            db_session, USER, _failure_log(company="Acme_Corp", message="bad `no_results_text` *selector*")
         )
 
     text = mock_post.call_args[1]["json"]["text"]
@@ -85,9 +76,9 @@ def test_first_ever_failure_is_recorded(db_session):
     `consecutive_failures += 1` used to raise TypeError here."""
     with patch("backend.notifications.requests.post") as mock_post:
         mock_post.return_value.status_code = 200
-        health_manager.update_health(db_session, _failure_log())
+        health_manager.update_health(db_session, USER, _failure_log())
 
-    health = db_session.query(ScraperHealth).filter_by(provider_name="Acme").first()
+    health = db_session.query(ScraperHealth).filter_by(user_id=USER, provider_name="Acme").first()
     assert health is not None
     assert health.consecutive_failures == 1
     assert health.status == "BROKEN"
@@ -102,25 +93,39 @@ def test_one_provider_failing_does_not_abort_the_rest(db_session):
     ]
     with patch("backend.notifications.requests.post") as mock_post:
         mock_post.return_value.status_code = 200
-        health_manager.update_health(db_session, logs)
+        health_manager.update_health(db_session, USER, logs)
 
-    names = {h.provider_name for h in db_session.query(ScraperHealth).all()}
+    names = {h.provider_name for h in db_session.query(ScraperHealth).filter_by(user_id=USER).all()}
     assert names == {"Acme", "Globex", "Initech"}
 
 
 def test_blocked_keywords_classify_as_blocked(db_session):
     with patch("backend.notifications.requests.post") as mock_post:
         mock_post.return_value.status_code = 200
-        health_manager.update_health(db_session, _failure_log(message="403 Access Denied by Cloudflare"))
+        health_manager.update_health(db_session, USER, _failure_log(message="403 Access Denied by Cloudflare"))
 
-    health = db_session.query(ScraperHealth).filter_by(provider_name="Acme").first()
+    health = db_session.query(ScraperHealth).filter_by(user_id=USER, provider_name="Acme").first()
     assert health.status == "BLOCKED"
+
+
+def test_scraper_health_is_isolated_per_user(db_session):
+    with patch("backend.notifications.requests.post"):
+        health_manager.update_health(db_session, USER, _failure_log(company="Acme"))
+        health_manager.update_health(db_session, OTHER_USER, [
+            {"company": "Acme", "status": "SUCCESS", "jobs_found": 5, "message": ""}
+        ])
+
+    user_health = db_session.query(ScraperHealth).filter_by(user_id=USER, provider_name="Acme").first()
+    other_health = db_session.query(ScraperHealth).filter_by(user_id=OTHER_USER, provider_name="Acme").first()
+    assert user_health.status == "BROKEN"
+    assert other_health.status == "OPERATIONAL"
 
 
 # ── The 24-hour BLOCKED cooldown ────────────────────────────────────────────
 
-def _block(db, company="Acme", hours_ago=4):
+def _block(db, user_id=USER, company="Acme", hours_ago=4):
     health = ScraperHealth(
+        user_id=user_id,
         provider_name=company,
         status="BLOCKED",
         consecutive_failures=1,
@@ -138,9 +143,9 @@ def test_skipped_run_does_not_end_the_cooldown(db_session):
     on the very next cycle instead of 24h later."""
     health = _block(db_session, hours_ago=4)
     blocked_at = health.last_run_at
-    assert health_manager.is_provider_blocked(db_session, "Acme") is True
+    assert health_manager.is_provider_blocked(db_session, USER, "Acme") is True
 
-    health_manager.update_health(db_session, [
+    health_manager.update_health(db_session, USER, [
         {"company": "Acme", "status": "SKIPPED", "jobs_found": 0, "message": "BLOCKED (Cooldown active)"}
     ])
     db_session.refresh(health)
@@ -148,24 +153,30 @@ def test_skipped_run_does_not_end_the_cooldown(db_session):
     assert health.status == "BLOCKED", "a skipped run must not reclassify the provider"
     assert health.consecutive_failures == 1, "a run that never happened must not count as a failure"
     assert health.last_run_at == blocked_at, "a skipped run must not restart the 24h window"
-    assert health_manager.is_provider_blocked(db_session, "Acme") is True
+    assert health_manager.is_provider_blocked(db_session, USER, "Acme") is True
 
 
 def test_cooldown_expires_after_24_hours(db_session):
     _block(db_session, hours_ago=25)
-    assert health_manager.is_provider_blocked(db_session, "Acme") is False
+    assert health_manager.is_provider_blocked(db_session, USER, "Acme") is False
+
+
+def test_is_provider_blocked_is_isolated_per_user(db_session):
+    _block(db_session, user_id=USER, hours_ago=4)
+    assert health_manager.is_provider_blocked(db_session, USER, "Acme") is True
+    assert health_manager.is_provider_blocked(db_session, OTHER_USER, "Acme") is False
 
 
 def test_skipped_runs_excluded_from_target_health(db_session):
     """get_target_health drives the alert thresholds and the health UI — counting skipped
     runs would drag down success_rate and break zero_streak on runs that never happened."""
     log = crud.create_scraper_log(
-        db_session, schemas.ScraperLogBase(jobs_found=0, status="SUCCESS", trigger_source="CRON")
+        db_session, USER, schemas.ScraperLogBase(jobs_found=0, status="SUCCESS", trigger_source="CRON")
     )
     crud.update_scraper_log(db_session, log.id, detailed_logs=
         '[{"company":"Acme","status":"SKIPPED","jobs_found":0,"message":"BLOCKED (Cooldown active)"},'
         ' {"company":"Globex","status":"SUCCESS","jobs_found":3,"message":""}]')
 
-    health = crud.get_target_health(db_session)
+    health = crud.get_target_health(db_session, USER)
     companies = {h["company"] for h in health}
     assert companies == {"Globex"}, "skipped targets must not appear in target health"

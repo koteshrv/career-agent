@@ -23,6 +23,8 @@ from backend.scraper_core import (
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
+DIAGNOSTIC_USER_ID = 1  # bootstrap admin — this is a manual dev tool, not multi-user-aware
+
 async def test_all_targets(filter_companies: list = None, headless: bool = False):
     db: Session = SessionLocal()
     all_targets = load_targets()
@@ -59,15 +61,15 @@ async def test_all_targets(filter_companies: list = None, headless: bool = False
         logger.info(f"Testing [{company}] via {t_type}...")
         
         if t_type == "greenhouse":
-            process_greenhouse(db, target, keywords, locations, new_jobs, company_logs)
+            process_greenhouse(db, DIAGNOSTIC_USER_ID, target, keywords, locations, new_jobs, company_logs)
         elif t_type == "lever":
-            process_lever(db, target, keywords, locations, new_jobs, company_logs)
+            process_lever(db, DIAGNOSTIC_USER_ID, target, keywords, locations, new_jobs, company_logs)
         elif t_type == "api_post":
-            process_api_post(db, target, keywords, new_jobs, company_logs)
+            process_api_post(db, DIAGNOSTIC_USER_ID, target, keywords, new_jobs, company_logs)
         elif t_type == "tech_mahindra":
-            process_tech_mahindra(db, target, keywords, new_jobs, company_logs)
+            process_tech_mahindra(db, DIAGNOSTIC_USER_ID, target, keywords, new_jobs, company_logs)
         elif t_type == "zwayam":
-            process_zwayam(db, target, keywords, locations, new_jobs, company_logs)
+            process_zwayam(db, DIAGNOSTIC_USER_ID, target, keywords, locations, new_jobs, company_logs)
         elif t_type == "playwright":
             playwright_targets.append(target)
             continue
@@ -103,7 +105,7 @@ async def test_all_targets(filter_companies: list = None, headless: bool = False
         logger.info(f"Testing {len(playwright_targets)} Playwright targets...")
         pw_jobs = []
         pw_logs = []
-        await process_playwright(db, playwright_targets, keywords, pw_jobs, pw_logs, headless=headless)
+        await process_playwright(db, DIAGNOSTIC_USER_ID, playwright_targets, keywords, pw_jobs, pw_logs, headless=headless)
         
         for log in pw_logs:
             company = log.get("company")

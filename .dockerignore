@@ -25,6 +25,7 @@ frontend/dist/
 .env.*.local
 backend/.encryption_key
 **/.encryption_key
+backend/config.json
 *.db
 *.db-journal
 *.log

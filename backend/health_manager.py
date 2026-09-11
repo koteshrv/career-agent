@@ -6,7 +6,7 @@ from .notifications import send_telegram_message, escape_md
 
 logger = logging.getLogger(__name__)
 
-def update_health(db: Session, company_logs: list):
+def update_health(db: Session, user_id: int, company_logs: list):
     """
     Parses the company_logs from a scraper run and updates the scraper_health table.
     Sends Telegram notifications if a provider transitions to BLOCKED or BROKEN.
@@ -32,14 +32,16 @@ def update_health(db: Session, company_logs: list):
         if status == "SKIPPED":
             continue
 
-        health = db.query(ScraperHealth).filter(ScraperHealth.provider_name == company).first()
+        health = db.query(ScraperHealth).filter(
+            ScraperHealth.user_id == user_id, ScraperHealth.provider_name == company
+        ).first()
         if not health:
             # Column defaults are applied at INSERT, so a not-yet-flushed row reads back None
             # for every unset field. Without these explicit values the first failure a
             # provider ever records raises TypeError on `consecutive_failures += 1` (aborting
             # health updates for every remaining company in the run), and previous_status
             # would be None rather than "OPERATIONAL", suppressing the first-failure alert.
-            health = ScraperHealth(provider_name=company, status="OPERATIONAL", consecutive_failures=0)
+            health = ScraperHealth(user_id=user_id, provider_name=company, status="OPERATIONAL", consecutive_failures=0)
             db.add(health)
 
         previous_status = health.status
@@ -70,7 +72,7 @@ def update_health(db: Session, company_logs: list):
                     f"*Error:* {escape_md(message)}\n"
                     f"*Consecutive Failures:* {health.consecutive_failures}"
                 )
-                send_telegram_message(db, alert_msg)
+                send_telegram_message(db, user_id, alert_msg)
                     
     try:
         db.commit()
@@ -78,11 +80,13 @@ def update_health(db: Session, company_logs: list):
         logger.error(f"Failed to commit health updates: {e}")
         db.rollback()
 
-def is_provider_blocked(db: Session, provider_name: str) -> bool:
+def is_provider_blocked(db: Session, user_id: int, provider_name: str) -> bool:
     """
     Checks if a provider is in a BLOCKED state and needs a 24-hour cooldown.
     """
-    health = db.query(ScraperHealth).filter(ScraperHealth.provider_name == provider_name).first()
+    health = db.query(ScraperHealth).filter(
+        ScraperHealth.user_id == user_id, ScraperHealth.provider_name == provider_name
+    ).first()
     if not health:
         return False
         

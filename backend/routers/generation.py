@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from starlette.background import BackgroundTask
 from sqlalchemy.orm import Session
 
-from .. import crud, schemas, ai_agent
+from .. import crud, schemas, ai_agent, auth, models
 from ..database import get_db
 from ..tasks import task_manager
 
@@ -19,19 +19,20 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Generation"])
 
 @router.post("/api/jobs/{job_id}/application-materials")
-def generate_application_materials_for_job(job_id: int, req: schemas.GenerationRequest, db: Session = Depends(get_db)):
+def generate_application_materials_for_job(job_id: int, req: schemas.GenerationRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     task_id = task_manager.start_task("Application Generation", f"Generating materials for job {job_id}...")
-    db_job = crud.get_job(db, job_id)
+    db_job = crud.get_job(db, current_user.id, job_id)
     if not db_job:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    settings = crud.get_settings(db)
-    
+    settings = crud.get_settings(db, current_user.id)
+    user_id = current_user.id
+
     async def stream_and_save():
         gen = ai_agent.generate_application_materials(
             db_job.title, db_job.company, db_job.location or "", db_job.description or "",
             api_key=settings.gemini_api_key, model_name=settings.gemini_model, resume_name=req.resume,
-            generation_mode=req.generation_mode
+            generation_mode=req.generation_mode, user_id=user_id
         )
         async for chunk in gen:
             yield chunk
@@ -39,30 +40,30 @@ def generate_application_materials_for_job(job_id: int, req: schemas.GenerationR
                 data = json.loads(chunk.strip())
                 if data.get("status") == "success":
                     materials = data.get("data", {})
-                    crud.update_job_status(db, job_id, schemas.JobUpdate(
+                    crud.update_job_status(db, user_id, job_id, schemas.JobUpdate(
                         cover_letter=materials.get("cover_letter", ""),
                         cold_email=materials.get("cold_email", ""),
                         tailored_resume=materials.get("tailored_resume", "")
                     ))
             except Exception:
                 pass
-                
+
     return StreamingResponse(stream_and_save(), media_type="application/x-ndjson")
 
 @router.post("/api/generate/on-demand")
-def generate_on_demand(req: schemas.OnDemandRequest, db: Session = Depends(get_db)):
-    settings = crud.get_settings(db)
+def generate_on_demand(req: schemas.OnDemandRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    settings = crud.get_settings(db, current_user.id)
     api_key = settings.gemini_api_key if settings else None
     model_name = settings.gemini_model if settings else None
-    
-    clean_desc = ai_agent.sanitize_job_description(req.description, api_key)
+
+    clean_desc = ai_agent.sanitize_job_description(req.description, api_key, current_user.id)
 
     gen = ai_agent.generate_application_materials(
         req.title, req.company, "", clean_desc,
         api_key=api_key, model_name=model_name, resume_name=req.resume,
-        generation_mode=req.generation_mode
+        generation_mode=req.generation_mode, user_id=current_user.id
     )
-    
+
     return StreamingResponse(gen, media_type="application/x-ndjson")
 
 # A hallucinated runaway macro can spin pdflatex forever. -interaction=nonstopmode stops
@@ -146,8 +147,8 @@ def generate_on_demand_pdf(req: OnDemandPdfRequest):
     )
 
 @router.get("/api/jobs/{job_id}/resume/pdf")
-def get_resume_pdf(job_id: int, db: Session = Depends(get_db)):
-    db_job = crud.get_job(db, job_id)
+def get_resume_pdf(job_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    db_job = crud.get_job(db, current_user.id, job_id)
     if not db_job or not db_job.tailored_resume:
         raise HTTPException(status_code=404, detail="Tailored resume not found for this job")
 

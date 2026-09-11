@@ -142,10 +142,10 @@ def _extract_jobs_from_text(text, base_url):
     return jobs
 
 
-def load_keywords(db: Session = None) -> List[str]:
+def load_keywords(db: Session, user_id: int) -> List[str]:
     # Prefer keywords configured in Settings, then keywords.json, then defaults.
     if db is not None:
-        settings = db.query(models.Settings).first()
+        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
         if settings and settings.search_keywords:
             try:
                 parsed = json.loads(settings.search_keywords)
@@ -168,22 +168,24 @@ def load_targets() -> List[Dict[str, Any]]:
         logger.error(f"Failed to load targets.json: {e}")
         return []
 
-def has_been_notified(db: Session, url: str) -> bool:
+def has_been_notified(db: Session, user_id: int, url: str) -> bool:
     seven_days_ago = datetime.now() - timedelta(days=7)
-    existing = db.query(models.Job).filter(models.Job.url == url, models.Job.created_at > seven_days_ago).first()
+    existing = db.query(models.Job).filter(
+        models.Job.user_id == user_id, models.Job.url == url, models.Job.created_at > seven_days_ago
+    ).first()
     if existing and existing.status in ["REJECTED", "TRASH", "IGNORED"]:
         return False
     return existing is not None
 
-def record_job(db: Session, company: str, title: str, url: str, location: str = "") -> models.Job:
-    existing = db.query(models.Job).filter(models.Job.url == url).first()
+def record_job(db: Session, user_id: int, company: str, title: str, url: str, location: str = "") -> models.Job:
+    existing = db.query(models.Job).filter(models.Job.user_id == user_id, models.Job.url == url).first()
     if existing:
         if existing.status in ["REJECTED", "TRASH", "IGNORED"]:
             existing.status = "NEW"
             existing.match_score = None
             existing.match_reason = None
         return existing
-    job = models.Job(company=company, title=title, url=url, location=location)
+    job = models.Job(user_id=user_id, company=company, title=title, url=url, location=location)
     db.add(job)
     return job
 
@@ -201,9 +203,9 @@ def check_keywords_and_location(title: str, location: str, keywords: List[str], 
     location_match = any(l in loc_lower for l in locations) or not location
     return location_match
 
-def get_active_companies(db: Session) -> List[str]:
+def get_active_companies(db: Session, user_id: int) -> List[str]:
     """Return the list of companies the user enabled in Settings, or [] for 'all'."""
-    settings = db.query(models.Settings).first()
+    settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
     if not settings or not settings.active_companies:
         return []
     try:
@@ -212,7 +214,7 @@ def get_active_companies(db: Session) -> List[str]:
     except Exception:
         return []
 
-def commit_jobs(db: Session, jobs: list) -> bool:
+def commit_jobs(db: Session, user_id: int, jobs: list) -> bool:
     """Persist collected jobs. Returns False if the commit failed — jobs were NOT saved.
 
     Previously this swallowed the exception with only a log line, so a DB write failure
@@ -227,7 +229,7 @@ def commit_jobs(db: Session, jobs: list) -> bool:
 
     for url, job in unique_jobs.items():
         logger.debug(f"  Committing: [{job.get('company')}] {job.get('title', '(no title)')} -> {url[:80]}")
-        record_job(db, job["company"], job["title"], url, job.get("location", ""))
+        record_job(db, user_id, job["company"], job["title"], url, job.get("location", ""))
 
     try:
         db.commit()

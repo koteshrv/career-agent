@@ -184,6 +184,7 @@ export function SettingsPage() {
     telegram_chat_id: "",
     telegram_bot_token: "",
     telegram_alerts_enabled: true,
+    healthcheck_ping_url: "",
     debug_logging_enabled: false,
     min_match_score: 50,
     gemini_api_key: "",
@@ -200,6 +201,8 @@ export function SettingsPage() {
   const [uploading, setUploading] = useState(false)
   const [resumes, setResumes] = useState<string[]>([])
   const [newSkill, setNewSkill] = useState("")
+  const [users, setUsers] = useState<any[]>([])
+  const [isAdmin, setIsAdmin] = useState(false)
 
   const handleAddSkill = async () => {
     if (!newSkill.trim()) return
@@ -239,7 +242,26 @@ export function SettingsPage() {
       setLoading(false)
     })
     refreshResumes()
+    refreshUsers()
   }, [])
+
+  // GET /api/users is admin-only (403 for everyone else) — a non-admin just never sees
+  // this section, same pattern App.tsx's Layout already uses for its own settings fetch.
+  const refreshUsers = () => {
+    api.get("/api/users")
+      .then(res => { setUsers(res.data); setIsAdmin(true) })
+      .catch(() => setIsAdmin(false))
+  }
+
+  const approveUser = async (id: number) => {
+    await api.post(`/api/users/${id}/approve`)
+    refreshUsers()
+  }
+
+  const rejectUser = async (id: number) => {
+    await api.post(`/api/users/${id}/reject`)
+    refreshUsers()
+  }
 
   const refreshResumes = () => {
     api.get("/api/resumes").then(res => setResumes(res.data.resumes || []))
@@ -606,6 +628,18 @@ export function SettingsPage() {
           />
         </div>
 
+        <div>
+          <label className="block text-sm font-medium text-zinc-400 mb-1">Healthcheck Ping URL</label>
+          <input
+            type="text"
+            value={settings.healthcheck_ping_url || ""}
+            onChange={e => setSettings({...settings, healthcheck_ping_url: e.target.value})}
+            className="w-full bg-black/40 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+            placeholder="e.g. https://hc-ping.com/your-uuid"
+          />
+          <p className="text-xs text-zinc-500 mt-1">Pinged after every scheduled (cron) scrape run so a healthchecks.io-compatible service can alert you if the schedule ever stops firing entirely.</p>
+        </div>
+
         <div className="flex items-center gap-3">
           <input
             type="checkbox"
@@ -699,8 +733,35 @@ export function SettingsPage() {
           </div>
           <p className="text-xs text-zinc-500 mt-1">Jobs in the Trash state older than this will be permanently deleted during cron scrapes. Set to 0 to disable auto-cleanup.</p>
         </div>
-        
+
       </div>
+
+      {isAdmin && (
+        <div className="bg-[#12141a] rounded-2xl border border-white/5 p-6 shadow-xl space-y-4">
+          <h3 className="text-lg font-bold text-white mb-2">Team Access</h3>
+          <p className="text-xs text-zinc-500 -mt-2">People who've signed in with Google/GitHub. New sign-ins need your approval before they can access the app.</p>
+          {users.length === 0 ? (
+            <p className="text-sm text-zinc-500">No sign-in requests yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {users.map(u => (
+                <div key={u.id} className="flex items-center justify-between bg-black/30 border border-white/10 rounded-lg px-4 py-2.5">
+                  <div className="flex flex-col">
+                    <span className="text-sm text-zinc-200">{u.email || u.username}</span>
+                    <span className="text-xs text-zinc-500">{u.role} · {u.status}</span>
+                  </div>
+                  {u.status === "PENDING" && (
+                    <div className="flex items-center gap-2">
+                      <Button onClick={() => rejectUser(u.id)} className="bg-zinc-800 text-zinc-300 hover:bg-zinc-700 h-8 px-3 text-xs">Reject</Button>
+                      <Button onClick={() => approveUser(u.id)} className="bg-blue-600 text-white hover:bg-blue-500 h-8 px-3 text-xs">Approve</Button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

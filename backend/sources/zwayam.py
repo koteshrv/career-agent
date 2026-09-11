@@ -8,7 +8,7 @@ from .common import is_valid_candidate
 
 logger = logging.getLogger(__name__)
 
-def process_zwayam(db: Session, target: dict, keywords: List[str], locations: List[str], new_jobs: list, company_logs: list):
+def process_zwayam(db: Session, user_id: int, target: dict, keywords: List[str], locations: List[str], new_jobs: list, company_logs: list):
     company = target.get("company", "Unknown")
     api_url = target.get("api_url")
     domain = target.get("domain", "")

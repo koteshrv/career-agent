@@ -8,7 +8,6 @@ A notification failure must never break the scrape run it's reporting on, so eve
 public function here catches its own exceptions and returns/logs rather than raising.
 """
 import logging
-import os
 import requests
 from sqlalchemy.orm import Session
 
@@ -33,26 +32,16 @@ def escape_md(text: str) -> str:
         text = text.replace(ch, "\\" + ch)
     return text
 
-# Falls back to env vars if not set in Settings — mirrors GEMINI_API_KEY's
-# `resolved_key = api_key or ENV_API_KEY` pattern in ai_agent.py. Read at call time
-# (not module import time) so it works regardless of import order / .env load timing.
-ENV_TELEGRAM_BOT_TOKEN = "TELEGRAM_BOT_TOKEN"
-ENV_TELEGRAM_CHAT_ID = "TELEGRAM_CHAT_ID"
-ENV_HEALTHCHECK_PING_URL = "HEALTHCHECK_PING_URL"
-
-# How many consecutive FAILED runs a target needs before we alert on it. Kept as a
-# code constant rather than a Settings column: this project has no automatic schema
-# migration (see backend/migrate_v4.py — a manual, never-invoked ALTER TABLE script),
-# so adding a new Settings column here would break every existing jobs.db on next read
-# ("no such column") until someone manually migrates it.
+# How many consecutive FAILED runs a target needs before we alert on it. Kept as a code
+# constant rather than a Settings column since there's nothing for the user to tune here.
 TARGET_FAILURE_ALERT_THRESHOLD = 3
 
 
-def send_telegram_message(db: Session, text: str) -> bool:
+def send_telegram_message(db: Session, user_id: int, text: str) -> bool:
     """Send a message via the user's configured Telegram bot.
     Returns False (not an exception) if alerts are disabled, unconfigured, or the send fails."""
     try:
-        settings = crud.get_settings(db)
+        settings = crud.get_settings(db, user_id)
     except Exception as e:
         logger.error(f"[Telegram] Failed to load settings: {e}")
         return False
@@ -60,8 +49,8 @@ def send_telegram_message(db: Session, text: str) -> bool:
     if not settings or not settings.telegram_alerts_enabled:
         return False
 
-    token = settings.telegram_bot_token or os.getenv(ENV_TELEGRAM_BOT_TOKEN)
-    chat_id = settings.telegram_chat_id or os.getenv(ENV_TELEGRAM_CHAT_ID)
+    token = settings.telegram_bot_token
+    chat_id = settings.telegram_chat_id
     if not token or not chat_id:
         return False
 
@@ -92,17 +81,17 @@ def send_telegram_message(db: Session, text: str) -> bool:
         return False
 
 
-def notify_scrape_run_failed(db: Session, error_message: str, trigger_source: str) -> None:
+def notify_scrape_run_failed(db: Session, user_id: int, error_message: str, trigger_source: str) -> None:
     """Alert on a full scrape-run crash (an exception that escaped run_scraper entirely) —
     the "cron silently died" failure mode, which per-target health can't detect."""
     text = (
         f"🚨 *CareerAgent — Scrape Run Failed* ({escape_md(trigger_source)})\n\n"
         f"`{escape_md(error_message[:500])}`"
     )
-    send_telegram_message(db, text)
+    send_telegram_message(db, user_id, text)
 
 
-def notify_broken_targets(db: Session) -> None:
+def notify_broken_targets(db: Session, user_id: int) -> None:
     """Alert once per break-streak when a target either:
       - crosses TARGET_FAILURE_ALERT_THRESHOLD consecutive explicit failures, or
       - crosses ZERO_STREAK_ALERT_THRESHOLD consecutive SUCCESS-but-0-jobs runs after a
@@ -114,7 +103,7 @@ def notify_broken_targets(db: Session) -> None:
     on stale, one-run-old data.
     """
     try:
-        health = crud.get_target_health(db, run_limit=20)
+        health = crud.get_target_health(db, user_id, run_limit=20)
     except Exception as e:
         logger.error(f"[Telegram] Failed to compute target health for alerting: {e}")
         return
@@ -138,10 +127,10 @@ def notify_broken_targets(db: Session) -> None:
         for h in silently_broken
     ]
     text = "⚠️ *CareerAgent — Target Health Alert*\n\n" + "\n".join(lines)
-    send_telegram_message(db, text)
+    send_telegram_message(db, user_id, text)
 
 
-def ping_healthcheck(success: bool) -> None:
+def ping_healthcheck(db: Session, user_id: int, success: bool) -> None:
     """Ping a healthchecks.io-compatible dead-man's-switch after a *scheduled* scrape run.
 
     This exists for a failure mode nothing else here can catch: if the scheduler itself
@@ -152,12 +141,12 @@ def ping_healthcheck(success: bool) -> None:
     Deliberately not called from the manual "Run Scraper" trigger — the point is to verify
     the *automated* schedule specifically; a manual run resetting the timer would mask a
     dead cron job.
-
-    Env var, not a Settings column: no automatic schema migration in this project (see
-    TARGET_FAILURE_ALERT_THRESHOLD above), and there's nothing to tune at runtime here —
-    it's a deploy-time URL, same category as AUTH_SECRET/GEMINI_API_KEY.
     """
-    ping_url = os.getenv(ENV_HEALTHCHECK_PING_URL)
+    try:
+        ping_url = crud.get_settings(db, user_id).healthcheck_ping_url
+    except Exception as e:
+        logger.error(f"[Healthcheck] Failed to load settings: {e}")
+        return
     if not ping_url:
         return
     url = ping_url if success else f"{ping_url.rstrip('/')}/fail"

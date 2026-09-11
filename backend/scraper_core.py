@@ -33,22 +33,18 @@ from .sources.playwright_engine import (
 logger = logging.getLogger(__name__)
 
 
-def bulk_evaluate_jobs(db: Session, jobs: list):
-    if not jobs: return
-    task_id = task_manager.start_task("AI Evaluation", f"Evaluating {len(jobs)} jobs...")
-    """
-    Takes a list of job dicts, chunks them into batches of 10,
-    fetches HTML, strips it, and sends to Gemini for match evaluation.
-    Then saves the match back to the DB quietly.
-    """
+def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
+    """Takes a list of job dicts, chunks them into batches of 10, fetches HTML, strips it,
+    and sends to Gemini for match evaluation. Then saves the match back to the DB quietly."""
     if not jobs:
         return
+    task_id = task_manager.start_task("AI Evaluation", f"Evaluating {len(jobs)} jobs...")
 
-    settings = db.query(models.Settings).first()
+    settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
     api_key = settings.gemini_api_key if settings else None
     model_name = settings.gemini_model if settings else ai_agent.DEFAULT_MODEL_CHAIN
 
-    resume_text = ai_agent.extract_resume_text() # Gets default resume
+    resume_text = ai_agent.extract_resume_text(user_id) # Gets this user's default resume
     if not resume_text:
         logger.info("No resume found. Skipping AI evaluation.")
         return
@@ -62,7 +58,9 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
 
         # We need the real DB job IDs
         batch_urls = [j['url'] for j in batch]
-        db_jobs = db.query(models.Job).filter(models.Job.url.in_(batch_urls)).all()
+        db_jobs = db.query(models.Job).filter(
+            models.Job.user_id == user_id, models.Job.url.in_(batch_urls)
+        ).all()
 
         if not db_jobs:
             continue
@@ -112,7 +110,7 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
         eval_results = []
 
         def eval_chunk(chunk):
-            return ai_agent.batch_evaluate_jobs(chunk, resume_text, api_key, model_name)
+            return ai_agent.batch_evaluate_jobs(chunk, resume_text, api_key, model_name, user_id)
 
         chunks = [ai_payload[i:i + batch_size] for i in range(0, len(ai_payload), batch_size)]
 
@@ -120,7 +118,7 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
             for res in executor.map(eval_chunk, chunks):
                 eval_results.extend(res)
 
-        settings = db.query(models.Settings).first()
+        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
         min_match_score = getattr(settings, "min_match_score", 50) if settings else 50
 
         # Process results
@@ -163,12 +161,12 @@ def bulk_evaluate_jobs(db: Session, jobs: list):
     task_manager.complete_task(task_id, success=True)
 
 
-def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool = False):
+def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_active_filter: bool = False):
     task_id = task_manager.start_task("Scraper Run", f"Scraping targets...")
     logger.info("=" * 60)
     logger.info("Starting Backend Scraper Engine...")
     targets = load_targets()
-    keywords = load_keywords(db)
+    keywords = load_keywords(db, user_id)
     logger.info(f"Keywords: {keywords}")
     logger.debug(f"Loaded {len(targets)} total targets from targets.json")
     all_new_jobs = []
@@ -182,7 +180,7 @@ def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool
     elif ignore_active_filter:
         logger.info("Health Check mode: Scraping ALL companies, bypassing active company filter.")
     else:
-        active = get_active_companies(db)
+        active = get_active_companies(db, user_id)
         if active:
             targets = [t for t in targets if t.get("company") in active]
             logger.info(f"Scraping {len(targets)} selected companies: {active}")
@@ -194,7 +192,7 @@ def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool
     filtered_targets = []
     for t in targets:
         company = t.get("company")
-        if not target_name and is_provider_blocked(db, company):
+        if not target_name and is_provider_blocked(db, user_id, company):
             logger.warning(f"[{company}] Skipping target due to 24-hour BLOCKED cooldown.")
             # SKIPPED, not FAILED: this target never ran, so it must not count as a failure
             # in health state or target-health stats (see health_manager.update_health).
@@ -211,15 +209,15 @@ def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool
             logger.info(f"[{company}] Scraping via {t_type}...")
 
         if t_type == "greenhouse":
-            process_greenhouse(db, target, keywords, LOCATIONS, new_jobs, company_logs)
+            process_greenhouse(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
         elif t_type == "lever":
-            process_lever(db, target, keywords, LOCATIONS, new_jobs, company_logs)
+            process_lever(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
         elif t_type == "api_post":
-            process_api_post(db, target, keywords, new_jobs, company_logs)
+            process_api_post(db, user_id, target, keywords, new_jobs, company_logs)
         elif t_type == "tech_mahindra":
-            process_tech_mahindra(db, target, keywords, new_jobs, company_logs)
+            process_tech_mahindra(db, user_id, target, keywords, new_jobs, company_logs)
         elif t_type == "zwayam":
-            process_zwayam(db, target, keywords, LOCATIONS, new_jobs, company_logs)
+            process_zwayam(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
         elif t_type == "playwright":
             playwright_targets.append(target)
 
@@ -229,7 +227,7 @@ def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool
             logger.info(f"[{company}] Done → {status}, {links_found} candidate links collected")
 
         if new_jobs:
-            if commit_jobs(db, new_jobs):
+            if commit_jobs(db, user_id, new_jobs):
                 all_new_jobs.extend(new_jobs)
             else:
                 # Don't count these as "found" — they were never actually persisted,
@@ -239,14 +237,14 @@ def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool
 
     if playwright_targets:
         try:
-            asyncio.run(process_playwright(db, playwright_targets, keywords, new_jobs, company_logs))
+            asyncio.run(process_playwright(db, user_id, playwright_targets, keywords, new_jobs, company_logs))
         except Exception as e:
             # A browser-launch/Playwright failure should not abort the whole run or
             # discard jobs already collected from the API-based sources above.
             logger.error(f"Playwright stage failed, continuing with API-sourced jobs: {e}")
             company_logs.append({"company": "Playwright stage", "status": "FAILED", "jobs_found": 0, "message": str(e)})
         if new_jobs:
-            if commit_jobs(db, new_jobs):
+            if commit_jobs(db, user_id, new_jobs):
                 all_new_jobs.extend(new_jobs)
             else:
                 # Don't count these as "found" — they were never actually persisted,
@@ -260,14 +258,14 @@ def run_scraper(db: Session, target_name: str = None, ignore_active_filter: bool
     # Phase 2: AI Bulk Evaluation
     try:
         if all_new_jobs:
-            bulk_evaluate_jobs(db, all_new_jobs)
+            bulk_evaluate_jobs(db, user_id, all_new_jobs)
     except Exception as e:
         logger.error(f"Error during bulk AI evaluation: {e}")
 
     logger.info("=" * 60)
     try:
         from .health_manager import update_health
-        update_health(db, company_logs)
+        update_health(db, user_id, company_logs)
     except Exception as e:
         logger.error(f"Error updating health status: {e}")
         

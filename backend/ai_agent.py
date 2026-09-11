@@ -1,11 +1,9 @@
-import os
 import logging
 import json
 import requests
 from google import genai
 import PyPDF2
 from pathlib import Path
-from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi import HTTPException
 import time
@@ -15,8 +13,6 @@ try:
     from ollama import Client as OllamaClient
 except ImportError:
     OllamaClient = None
-
-load_dotenv()
 
 import threading
 from collections import deque
@@ -32,7 +28,6 @@ DEFAULT_MODEL_CHAIN = "gemini-2.5-flash, gemini-flash-latest, gemini-2.5-pro"
 # Emergency fallback used ONLY if the DB is completely unreachable at runtime.
 # This is NOT the intended configuration path — use the Settings UI to set your model chain.
 _EMERGENCY_FALLBACK_MODEL = DEFAULT_MODEL_CHAIN
-ENV_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 def strip_code_fences(text: str) -> str:
@@ -67,27 +62,32 @@ def safe_resume_name(name: str) -> str:
     """Strip any directory components from an uploaded filename."""
     return Path(name).name
 
-def list_resumes() -> list:
-    return sorted(p.name for p in RESUMES_DIR.glob("*") if p.suffix.lower() in ALLOWED_RESUME_EXT)
+def _user_resumes_dir(user_id: int) -> Path:
+    d = RESUMES_DIR / str(user_id)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
 
-def _resume_path(name: str = None):
-    files = list_resumes()
+def list_resumes(user_id: int) -> list:
+    return sorted(p.name for p in _user_resumes_dir(user_id).glob("*") if p.suffix.lower() in ALLOWED_RESUME_EXT)
+
+def _resume_path(user_id: int, name: str = None):
+    files = list_resumes(user_id)
     if not files:
         return None
     if name:
         n = safe_resume_name(name)
-        return RESUMES_DIR / n if n in files else None
-    return RESUMES_DIR / files[0]
+        return _user_resumes_dir(user_id) / n if n in files else None
+    return _user_resumes_dir(user_id) / files[0]
 
-def delete_resume(name: str) -> bool:
-    path = _resume_path(name)
+def delete_resume(user_id: int, name: str) -> bool:
+    path = _resume_path(user_id, name)
     if path and path.exists():
         path.unlink()
         return True
     return False
 
-def extract_resume_text(name: str = None) -> str:
-    path = _resume_path(name)
+def extract_resume_text(user_id: int, name: str = None) -> str:
+    path = _resume_path(user_id, name)
     if not path or not path.exists():
         return ""
     try:
@@ -106,16 +106,18 @@ def extract_resume_text(name: str = None) -> str:
         logger.error(f"Failed to read resume '{path.name}': {e}")
         return ""
 
-def record_token_usage(model_name: str, prompt_tokens: int, candidate_tokens: int):
-    """Accrues Gemini API token usage per model at project level in database settings."""
+def record_token_usage(user_id: int, model_name: str, prompt_tokens: int, candidate_tokens: int):
+    """Accrues Gemini API token usage per model in this user's own Settings row."""
     from .database import SessionLocal
     from . import models
     import json
     from datetime import date
-    
+
+    if not user_id:
+        return
     db = SessionLocal()
     try:
-        settings = db.query(models.Settings).first()
+        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
         if settings:
             # 1. Update global metrics
             settings.total_prompt_tokens = (settings.total_prompt_tokens or 0) + prompt_tokens
@@ -153,11 +155,11 @@ def record_token_usage(model_name: str, prompt_tokens: int, candidate_tokens: in
     finally:
         db.close()
 
-def _generate(prompt: str, api_key: str = None, model_name: str = None) -> str:
+def _generate(prompt: str, api_key: str = None, model_name: str = None, user_id: int = None) -> str:
     """Run a prompt through Gemini, falling back to lower models on error."""
-    resolved_key = api_key or ENV_API_KEY
+    resolved_key = api_key
     resolved_model = model_name
-    
+
     # If the caller passed an encrypted Fernet token directly, decrypt it.
     if resolved_key and isinstance(resolved_key, str) and resolved_key.startswith("gAAAAA"):
         try:
@@ -167,27 +169,31 @@ def _generate(prompt: str, api_key: str = None, model_name: str = None) -> str:
                 resolved_key = decrypted
         except Exception as e:
             logger.error(f"Failed to decrypt provided API key: {e}")
-            
-    from .database import SessionLocal
-    from . import models
-    db = SessionLocal()
-    try:
-        settings = db.query(models.Settings).first()
-        if settings:
-            if not resolved_key and settings.gemini_api_key:
-                from .crypto import decrypt_value
-                decrypted = decrypt_value(settings.gemini_api_key)
-                if decrypted:
-                    resolved_key = decrypted
-            if not resolved_model and settings.gemini_model:
-                resolved_model = settings.gemini_model
-    except Exception:
-        pass
-    finally:
-        db.close()
+
+    # Fallback for callers deep in the scrape pipeline (e.g. playwright_engine.py's AI job
+    # extraction) that don't have an already-resolved key/model handy — scoped to user_id
+    # so this never reads a different user's Settings row.
+    if (not resolved_key or not resolved_model) and user_id:
+        from .database import SessionLocal
+        from . import models
+        db = SessionLocal()
+        try:
+            settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
+            if settings:
+                if not resolved_key and settings.gemini_api_key:
+                    from .crypto import decrypt_value
+                    decrypted = decrypt_value(settings.gemini_api_key)
+                    if decrypted:
+                        resolved_key = decrypted
+                if not resolved_model and settings.gemini_model:
+                    resolved_model = settings.gemini_model
+        except Exception:
+            pass
+        finally:
+            db.close()
 
     if not resolved_key:
-        return "Error: Gemini API key is not configured. Add it in Settings or set GEMINI_API_KEY in the backend environment."
+        return "Error: Gemini API key is not configured. Add it in Settings."
 
     # Build model chain exclusively from DB (what the user set in Settings UI).
     # If DB was unreachable, fall back to a single emergency model — NOT a hardcoded list.
@@ -220,7 +226,7 @@ def _generate(prompt: str, api_key: str = None, model_name: str = None) -> str:
             if hasattr(response, 'usage_metadata') and response.usage_metadata:
                 pt = response.usage_metadata.prompt_token_count or 0
                 ct = response.usage_metadata.candidates_token_count or 0
-                record_token_usage(model, pt, ct)
+                record_token_usage(user_id, model, pt, ct)
             
             if response and response.text:
                 return response.text
@@ -298,7 +304,7 @@ def _generate_ollama(prompt: str, settings: any, output_schema: BaseModel) -> st
             
     return f"Error: Local generation failed - {last_err}"
 
-def extract_job_details_from_description(description: str, api_key: str = None, model_name: str = None) -> dict:
+def extract_job_details_from_description(description: str, api_key: str = None, model_name: str = None, user_id: int = None) -> dict:
     prompt = f"""
     You are an expert at parsing raw job descriptions and LinkedIn feed posts.
     Extract the Company Name and Job Title from this raw text.
@@ -312,13 +318,13 @@ def extract_job_details_from_description(description: str, api_key: str = None, 
     {{"company": "...", "title": "..."}}
     """
     try:
-        res = _generate(prompt, api_key, model_name)
+        res = _generate(prompt, api_key, model_name, user_id)
         return json.loads(strip_code_fences(res))
     except Exception as e:
         logger.error(f"Failed to extract details from description: {e}")
         return {}
 
-def batch_extract_job_details(jobs: list, api_key: str = None, model_name: str = None) -> list:
+def batch_extract_job_details(jobs: list, api_key: str = None, model_name: str = None, user_id: int = None) -> list:
     """Takes a list of dictionaries with 'description' and returns a list of dicts with company, title, clean_description."""
     if not jobs:
         return []
@@ -342,7 +348,7 @@ def batch_extract_job_details(jobs: list, api_key: str = None, model_name: str =
         prompt += f"\n\n--- JOB {i} ---\n{job['description'][:4000]}\n"
         
     try:
-        res = _generate(prompt, api_key, model_name)
+        res = _generate(prompt, api_key, model_name, user_id)
         parsed = json.loads(strip_code_fences(res))
         if isinstance(parsed, list) and len(parsed) == len(jobs):
             return parsed
@@ -351,7 +357,7 @@ def batch_extract_job_details(jobs: list, api_key: str = None, model_name: str =
     
     return [{"company": "Unknown Company", "title": "Unknown Title", "clean_description": j["description"]} for j in jobs]
 
-def _route_generation(prompt: str, mode: str, settings: any, is_tex: bool = False, is_cl: bool = False) -> str:
+def _route_generation(prompt: str, mode: str, settings: any, is_tex: bool = False, is_cl: bool = False, user_id: int = None) -> str:
     """Factory router for multi-provider AI generation."""
     if mode == "ollama":
         schema = OllamaCoverLetterOutput if is_cl else OllamaResumeOutput
@@ -360,15 +366,15 @@ def _route_generation(prompt: str, mode: str, settings: any, is_tex: bool = Fals
         return _generate_cloud_private(prompt, settings)
     else:
         # Default: Cloud Free (Gemini)
-        return _generate(prompt, settings.gemini_api_key, settings.gemini_model)
+        return _generate(prompt, settings.gemini_api_key, settings.gemini_model, user_id)
 
-def _get_custom_guidelines() -> str:
+def _get_custom_guidelines(user_id: int) -> str:
     """Helper to fetch custom user guidelines from the Settings database."""
     from .database import SessionLocal
     from . import models
     db = SessionLocal()
     try:
-        settings = db.query(models.Settings).first()
+        settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
         if settings and settings.custom_guidelines:
             return settings.custom_guidelines.strip()
     except Exception:
@@ -377,13 +383,13 @@ def _get_custom_guidelines() -> str:
         db.close()
     return ""
 
-async def generate_application_materials(job_title: str, company: str, location: str = "", description: str = "", api_key: str = None, model_name: str = None, resume_name: str = None, generation_mode: str = "cloud_free"):
+async def generate_application_materials(job_title: str, company: str, location: str = "", description: str = "", api_key: str = None, model_name: str = None, resume_name: str = None, generation_mode: str = "cloud_free", user_id: int = None):
     yield json.dumps({"status": "progress", "message": "Fetching RAG Context and initializing..."}) + "\n"
     await asyncio.sleep(0)
     
     from . import rag_engine
     try:
-        relevant_experience = await asyncio.to_thread(rag_engine.retrieve_relevant_experience, description, 6, api_key)
+        relevant_experience = await asyncio.to_thread(rag_engine.retrieve_relevant_experience, user_id, description, 6, api_key)
     except Exception as e:
         yield json.dumps({"status": "error", "message": f"Error accessing Knowledge Base: {str(e)}"}) + "\n"
         return
@@ -395,16 +401,16 @@ async def generate_application_materials(job_title: str, company: str, location:
     from .database import SessionLocal
     from . import models
     db = SessionLocal()
-    settings = db.query(models.Settings).first()
+    settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
     db.close()
 
-    path = _resume_path(resume_name)
+    path = _resume_path(user_id, resume_name)
     is_tex = bool(path) and path.suffix.lower() == ".tex"
 
     preamble = ""
     resume_text = ""
     if path and path.exists():
-        resume_text = extract_resume_text(resume_name)
+        resume_text = extract_resume_text(user_id, resume_name)
         if is_tex:
             try:
                 with open(path, "r", encoding="utf-8") as f:
@@ -425,7 +431,7 @@ async def generate_application_materials(job_title: str, company: str, location:
         "Failure to escape these will crash the compiler!"
     ) if is_tex else ""
 
-    guidelines = _get_custom_guidelines()
+    guidelines = _get_custom_guidelines(user_id)
     custom_directive = f"\nCRITICAL USER PERSONAL DIRECTIVES/GUIDELINES:\n{guidelines}\n" if guidelines else ""
 
     prompt = f"""
@@ -484,7 +490,7 @@ You MUST output your response exactly in the following format with the exact del
     # --- PHASE 1: DRAFT GENERATION ---
     yield json.dumps({"status": "progress", "message": "Phase 1: Generating drafts based on Knowledge Base..."}) + "\n"
     await asyncio.sleep(0)
-    draft_result = await asyncio.to_thread(_route_generation, prompt, generation_mode, settings, False, False)
+    draft_result = await asyncio.to_thread(_route_generation, prompt, generation_mode, settings, False, False, user_id)
     
     if draft_result.startswith("Error"):
         yield json.dumps({"status": "error", "message": draft_result}) + "\n"
@@ -536,7 +542,7 @@ or
 [REVISION_REQUIRED]
 """
     logger.info("[AI] Running Phase 2: Reviewer Pass")
-    review_result = await asyncio.to_thread(_route_generation, reviewer_prompt, generation_mode, settings, False, False)
+    review_result = await asyncio.to_thread(_route_generation, reviewer_prompt, generation_mode, settings, False, False, user_id)
     
     yield json.dumps({"status": "progress", "message": f"Critic Feedback:\\n{review_result}"}) + "\n"
     await asyncio.sleep(0)
@@ -587,7 +593,7 @@ Relevant Career Experiences (USE FOR FACTUAL CORRECTIONS ONLY):
 <tailored resume text here>
 [TAILORED_RESUME_END]
 """
-        final_result = await asyncio.to_thread(_route_generation, refinement_prompt, generation_mode, settings, False, False)
+        final_result = await asyncio.to_thread(_route_generation, refinement_prompt, generation_mode, settings, False, False, user_id)
         
         cl_match_f = re.search(r"\[COVER_LETTER_START\](.*?)\[COVER_LETTER_END\]", final_result, re.DOTALL)
         em_match_f = re.search(r"\[COLD_EMAIL_START\](.*?)\[COLD_EMAIL_END\]", final_result, re.DOTALL)
@@ -606,7 +612,7 @@ Relevant Career Experiences (USE FOR FACTUAL CORRECTIONS ONLY):
         }
     }) + "\n"
 
-def extract_resume_keywords(resume_text: str, api_key: str = None, model_name: str = None) -> str:
+def extract_resume_keywords(resume_text: str, api_key: str = None, model_name: str = None, user_id: int = None) -> str:
     """Extracts a JSON array of up to 30 technical keywords from the resume text."""
     if not resume_text:
         return "[]"
@@ -622,13 +628,13 @@ Resume:
 {resume_text}
 ---
 """
-    result = _generate(prompt, api_key, model_name)
+    result = _generate(prompt, api_key, model_name, user_id)
     if result.startswith("Error"):
         return "[]"
 
     return strip_code_fences(result)
 
-def parse_job_page_title(page_title: str, api_key: str = None, model_name: str = None) -> dict:
+def parse_job_page_title(page_title: str, api_key: str = None, model_name: str = None, user_id: int = None) -> dict:
     """Uses Gemini to quickly extract a clean Company and Job Title from a messy HTML <title>."""
     prompt = f"""
 You are an expert at parsing raw HTML <title> tags from job boards (LinkedIn, Workday, etc.).
@@ -640,14 +646,14 @@ Do NOT return markdown formatting or code fences.
 
 Page Title: "{page_title}"
 """
-    result = _generate(prompt, api_key, model_name)
+    result = _generate(prompt, api_key, model_name, user_id)
     try:
         return json.loads(strip_code_fences(result))
     except Exception as e:
         logger.error(f"Failed to parse job page title: {e}")
         return {"company": "Unknown Company", "title": page_title}
 
-def sanitize_job_description(raw_text: str, api_key: str = None) -> str:
+def sanitize_job_description(raw_text: str, api_key: str = None, user_id: int = None) -> str:
     """Uses gemini-2.5-flash to extract a clean, structured job description in markdown."""
     if not raw_text or len(raw_text.strip()) < 10:
         return raw_text
@@ -664,7 +670,7 @@ Raw Webpage Text:
 {raw_text[:12000]}
 ---
 """
-    result = _generate(prompt, api_key, None)
+    result = _generate(prompt, api_key, None, user_id)
     if result.startswith("Error") or not result.strip():
         return raw_text  # Fallback to raw text if AI fails
 
@@ -672,7 +678,7 @@ Raw Webpage Text:
 
 
 
-def batch_evaluate_jobs(jobs_data: list, resume_text: str, api_key: str = None, model_name: str = None) -> list:
+def batch_evaluate_jobs(jobs_data: list, resume_text: str, api_key: str = None, model_name: str = None, user_id: int = None) -> list:
     """
     Evaluates a batch of jobs against the resume and returns a list of dictionaries with match scores.
     """
@@ -716,7 +722,7 @@ Expected JSON format:
         if not model_name:
             model_name = DEFAULT_MODEL_CHAIN
 
-        result = _generate(prompt, api_key, model_name)
+        result = _generate(prompt, api_key, model_name, user_id)
         if result.startswith("Error"):
             logger.error(f"Batch evaluation returned error: {result}")
             return []

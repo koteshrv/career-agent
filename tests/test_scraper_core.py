@@ -6,6 +6,9 @@ from backend.scraper_core import (
     has_been_notified,
 )
 
+USER = 1
+OTHER_USER = 2
+
 
 # ── is_valid_candidate ──────────────────────────────────────────────────────
 
@@ -61,54 +64,66 @@ def test_empty_location_is_treated_as_a_match():
 # ── record_job / has_been_notified (DB-backed) ──────────────────────────────
 
 def test_record_job_creates_new_job(db_session):
-    job = record_job(db_session, "Acme", "Backend Engineer", "https://acme.com/jobs/1", "Remote")
+    job = record_job(db_session, USER, "Acme", "Backend Engineer", "https://acme.com/jobs/1", "Remote")
     db_session.commit()
     assert job.company == "Acme"
     assert job.status == "NEW"
 
 def test_record_job_is_idempotent_for_active_jobs(db_session):
-    first = record_job(db_session, "Acme", "Backend Engineer", "https://acme.com/jobs/1", "Remote")
+    first = record_job(db_session, USER, "Acme", "Backend Engineer", "https://acme.com/jobs/1", "Remote")
     db_session.commit()
     first.status = "APPLIED"
     db_session.commit()
 
-    second = record_job(db_session, "Acme", "Backend Engineer", "https://acme.com/jobs/1", "Remote")
+    second = record_job(db_session, USER, "Acme", "Backend Engineer", "https://acme.com/jobs/1", "Remote")
     assert second.id == first.id
     assert second.status == "APPLIED"  # untouched — must not reset an active application
 
 def test_record_job_resurfaces_trashed_jobs(db_session):
-    job = record_job(db_session, "Acme", "Backend Engineer", "https://acme.com/jobs/2", "Remote")
+    job = record_job(db_session, USER, "Acme", "Backend Engineer", "https://acme.com/jobs/2", "Remote")
     db_session.commit()
     job.status = "TRASH"
     db_session.commit()
 
-    resurfaced = record_job(db_session, "Acme", "Backend Engineer", "https://acme.com/jobs/2", "Remote")
+    resurfaced = record_job(db_session, USER, "Acme", "Backend Engineer", "https://acme.com/jobs/2", "Remote")
     assert resurfaced.id == job.id
     assert resurfaced.status == "NEW"
     assert resurfaced.match_score is None
 
 def test_record_job_resurfaces_rejected_and_ignored_jobs(db_session):
     for status in ("REJECTED", "IGNORED"):
-        job = record_job(db_session, "Acme", "Backend Engineer", f"https://acme.com/jobs/{status}", "Remote")
+        job = record_job(db_session, USER, "Acme", "Backend Engineer", f"https://acme.com/jobs/{status}", "Remote")
         db_session.commit()
         job.status = status
         db_session.commit()
 
-        resurfaced = record_job(db_session, "Acme", "Backend Engineer", f"https://acme.com/jobs/{status}", "Remote")
+        resurfaced = record_job(db_session, USER, "Acme", "Backend Engineer", f"https://acme.com/jobs/{status}", "Remote")
         assert resurfaced.status == "NEW"
 
 def test_has_been_notified_true_for_recent_active_job(db_session):
-    record_job(db_session, "Acme", "Backend Engineer", "https://acme.com/jobs/3", "Remote")
+    record_job(db_session, USER, "Acme", "Backend Engineer", "https://acme.com/jobs/3", "Remote")
     db_session.commit()
-    assert has_been_notified(db_session, "https://acme.com/jobs/3") is True
+    assert has_been_notified(db_session, USER, "https://acme.com/jobs/3") is True
 
 def test_has_been_notified_false_for_unseen_url(db_session):
-    assert has_been_notified(db_session, "https://acme.com/jobs/never-seen") is False
+    assert has_been_notified(db_session, USER, "https://acme.com/jobs/never-seen") is False
 
 def test_has_been_notified_false_for_trashed_job(db_session):
-    job = record_job(db_session, "Acme", "Backend Engineer", "https://acme.com/jobs/4", "Remote")
+    job = record_job(db_session, USER, "Acme", "Backend Engineer", "https://acme.com/jobs/4", "Remote")
     db_session.commit()
     job.status = "TRASH"
     db_session.commit()
     # A trashed job should be treated as "not notified" so it can resurface on rescrape.
-    assert has_been_notified(db_session, "https://acme.com/jobs/4") is False
+    assert has_been_notified(db_session, USER, "https://acme.com/jobs/4") is False
+
+def test_record_job_and_has_been_notified_are_isolated_per_user(db_session):
+    # Two different users scraping the exact same posting URL must not collide or leak.
+    record_job(db_session, USER, "Acme", "Backend Engineer", "https://acme.com/jobs/shared", "Remote")
+    db_session.commit()
+    assert has_been_notified(db_session, USER, "https://acme.com/jobs/shared") is True
+    assert has_been_notified(db_session, OTHER_USER, "https://acme.com/jobs/shared") is False
+
+    other_job = record_job(db_session, OTHER_USER, "Acme", "Backend Engineer", "https://acme.com/jobs/shared", "Remote")
+    db_session.commit()
+    user_job = record_job(db_session, USER, "Acme", "Backend Engineer", "https://acme.com/jobs/shared", "Remote")
+    assert other_job.id != user_job.id
