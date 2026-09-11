@@ -58,7 +58,7 @@ def _auth_error(resp: requests.Response) -> dict:
 
 def push_jobs(db: Session, user_id: int) -> dict:
     """Push jobs never previously pushed."""
-    task_id = task_manager.start_task("Crowdsource Push", "Uploading local jobs...")
+    task_id = task_manager.start_task("Crowdsource Push", "Uploading local jobs...", user_id)
     token = _get_cloud_token(db, user_id)
     if not token:
         task_manager.complete_task(task_id, success=False, error="Not connected")
@@ -104,7 +104,7 @@ def push_jobs(db: Session, user_id: int) -> dict:
 
 def pull_jobs(db: Session, user_id: int, limit: int = 100) -> dict:
     """Pull jobs from the shared pool."""
-    task_id = task_manager.start_task("Crowdsource Pull", "Pulling shared jobs...")
+    task_id = task_manager.start_task("Crowdsource Pull", "Pulling shared jobs...", user_id)
     token = _get_cloud_token(db, user_id)
     if not token:
         task_manager.complete_task(task_id, success=False, error="Not connected")

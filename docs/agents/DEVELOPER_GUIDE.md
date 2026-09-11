@@ -71,12 +71,17 @@ by routing the SSO exchange through the shared, token-injecting `api` axios inst
 of a bare `axios` call — neither was a shortcut worth reintroducing. If you're touching auth
 in this area, re-read `CLAUDE.md`'s "two separate trust boundaries" note first.
 
-There is no `/api/auth/sso` route in this backend — `career-agent-api` holds the GitHub OAuth
-app secret and exchanges the authorization code itself; this backend has no GitHub OAuth
-config at all.
+`POST /api/auth/sso` (`backend/routers/users.py`) is NOT a GitHub-code-exchange endpoint —
+`career-agent-api` holds the GitHub OAuth app secret and exchanges the authorization code
+itself; this backend has no GitHub OAuth config at all. Instead it's the multi-user
+sign-in/approval endpoint: it re-verifies the career-agent-api cloud token
+(`crowdsourcing.verify_cloud_identity()`, never a client-decoded JWT) and only issues a
+local dashboard token if that email is already an `ACTIVE` `models.User` — see CLAUDE.md's
+"Multi-user model" section.
 
-- `push_jobs(db)` / `pull_jobs(db)` are the only two entry points that talk to
-  `career-agent-api`. Both are called from `backend/scheduler.py`'s 10-minute interval jobs
+- `push_jobs(db, user_id)` / `pull_jobs(db, user_id)` are the only two entry points that talk
+  to `career-agent-api`, one connected account per user. Both are called from
+  `backend/scheduler.py`'s per-user 10-minute interval jobs (`scheduler.activate_user()`)
   *and* from the on-demand `/api/crowdsource/push`/`/pull` routes — keep that shared, don't
   fork the logic between the two callers.
 - `push_jobs()` must only mark a job `crowdsource_pushed_at` on a confirmed HTTP 200. If you

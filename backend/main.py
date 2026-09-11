@@ -36,48 +36,63 @@ if _log_level == logging.DEBUG:
     logging.getLogger("google_genai").setLevel(logging.INFO)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-from . import models, schemas, crud, scheduler, auth, notifications
+from . import models, schemas, crud, scheduler, auth, notifications, log_context
 from .database import engine, get_db, SessionLocal
 from .scraper_core import run_scraper
 
 logger = logging.getLogger(__name__)
 
 class ConnectionManager:
+    """Each connection is tagged with the user_id/role from its own auth token (see
+    websocket_logs below — BaseHTTPMiddleware never sees WebSocket scopes at all, so auth
+    has to happen here, not via AuthMiddleware/PUBLIC_PATHS). Broadcasts carry an optional
+    user_id: messages tied to a specific user's activity (scrape/task progress) only reach
+    that user's own connections; untagged system-wide messages (server startup, etc.) are
+    admin-only, since a regular approved user has no reason to see generic server chatter
+    that might reference other users."""
     def __init__(self):
-        self.active_connections = []
-        self.log_buffer = deque(maxlen=10000)
+        self.active_connections = []  # list of {"ws", "user_id", "role"}
+        self.log_buffer = deque(maxlen=10000)  # list of (user_id_or_None, message)
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, user_id: int, role: str):
         await websocket.accept()
-        self.active_connections.append(websocket)
-        
-        # Send initial task sync for persistence across reloads
+        self.active_connections.append({"ws": websocket, "user_id": user_id, "role": role})
+
+        # Send initial task sync for persistence across reloads — this user's own tasks only.
         import json
-        tasks = task_manager.get_all_tasks()
+        tasks = task_manager.get_all_tasks(user_id)
         if tasks:
             await websocket.send_text(json.dumps({"type": "TASK_SYNC", "tasks": tasks}))
-            
-        if self.log_buffer:
-            await websocket.send_text("\n".join(self.log_buffer))
+
+        replay = [msg for uid, msg in self.log_buffer if self._visible(uid, user_id, role)]
+        if replay:
+            await websocket.send_text("\n".join(replay))
 
     def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
+        self.active_connections = [c for c in self.active_connections if c["ws"] != websocket]
 
-    async def broadcast(self, message: str):
-        self.log_buffer.append(message)
-        for connection in list(self.active_connections):
+    @staticmethod
+    def _visible(message_user_id, conn_user_id, conn_role) -> bool:
+        if message_user_id is None:
+            return conn_role == "ADMIN"
+        return message_user_id == conn_user_id
+
+    async def broadcast(self, message: str, user_id: int = None):
+        self.log_buffer.append((user_id, message))
+        for conn in list(self.active_connections):
+            if not self._visible(user_id, conn["user_id"], conn["role"]):
+                continue
             try:
-                await connection.send_text(message)
+                await conn["ws"].send_text(message)
             except Exception:
-                self.disconnect(connection)
+                self.disconnect(conn["ws"])
 
 
 manager = ConnectionManager()
 
 async def _broadcast_task(task: dict):
     import json
-    await manager.broadcast(json.dumps({"type": "TASK_UPDATE", "task": task}))
+    await manager.broadcast(json.dumps({"type": "TASK_UPDATE", "task": task}), user_id=task.get("user_id"))
 
 
 
@@ -95,7 +110,7 @@ class WebSocketLogHandler(logging.Handler):
         try:
             msg = self.format(record)
             if self.loop.is_running():
-                asyncio.run_coroutine_threadsafe(self.manager.broadcast(msg), self.loop)
+                asyncio.run_coroutine_threadsafe(self.manager.broadcast(msg, log_context.get_current_user()), self.loop)
         except Exception:
             pass
 
@@ -155,7 +170,9 @@ app = FastAPI(title="Job Scraper ATS API", lifespan=lifespan)
 def health_check():
     return {"status": "ok"}
 
-PUBLIC_PATHS = {"/api/login", "/api/auth/sso", "/api/ws/logs", "/healthz"}
+# /api/ws/logs is NOT listed here — BaseHTTPMiddleware (below) never sees WebSocket scopes
+# at all regardless of this set, so it's authenticated separately inside websocket_logs().
+PUBLIC_PATHS = {"/api/login", "/api/auth/sso", "/healthz"}
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -190,6 +207,7 @@ def login(creds: schemas.LoginRequest, db: Session = Depends(get_db)):
     return {"token": auth.create_token(user)}
 
 def bg_scrape_task(user_id: int):
+    log_context.set_current_user(user_id)
     db = SessionLocal()
     capture_handler = RunLogCaptureHandler()
     capture_handler.setLevel(logging.INFO)
@@ -229,8 +247,15 @@ def trigger_scraper(background_tasks: BackgroundTasks, db: Session = Depends(get
     return {"message": "Scraper started in background"}
 
 @app.websocket("/api/ws/logs")
-async def websocket_logs(websocket: WebSocket):
-    await manager.connect(websocket)
+async def websocket_logs(websocket: WebSocket, token: str = ""):
+    # BaseHTTPMiddleware (AuthMiddleware above) never sees WebSocket scopes at all, so this
+    # is the only place this connection is ever authenticated — a browser WebSocket can't
+    # set a custom Authorization header, hence the token-as-query-param pattern.
+    payload = auth.decode_token(token)
+    if not payload:
+        await websocket.close(code=4401)
+        return
+    await manager.connect(websocket, payload["uid"], payload.get("role"))
     try:
         while True:
             await websocket.receive_text()

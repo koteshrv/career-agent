@@ -38,7 +38,7 @@ def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
     and sends to Gemini for match evaluation. Then saves the match back to the DB quietly."""
     if not jobs:
         return
-    task_id = task_manager.start_task("AI Evaluation", f"Evaluating {len(jobs)} jobs...")
+    task_id = task_manager.start_task("AI Evaluation", f"Evaluating {len(jobs)} jobs...", user_id)
 
     settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
     api_key = settings.gemini_api_key if settings else None
@@ -162,7 +162,7 @@ def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
 
 
 def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_active_filter: bool = False):
-    task_id = task_manager.start_task("Scraper Run", f"Scraping targets...")
+    task_id = task_manager.start_task("Scraper Run", f"Scraping targets...", user_id)
     logger.info("=" * 60)
     logger.info("Starting Backend Scraper Engine...")
     targets = load_targets()

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 
-from .. import auth, models
+from .. import auth, models, log_context
 from ..database import get_db, SessionLocal
 from ..models import ScraperHealth
 from ..schemas import ScraperHealth as ScraperHealthSchema
@@ -59,6 +59,7 @@ def run_health_check_background(user_id: int, target_name: str = None):
     get_db()'s generator cleanup as soon as the response is sent.
     """
     logger.info(f"Running On-Demand Health Check. Target: {target_name if target_name else 'ALL'}")
+    log_context.set_current_user(user_id)
     db = SessionLocal()
     try:
         run_scraper(db, user_id, target_name=target_name, ignore_active_filter=True)

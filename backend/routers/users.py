@@ -14,7 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from .. import auth, crowdsourcing, models
+from .. import auth, crowdsourcing, crud, models, scheduler
 from ..database import get_db
 
 router = APIRouter(prefix="/api", tags=["Users"])
@@ -54,15 +54,17 @@ def list_users(db: Session = Depends(get_db), admin: models.User = Depends(auth.
 
 @router.post("/users/{user_id}/approve")
 def approve_user(user_id: int, db: Session = Depends(get_db), admin: models.User = Depends(auth.get_current_admin)):
-    # Phase 1 only flips identity status — this user still shares the single global
-    # Settings/Job/scraper dataset until the per-user isolation phases land (see the
-    # multi-user plan). Activating their own Settings row and scraper schedule happens then.
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     user.status = "ACTIVE"
     user.approved_at = datetime.now(timezone.utc)
     db.commit()
+
+    # Lazily creates this user's own Settings row, then installs their scrape cron +
+    # crowdsource push/pull jobs immediately — no restart needed for approval to take effect.
+    settings = crud.get_settings(db, user.id)
+    scheduler.activate_user(user.id, settings.cron_schedule or "0 */12 * * *")
     return {"success": True}
 
 

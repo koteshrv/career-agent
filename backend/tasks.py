@@ -13,15 +13,16 @@ class TaskManager:
     def set_broadcast_callback(self, callback, loop):
         self.broadcast_callback = callback
         self.loop = loop
-        
+
     def _broadcast(self, task: dict):
         if self.broadcast_callback and hasattr(self, 'loop') and self.loop.is_running():
             asyncio.run_coroutine_threadsafe(self.broadcast_callback(task), self.loop)
 
-    def start_task(self, title: str, description: str = "") -> str:
+    def start_task(self, title: str, description: str = "", user_id: Optional[int] = None) -> str:
         task_id = str(uuid.uuid4())
         task = {
             "id": task_id,
+            "user_id": user_id,
             "title": title,
             "description": description,
             "status": "RUNNING",
@@ -54,7 +55,13 @@ class TaskManager:
             self.completed_tasks.appendleft(task)
             self._broadcast(task)
 
-    def get_all_tasks(self):
-        return list(self.active_tasks.values()) + list(self.completed_tasks)
+    def get_all_tasks(self, user_id: Optional[int] = None):
+        """user_id=None returns every task, unfiltered — used only by trusted internal
+        callers (there are none over the wire); the WS connection handler always passes
+        the connecting user's own id."""
+        tasks = list(self.active_tasks.values()) + list(self.completed_tasks)
+        if user_id is None:
+            return tasks
+        return [t for t in tasks if t.get("user_id") == user_id]
 
 task_manager = TaskManager()

@@ -24,9 +24,6 @@ def update_settings(settings: schemas.SettingsBase, db: Session = Depends(get_db
     for handler in root_logger.handlers:
         handler.setLevel(new_level)
 
-    # The automatic cron schedule is still a single global job scoped to the admin (see
-    # scheduler.py) until per-user scheduling multiplexing lands — a non-admin's own
-    # cron_schedule is saved to their Settings row but has no live effect yet.
-    if current_user.role == "ADMIN" and "cron_schedule" in settings.model_dump(exclude_unset=True):
-        scheduler.reschedule(updated.cron_schedule)
+    if "cron_schedule" in settings.model_dump(exclude_unset=True):
+        scheduler.reschedule(updated.cron_schedule, current_user.id)
     return updated

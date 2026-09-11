@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 
-from .. import schemas, crud, auth, models
+from .. import schemas, crud, auth, models, log_context
 from ..database import get_db
 from ..ai_agent import parse_job_page_title, sanitize_job_description, extract_job_details_from_description, batch_extract_job_details
 from ..scraper_core import record_job, bulk_evaluate_jobs
@@ -24,6 +24,7 @@ def _extension_location_tag(url: str) -> str:
     return f"Manual - Extension ({site_name})"
 
 def process_batch_background(payloads: List[schemas.ExtensionPayload], settings: schemas.Settings, user_id: int):
+    log_context.set_current_user(user_id)
     api_key = settings.gemini_api_key if settings else None
     model_name = settings.gemini_model if settings else None
 

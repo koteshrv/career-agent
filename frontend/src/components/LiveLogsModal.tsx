@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { X, Trash2, Terminal } from "lucide-react"
-import { api, API_BASE } from "@/lib/api"
+import { api, API_BASE, getToken } from "@/lib/api"
 
 interface LiveLogsModalProps {
   isOpen: boolean
@@ -36,7 +36,9 @@ export function LiveLogsModal({ isOpen, onClose }: LiveLogsModalProps) {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:"
     const host = window.location.host
     const wsBase = API_BASE ? API_BASE.replace(/^http/, "ws") : `${protocol}//${host}`
-    const wsUrl = `${wsBase}/api/ws/logs`
+    // The backend authenticates this connection itself via a token query param — a
+    // browser WebSocket can't set a custom Authorization header.
+    const wsUrl = `${wsBase}/api/ws/logs?token=${encodeURIComponent(getToken() || "")}`
 
     let socket: WebSocket | null = null
     let reconnectAttempts = 0
