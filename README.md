@@ -13,7 +13,8 @@
 </p>
 
 <p align="center">
-  <a href="https://careeragent.fyi">careeragent.fyi</a> •
+  <a href="https://careeragent.fyi"><strong>🌐 careeragent.fyi</strong></a>
+  <br /><br />
   <a href="https://github.com/koteshrv/career-agent/stargazers"><img src="https://img.shields.io/github/stars/koteshrv/career-agent.svg?style=flat-square&color=orange" alt="GitHub Stars"></a>
   <a href="https://github.com/koteshrv/career-agent/network/members"><img src="https://img.shields.io/github/forks/koteshrv/career-agent.svg?style=flat-square&color=blue" alt="GitHub Forks"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT"></a>
@@ -46,7 +47,7 @@ The average software engineer spends hours each week manually filtering job boar
 | ✍️ **Drafts Open-Ended Answers** | Greenhouse, Ashby, and Lever forms ask "Why this role?". The agent reads the form, drafts paste-ready answers based on your CV, and leaves the final click to you. It never auto-submits. |
 | 🌐 **Global Crowdsourced Job Network** | Opt-in to a shared, anonymous job pool powered by [career-agent-api](https://github.com/koteshrv/career-agent-api) — a standalone open-source serverless API. Your instance pushes scraped job postings to the network and pulls back jobs scraped by others. **Only public job listing data is ever exchanged. Your resume, profile, scores, and any personal information never leave your machine.** Deduplication is automatic. Community flagging removes fake and expired listings. |
 | 🛡️ **Your Data, Your Machine** | All personal data — your resume, scores, notes, and application history — lives in a local SQLite database. No telemetry, no accounts, no third-party data mining. The only external calls your instance makes are: (1) the Gemini API for job scoring (replaceable with Ollama), and (2) the crowdsource API if you choose to opt in. |
-| 📊 **Kanban Pipeline** | Track every application across New, Applied, Interviewing, and Rejected columns with a visual board. Full history log included. |
+| 📊 **Application Pipeline** | Track every application across New, Applied, Interviewing, and Rejected stages. Full history log included. |
 | 🤖 **Bring Your Own AI** | Works with Google Gemini (free tier available), OpenAI, Anthropic, or fully locally via Ollama. You control the model. |
 
 ---
@@ -106,38 +107,38 @@ cd frontend && npm install && cd ..
 ## 🏗 Architecture
 
 ```mermaid
-graph TD
+graph LR
     classDef frontend fill:#1E293B,stroke:#3B82F6,stroke-width:2px,color:#F8FAFC
     classDef backend fill:#1E293B,stroke:#10B981,stroke-width:2px,color:#F8FAFC
     classDef storage fill:#1E293B,stroke:#8B5CF6,stroke-width:2px,color:#F8FAFC
     classDef ai fill:#1E293B,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC
 
-    subgraph "Your Machine"
-        UI[React 19 Dashboard]:::frontend
+    subgraph Machine["Your Machine"]
+        UI[React Dashboard]:::frontend
         Ext[Chrome Extension]:::frontend
         API[FastAPI Backend]:::backend
         Cron[Playwright Scrapers]:::backend
         Compiler[LaTeX PDF Compiler]:::backend
-        DB[(SQLite — Local)]:::storage
-        API <--> DB
-        Cron --> API
+        DB[(SQLite)]:::storage
         UI <--> API
         Ext --> API
+        Cron --> API
+        API <--> DB
         API --> Compiler
     end
 
-    subgraph "External AI"
+    subgraph AI["External AI"]
         LLM[Gemini / OpenAI / Ollama]:::ai
     end
 
-    subgraph "Optional — Community Network"
+    subgraph Network["Optional — Community Network"]
         CF[Crowdsource API]:::backend
         DB2[(Community Job Pool)]:::storage
         CF <--> DB2
     end
 
-    API <--> LLM
-    API <-.->|enabled by default| CF
+    Machine --> AI
+    Machine -.->|enabled by default| Network
 ```
 
 ---
