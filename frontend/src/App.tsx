@@ -117,7 +117,7 @@ function Layout() {
             ⭐ Star on GitHub
           </a>
           <span className="opacity-50">·</span>
-          <span className="opacity-80">Self-host with your own backend for full functionality</span>
+          <span className="opacity-80">Self-host for full functionality</span>
         </div>
       )}
 
@@ -260,7 +260,7 @@ function App() {
         <Route path="quick-generate" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><QuickGeneratePage /></div>} />
         <Route path="integrations" element={<Navigate to="/app/settings?tab=health" replace />} />
         <Route path="knowledge" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><KnowledgeBasePage /></div>} />
-        <Route path="settings" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><SettingsPage /></div>} />
+        <Route path="settings" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar px-6 md:px-8 pb-6 md:pb-8"><SettingsPage /></div>} />
         <Route path="*" element={<Navigate to="/app/home" replace />} />
       </Route>
       <Route path="*" element={<Navigate to={IS_DEMO ? "/" : "/app/home"} replace />} />

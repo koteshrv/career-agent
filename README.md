@@ -1,164 +1,179 @@
 <p align="center">
-  <img src="frontend/public/favicon.svg" alt="CareerAgent" width="100" height="100">
+  <img src="frontend/public/favicon.svg" alt="CareerAgent Logo" width="64" height="64" />
 </p>
 
 <h1 align="center">CareerAgent</h1>
 
 <p align="center">
-  <em>An open-source AI job search command center.</em><br>
-  <strong>Automate ATS scraping, deeply evaluate your resume fit, and compile optimized LaTeX CVs instantly.</strong>
+  <strong>Automate the job hunt. Keep your privacy intact.</strong>
 </p>
 
 <p align="center">
-  <a href="https://github.com/koteshrv/career-agent/stargazers"><img src="https://img.shields.io/github/stars/koteshrv/career-agent.svg?style=flat-square&color=blue" alt="GitHub Stars"></a>
+  Open-source AI-powered job search. Runs locally via Docker. Evaluates every job against your resume, generates tailored LaTeX CVs, and tracks your pipeline — completely autonomously in the background.
+</p>
+
+<p align="center">
+  <a href="https://careeragent.fyi">careeragent.fyi</a> •
+  <a href="https://github.com/koteshrv/career-agent/stargazers"><img src="https://img.shields.io/github/stars/koteshrv/career-agent.svg?style=flat-square&color=orange" alt="GitHub Stars"></a>
   <a href="https://github.com/koteshrv/career-agent/network/members"><img src="https://img.shields.io/github/forks/koteshrv/career-agent.svg?style=flat-square&color=blue" alt="GitHub Forks"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square" alt="License: MIT"></a>
-  <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-19-blue.svg?style=flat-square&logo=react" alt="React"></a>
-  <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.138-green.svg?style=flat-square&logo=fastapi" alt="FastAPI"></a>
-  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=flat-square&logo=docker" alt="Docker"></a>
-</p>
-
-<p align="center">
-  <a href="#-why-careeragent">Why CareerAgent?</a> •
-  <a href="#-features">Features</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-getting-started">Installation</a> •
-  <a href="#-contributing">Contributing</a>
+  <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2496ED.svg?style=flat-square&logo=docker" alt="Docker Ready"></a>
 </p>
 
 ---
 
-> **⚠️ Active Development:** CareerAgent is currently in rapid development (Beta). APIs, database schemas, and features may change frequently as we build towards `v1.0`. We highly recommend backing up your `jobs.db` file before pulling major updates.
+> **⚠️ Active Development (Beta):** APIs and database schemas may change between updates. Back up your `jobs.db` before pulling major updates.
 
 ---
 
-**CareerAgent** is a sophisticated, 100% free automation platform built for ambitious software engineers and IT professionals. It replaces the exhausting manual job hunt with an intelligent engine that scrapes target companies, evaluates your precise fit using your choice of AI, and compiles professionally formatted LaTeX PDFs designed to bypass corporate Applicant Tracking Systems.
+## Why CareerAgent?
 
+ATS was built to save recruiters' time. CareerAgent was built to save yours.
 
+The average software engineer spends hours each week manually filtering job boards, copy-pasting descriptions, and reformatting resumes. CareerAgent replaces all of that with a local, autonomous agent that runs in the background — it finds jobs, scores them against your profile using a rubric-guided LLM, and prepares every application material right up to the submit button. You stay in control; the drudgery disappears.
+
+**No accounts. No subscriptions. No cloud. 100% free and open-source.**
 
 ---
-
-## 🚀 Why CareerAgent?
-
-Unlike generic AI job wrappers that spam "Easy Apply" buttons, **CareerAgent focuses on quality and precision.** It acts as your personal career agent, ensuring your resume mathematically aligns with the raw Job Description and generating personalized outreach materials that recruiters actually read.
 
 ## ✨ Features
 
-- 🌐 **[New] Global Crowdsourced Network**: Opt-in to the community job pool to sync and share jobs with other users. Features a decentralized credit economy to prevent spam, automatic local deduplication, and community-driven reporting to instantly flag and remove dead or fake job links.
-- **Automated Job Discovery**: A powerful hybrid approach. Uses Playwright backend scrapers for standard ATS platforms, and a companion Chrome Extension to directly scrape heavily protected sites (LinkedIn, Indeed) completely bypassing IP bans.
-- **Kanban Pipeline**: Organize your job search visually. Drag and drop jobs across columns (New, Applied, Interviewing, Rejected) to track your pipeline at a glance.
-- **AI Match Scoring**: Instantly evaluates your exact profile against the raw job description, providing a definitive 0-100 match score.
-- **1-Click Application Materials**: Dynamically injects missing keywords into your base resume and natively compiles a pristine ATS-friendly PDF using LaTeX. Also generates tailored cover letters and cold emails.
-- **Bring Your Own Keys**: Bring your own OpenAI/Anthropic keys, or use Google AI Studio for 100% free AI processing. Natively manages API rate limits. For complete privacy, it supports executing fully locally via **Ollama**.
-
-## 🏗 Architecture
-
-CareerAgent uses an elegant, decoupled microservice architecture:
-
-```mermaid
-graph TD
-    %% Define styles for modern dark theme look
-    classDef frontend fill:#1E293B,stroke:#3B82F6,stroke-width:2px,color:#F8FAFC
-    classDef backend fill:#1E293B,stroke:#10B981,stroke-width:2px,color:#F8FAFC
-    classDef storage fill:#1E293B,stroke:#8B5CF6,stroke-width:2px,color:#F8FAFC
-    classDef ai fill:#1E293B,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC
-
-    subgraph "Client Side"
-        UI[React 19 / Tailwind Dashboard]:::frontend
-        Ext[Chrome Extension]:::frontend
-        LinkedIn[Job Boards<br>LinkedIn/Naukri]:::frontend
-        Ext -.->|Injects Agent UI &<br>Extracts JD DOM| LinkedIn
-    end
-
-    subgraph "Server Side"
-        API[FastAPI Backend]:::backend
-        Cron[Playwright<br>Background Workers]:::backend
-        API <-->|Reads/Writes| DB[(SQLite Database)]:::storage
-        Cron -->|Scrapes ATS platforms<br>Greenhouse/Lever| API
-    end
-
-    subgraph "AI Engine"
-        LLM[Multi-LLM Manager<br>Gemini / OpenAI / Ollama]:::ai
-        Compiler[LaTeX PDF Compiler]:::ai
-        LLM -->|Injects Keywords| Compiler
-    end
-
-    subgraph "Community Network"
-        CF[Serverless Worker<br>Crowdsource API]:::backend
-        DB2[(Edge Database<br>Global Job Pool)]:::storage
-        CF <-->|Persists| DB2
-    end
-
-    %% Cross-subgraph edges must live outside every subgraph block
-    UI <-->|REST API| API
-    Ext -->|Syncs Scraped Jobs<br>Batch Processing| API
-    API <-->|Extracts Competencies &<br>Scores Match| LLM
-    API <-->|Pushes Scraped Jobs &<br>Pulls Community Jobs| CF
-```
-
-
+| Feature | Description |
+|---|---|
+| 🔍 **Playwright Hybrid Scrapers** | Headless background scrapers for standard ATS platforms (Greenhouse, Lever, Ashby). For heavily protected sites like LinkedIn, the companion Chrome Extension bypasses IP bans entirely. |
+| 🎯 **Agentic Deep Evaluation** | A massive LLM rubric grades each job against your resume across 5 dimensions: technical match, experience level, compensation, cultural signals, and red flags. Outputs a strict 0–100 score. |
+| 📄 **Native LaTeX CVs** | 1-click injects missing keywords into your base resume and natively compiles a pristine ATS-friendly PDF. No cloud PDF service, no templates. |
+| ✍️ **Drafts Open-Ended Answers** | Greenhouse, Ashby, and Lever forms ask "Why this role?". The agent reads the form, drafts paste-ready answers based on your CV, and leaves the final click to you. It never auto-submits. |
+| 🌐 **Global Crowdsourced Job Network** | Opt-in to a shared, anonymous job pool powered by [career-agent-api](https://github.com/koteshrv/career-agent-api) — a standalone open-source serverless API. Your instance pushes scraped job postings to the network and pulls back jobs scraped by others. **Only public job listing data is ever exchanged. Your resume, profile, scores, and any personal information never leave your machine.** Deduplication is automatic. Community flagging removes fake and expired listings. |
+| 🛡️ **Your Data, Your Machine** | All personal data — your resume, scores, notes, and application history — lives in a local SQLite database. No telemetry, no accounts, no third-party data mining. The only external calls your instance makes are: (1) the Gemini API for job scoring (replaceable with Ollama), and (2) the crowdsource API if you choose to opt in. |
+| 📊 **Kanban Pipeline** | Track every application across New, Applied, Interviewing, and Rejected columns with a visual board. Full history log included. |
+| 🤖 **Bring Your Own AI** | Works with Google Gemini (free tier available), OpenAI, Anthropic, or fully locally via Ollama. You control the model. |
 
 ---
 
 ## 🚀 Getting Started
 
-### Method 1: Docker (Recommended)
-The easiest way to run CareerAgent is using our pre-built GitHub Container Registry (GHCR) images. You don't need to install Node or Python!
+### Requirements
+- **Docker** (Desktop or Engine) — that's it.
+- A free [Google AI Studio](https://aistudio.google.com/) Gemini API key.
+
+### Run in 60 seconds
 
 ```bash
-# 1. Download the docker-compose file
+# 1. Download the compose file
 curl -O https://raw.githubusercontent.com/koteshrv/career-agent/main/docker-compose.yml
 
-# 2. Set your own login credentials (defaults to admin/admin otherwise — change this
-#    before exposing the app past localhost)
-echo '{"app_username": "admin", "app_password": "change-me"}' > backend-config.json
-
-# 3. (Optional) Enable "Sign in with Google/GitHub" by copying in your own OAuth client IDs
-curl -o frontend-config.json https://raw.githubusercontent.com/koteshrv/career-agent/main/frontend/public/runtime-config.json
-
-# 4. Start the application in the background
+# 2. Start the app
 docker compose up -d
 ```
-*Visit `http://localhost:5173` to access the dashboard. Your database and files will be safely stored in the local directory via Docker volumes.*
 
-**Multi-user note:** CareerAgent supports more than one person using the same instance, each with their own isolated jobs, resume, and settings. The username/password from step 2 always logs in as the administrator. If you enabled Google/GitHub sign-in in step 3, the **first** Google/GitHub account to ever sign in also becomes an administrator automatically — this is the easiest way to get started if you'd rather not touch `backend-config.json` at all. Every sign-in after that first one lands in a pending state until an administrator approves it from the Settings page.
+Visit **[http://localhost:5173](http://localhost:5173)** — no sign-up, no OAuth, no accounts required.
+
+Your jobs, resume, and settings are stored locally in a SQLite database via Docker volumes. Nothing leaves your machine except the Gemini API call for resume scoring.
+
+> **AI Key:** On first launch, go to **Settings → Resume & AI** and paste your free Gemini API key. The app won't score jobs until you do.
 
 ---
 
-### Method 2: Manual Installation (For Developers)
+### Chrome Extension (Optional — for LinkedIn & Naukri)
 
-#### Prerequisites
-- Node.js (v20+)
-- Python (3.11+)
-- `pdflatex` (TexLive / MiKTeX) for resume compilation
+Standard Playwright scrapers are blocked by LinkedIn and similar platforms. The companion Chrome Extension bypasses this by extracting job data directly from the page you're browsing:
 
-#### Setup & Run
+1. Open `chrome://extensions/` → Enable **Developer mode**
+2. Click **Load unpacked** → Select the `chrome-extension/` folder from this repo
+3. Pin the extension and use it on any job page to instantly save it to your pipeline
+
+---
+
+### Manual Setup (For Developers)
+
 ```bash
-# 1. Setup Python Backend
-python3 -m venv venv
-source venv/bin/activate
+# Backend
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Setup Node Frontend
-cd frontend
-npm install
-cd ..
+# Frontend
+cd frontend && npm install && cd ..
 
-# 3. Run the full application (Frontend + Backend APIs)
+# Run everything
 ./scripts/run.sh
 ```
 
-### 🧩 Installing the Chrome Extension
-To scrape highly protected sites like LinkedIn, load the companion extension:
-1. Open Chrome and navigate to `chrome://extensions/`
-2. Enable **Developer mode** (top right corner).
-3. Click **Load unpacked** and select the `chrome-extension` folder from this repository.
-4. Pin the extension to your browser bar for 1-click job saving!
+**Prerequisites:** Node.js 20+, Python 3.11+, `pdflatex` (TexLive/MiKTeX)
+
+---
+
+## 🏗 Architecture
+
+```mermaid
+graph TD
+    classDef frontend fill:#1E293B,stroke:#3B82F6,stroke-width:2px,color:#F8FAFC
+    classDef backend fill:#1E293B,stroke:#10B981,stroke-width:2px,color:#F8FAFC
+    classDef storage fill:#1E293B,stroke:#8B5CF6,stroke-width:2px,color:#F8FAFC
+    classDef ai fill:#1E293B,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC
+
+    subgraph "Your Machine"
+        UI[React 19 Dashboard]:::frontend
+        Ext[Chrome Extension]:::frontend
+        API[FastAPI Backend]:::backend
+        Cron[Playwright Scrapers]:::backend
+        Compiler[LaTeX PDF Compiler]:::backend
+        DB[(SQLite — Local)]:::storage
+        API <--> DB
+        Cron --> API
+        UI <--> API
+        Ext --> API
+        API --> Compiler
+    end
+
+    subgraph "External AI"
+        LLM[Gemini / OpenAI / Ollama]:::ai
+    end
+
+    subgraph "Optional — Community Network"
+        CF[Crowdsource API]:::backend
+        DB2[(Community Job Pool)]:::storage
+        CF <--> DB2
+    end
+
+    API <--> LLM
+    API <-.->|enabled by default| CF
+```
+
+---
+
+## ❓ FAQ
+
+**Does CareerAgent apply to jobs for me?**
+No. It prepares every application right up to the click — resume, cover letter, open-ended answers. Then it hands the decision back to you. Mass auto-apply burns your ATS standing; CareerAgent removes the busywork but keeps the choice yours.
+
+**How does job scoring work?**
+A rubric-guided LLM evaluation across 5 dimensions (technical match, experience, compensation, culture, red flags) produces a 0–100 score. Anything below your configured threshold is auto-moved to Ignored so it doesn't clutter your New Matches.
+
+**Is this really free?**
+Yes, permanently. MIT-licensed. No paid tier, no waitlist, no accounts. The only optional cost is an AI API key — and Google's Gemini free tier is more than enough for personal use.
+
+**Where does my data go?**
+Almost nowhere. All personal data — your resume, scores, notes, and application history — stays in a local SQLite file on your own disk. Your instance makes exactly two types of external calls:
+1. **Gemini API** — to score and tailor jobs against your resume. Replaceable with a local Ollama model for fully air-gapped operation.
+2. **Crowdsource API** — *only if you opt in*. See below.
+
+**What is the Global Crowdsourced Job Network?**
+An optional, opt-in feature backed by [career-agent-api](https://github.com/koteshrv/career-agent-api) — a separate open-source serverless API anyone can self-host. When enabled, your CareerAgent instance pushes public job listing data (title, company, URL, description) to the shared network and pulls back listings scraped by other users. This dramatically expands the number of jobs you see without any extra scraping effort on your part.
+
+**What is and isn't shared with the crowdsource network:**
+- ✅ Shared: public job listing data (title, company, URL, description) — the same information publicly visible on job boards
+- ❌ Never shared: your resume, your match scores, your application notes, your settings, or any information about you
+
+**Does it need an account or sign-in?**
+No. CareerAgent is single-user and runs entirely locally. No SSO, no OAuth, no Google/GitHub sign-in. Just Docker.
 
 ---
 
 ## 🤝 Contributing
-We welcome contributions from the community! Check out our [Contributing Guide](CONTRIBUTING.md) to get started. See what we're working on in the [Roadmap](ROADMAP.md).
+
+Contributions are welcome! Check the open issues or open a PR. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## 📄 License
-This project is open-source under the [MIT License](https://opensource.org/licenses/MIT).
+
+[MIT License](https://opensource.org/licenses/MIT) — free forever.

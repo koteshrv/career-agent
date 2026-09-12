@@ -346,31 +346,35 @@ export function SettingsPage() {
     <div className="max-w-4xl mx-auto pb-16">
 
       {/* Sticky header: title + tabs + save */}
-      <div className="sticky top-0 z-50 -mx-4 px-4 pt-4 pb-0 bg-card border-b border-border shadow-sm mb-6">
-        <div className="flex justify-between items-center pb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Application Settings</h2>
-            <p className="text-xs text-muted-foreground">Configure your scraper, AI models, and preferences.</p>
+      <div className="sticky top-0 z-50 bg-background pt-6 pb-2">
+        <div className="bg-card rounded-lg border border-border shadow-sm">
+          <div className="p-6 pb-0">
+            <div className="flex justify-between items-center pb-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">Application Settings</h2>
+                <p className="text-xs text-muted-foreground">Configure your scraper, AI models, and preferences.</p>
+              </div>
+              {showSaveButton && (
+                <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground hover:opacity-90">
+                  <Check className="w-4 h-4 mr-2" />
+                  {saving ? "Saving..." : "Save Settings"}
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
+              {visibleTabs.map(t => (
+                <button
+                  key={t.id}
+                  onClick={() => setTab(t.id)}
+                  className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
+                    activeTab === t.id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
-          {showSaveButton && (
-            <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground hover:opacity-90">
-              <Check className="w-4 h-4 mr-2" />
-              {saving ? "Saving..." : "Save Settings"}
-            </Button>
-          )}
-        </div>
-        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
-          {visibleTabs.map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px whitespace-nowrap transition-colors ${
-                activeTab === t.id ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
         </div>
       </div>
 

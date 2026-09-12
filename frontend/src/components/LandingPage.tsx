@@ -36,7 +36,7 @@ export function LandingPage() {
             <a href="https://github.com/koteshrv/career-agent" target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-foreground transition-colors hidden sm:flex items-center" aria-label="GitHub">
               <GitHubIcon className="w-5 h-5" />
             </a>
-            <button onClick={handleEnter} className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-full hover:opacity-90 transition-opacity">
+            <button onClick={handleEnter} className="text-sm font-medium bg-primary text-primary-foreground px-4 py-2 rounded-md hover:opacity-90 transition-opacity">
               Launch Demo
             </button>
           </div>
@@ -46,7 +46,7 @@ export function LandingPage() {
       <main className="flex-1 flex flex-col items-center">
 
         {/* Hero Section */}
-        <section className="w-full max-w-5xl mx-auto px-6 pt-16 md:pt-20 pb-8 text-center">
+        <section className="w-full max-w-5xl mx-auto px-6 pt-8 pb-16 min-h-[calc(100vh-5rem)] flex flex-col justify-center text-center">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <h1 className="text-5xl md:text-7xl font-serif tracking-tight mb-6 leading-[1.1] text-foreground">
               Automate the job hunt.<br />
@@ -130,7 +130,7 @@ export function LandingPage() {
         </section>
 
         {/* Manifesto Quote */}
-        <section className="w-full max-w-4xl mx-auto px-6 py-16 text-center">
+        <section className="w-full max-w-4xl mx-auto px-6 pt-32 pb-16 text-center">
           <hr className="w-24 border-border mx-auto mb-16" />
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif leading-tight text-foreground">
             "ATS was built to save <span className="text-muted-foreground">their</span> time.<br />

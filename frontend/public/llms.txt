@@ -1,0 +1,65 @@
+# CareerAgent
+
+> Automate the job hunt. Keep your privacy intact.
+
+CareerAgent is a **100% free, open-source, local-first reverse ATS** built for software engineers. It runs entirely on your machine via Docker — no accounts, no subscriptions, no cloud.
+
+It continuously scrapes job boards, evaluates every listing against your resume using a rubric-guided LLM, generates tailored LaTeX CVs, and tracks your pipeline autonomously in the background. Your data never leaves your machine.
+
+## What it does
+
+- **Automated job discovery** — Playwright headless scrapers for standard ATS platforms (Greenhouse, Lever, Ashby). A companion Chrome Extension bypasses IP bans on LinkedIn and Naukri.
+- **5-dimension AI scoring** — LLM rubric grades jobs across technical match, experience level, compensation, cultural signals, and red flags. Outputs a strict 0–100 score per job.
+- **Native LaTeX CV generation** — 1-click keyword injection into your base resume + local PDF compilation. No cloud PDF service.
+- **Open-ended answer drafts** — Reads Greenhouse/Ashby/Lever forms, drafts "Why this role?" answers from your CV. Never auto-submits.
+- **Global crowdsourced job network** — Opt-in to an anonymous job pool to share and receive scraped jobs from the community. Your personal data is never shared.
+- **Kanban pipeline** — Visual board to track New, Applied, Interviewing, and Rejected applications.
+- **Bring your own AI** — Gemini (free tier), OpenAI, Anthropic, or fully local via Ollama.
+
+## Privacy model
+
+Everything lives in a local SQLite database. No telemetry. No accounts. No OAuth. No third-party data mining. The only network request made on your behalf is the Gemini API call for job scoring — and even that can be replaced with a local Ollama model.
+
+## Who built this
+
+Open-source project by [@koteshrv](https://github.com/koteshrv). MIT License.
+
+## Privacy model
+
+CareerAgent is designed around a strict local-first privacy model. All personal data — your resume, AI match scores, application notes, and pipeline history — lives in a local SQLite database on your own machine. No user accounts are required. No OAuth. No SSO.
+
+Your instance makes exactly two types of external network calls:
+
+1. **Gemini API (or Ollama)** — The AI call to score and tailor jobs against your resume. This can be pointed at a locally running Ollama model for fully air-gapped, offline operation.
+2. **Global Crowdsourced Job Network** — Enabled by default; can be turned off in **Settings → Data**. Your instance automatically shares scraped public job listings with a community pool and pulls back jobs scraped by other CareerAgent users — growing your coverage as a network effect. **Only public job listing data is exchanged (title, company, URL, description). Your resume, scores, notes, settings, and any personally identifiable information are never transmitted.**
+
+## Links
+
+- Website: https://careeragent.fyi
+- GitHub: https://github.com/koteshrv/career-agent
+- Live Demo: https://careeragent.fyi (runs with sample data, no backend)
+
+## Getting started
+
+```bash
+curl -O https://raw.githubusercontent.com/koteshrv/career-agent/main/docker-compose.yml
+docker compose up -d
+# Visit http://localhost:5173
+# Add your free Gemini API key in Settings → Resume & AI
+```
+
+No sign-up. No accounts. No SSO. Just Docker and a free Gemini API key.
+
+## Frequently asked questions
+
+**Does it auto-apply?**
+No. It prepares everything up to the submit button (resume, cover letter, form answers) then hands the decision back to you.
+
+**Is it really free?**
+Yes. Permanently. MIT-licensed. No paid tier, no waitlist.
+
+**Does it need an account?**
+No. Single-user, entirely local. No Google/GitHub sign-in, no OAuth.
+
+**Where does my data go?**
+Nowhere. Local SQLite file on your disk.
