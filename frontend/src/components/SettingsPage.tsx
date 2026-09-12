@@ -343,10 +343,10 @@ export function SettingsPage() {
   const showSaveButton = activeTab !== "health" && activeTab !== "members"
 
   return (
-    <div className="max-w-4xl mx-auto pb-16 relative">
+    <div className="max-w-4xl mx-auto pb-16">
 
       {/* Sticky header: title + tabs + save */}
-      <div className="sticky top-0 z-40 -mx-4 px-4 pt-1 bg-background/95 backdrop-blur">
+      <div className="sticky top-0 z-50 -mx-4 px-4 pt-4 pb-0 bg-card border-b border-border shadow-sm mb-6">
         <div className="flex justify-between items-center pb-4">
           <div>
             <h2 className="text-lg font-semibold text-foreground">Application Settings</h2>
@@ -359,7 +359,7 @@ export function SettingsPage() {
             </Button>
           )}
         </div>
-        <div className="flex items-center gap-1 border-b border-border overflow-x-auto custom-scrollbar">
+        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
           {visibleTabs.map(t => (
             <button
               key={t.id}
@@ -408,61 +408,65 @@ export function SettingsPage() {
         )}
 
         {activeTab === "resume" && (
-          <div className="bg-card rounded-lg border border-border p-6 space-y-6">
-            <div>
-              <h3 className="text-base font-semibold text-foreground mb-1">Resume & AI Configuration</h3>
-              <p className="text-sm text-muted-foreground">Upload one or more resumes (.pdf or .tex). You can pick which one to use when generating a tailored resume or cover letter for a job.</p>
-            </div>
-
-            {resumes.length > 0 && (
-              <div className="space-y-2">
-                {resumes.map(name => (
-                  <div key={name} className="flex items-center justify-between bg-secondary border border-border rounded-md px-3 py-2">
-                    <span className="flex items-center gap-2 text-sm text-foreground truncate">
-                      <FileText className="w-4 h-4 text-primary shrink-0" />
-                      <span className="truncate">{name}</span>
-                    </span>
-                    <button
-                      onClick={() => handleDeleteResume(name)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors shrink-0"
-                      title="Delete resume"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+          <div className="space-y-6">
+            <div className="bg-card rounded-lg border border-border p-6 space-y-6">
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-1">Resume Configuration</h3>
+                <p className="text-sm text-muted-foreground">Upload one or more resumes (.pdf or .tex). You can pick which one to use when generating a tailored resume or cover letter for a job.</p>
               </div>
-            )}
 
-            <div className="space-y-3">
-              <input
-                type="file"
-                accept=".pdf,.tex"
-                onChange={e => setResumeFile(e.target.files?.[0] || null)}
-                className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
-              />
-              <div className="flex items-center gap-3">
+              {resumes.length > 0 && (
+                <div className="space-y-2">
+                  {resumes.map(name => (
+                    <div key={name} className="flex items-center justify-between bg-secondary border border-border rounded-md px-3 py-2">
+                      <span className="flex items-center gap-2 text-sm text-foreground truncate">
+                        <FileText className="w-4 h-4 text-primary shrink-0" />
+                        <span className="truncate">{name}</span>
+                      </span>
+                      <button
+                        onClick={() => handleDeleteResume(name)}
+                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors shrink-0"
+                        title="Delete resume"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-3">
                 <input
-                  type="text"
-                  value={resumeName}
-                  onChange={e => setResumeName(e.target.value)}
-                  placeholder="Optional custom name (e.g. backend-resume)"
-                  className="flex-1 bg-secondary border border-border rounded-md px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  type="file"
+                  accept=".pdf,.tex"
+                  onChange={e => setResumeFile(e.target.files?.[0] || null)}
+                  className="block w-full text-sm text-muted-foreground file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer"
                 />
-                <Button
-                  onClick={handleResumeUpload}
-                  disabled={!resumeFile || uploading}
-                  className="bg-primary text-primary-foreground hover:opacity-90 shrink-0"
-                >
-                  {uploading ? "Uploading..." : "Upload"}
-                </Button>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={resumeName}
+                    onChange={e => setResumeName(e.target.value)}
+                    placeholder="Optional custom name (e.g. backend-resume)"
+                    className="flex-1 bg-secondary border border-border rounded-md px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <Button
+                    onClick={handleResumeUpload}
+                    disabled={!resumeFile || uploading}
+                    className="bg-primary text-primary-foreground hover:opacity-90 shrink-0"
+                  >
+                    {uploading ? "Uploading..." : "Upload"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">Leave the name blank to keep the original filename. The extension is added automatically.</p>
               </div>
-              <p className="text-xs text-muted-foreground">Leave the name blank to keep the original filename. The extension is added automatically.</p>
             </div>
 
-            <div className="pt-6 border-t border-border space-y-3">
-              <h4 className="text-sm font-semibold text-foreground">Baseline Match Skills</h4>
-              <p className="text-xs text-muted-foreground">Skills are automatically extracted when you upload a resume. The AI uses these baseline skills to evaluate job descriptions. You can manually adjust them below if needed.</p>
+            <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+              <div>
+                <h4 className="text-base font-semibold text-foreground mb-1">Baseline Match Skills</h4>
+                <p className="text-sm text-muted-foreground">Skills are automatically extracted when you upload a resume. The AI uses these baseline skills to evaluate job descriptions. You can manually adjust them below if needed.</p>
+              </div>
 
               {(() => {
                 try {
@@ -508,10 +512,12 @@ export function SettingsPage() {
               </div>
             </div>
 
-            <div className="space-y-4 pt-6 border-t border-border">
-              {/* ── AI Generation Mode ── */}
+            <div className="bg-card rounded-lg border border-border p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">AI Generation Mode</label>
+                <h4 className="text-base font-semibold text-foreground mb-1">AI Generation Mode</h4>
+                <p className="text-sm text-muted-foreground">Configure the models used for scoring and formatting.</p>
+              </div>
+              <div>
                 <div className="relative">
                   <select
                     value={localStorage.getItem("generation_mode") || "gemini"}
@@ -533,7 +539,6 @@ export function SettingsPage() {
                 </div>
               </div>
 
-              {/* ── Google Gemini ── */}
               {(localStorage.getItem("generation_mode") || "gemini") === "gemini" && (
                 <>
                   <div>
@@ -543,7 +548,7 @@ export function SettingsPage() {
                         type="password"
                         value={settings.gemini_api_key || ""}
                         onChange={e => setSettings({...settings, gemini_api_key: e.target.value})}
-                        className="flex-1 bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        className="flex-1 bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground"
                         placeholder="AIza..."
                       />
                       <input
@@ -567,54 +572,10 @@ export function SettingsPage() {
                       { value: "gemma-4-31b",           label: "gemma-4-31b",           badge: "1500 RPD · Text Only" },
                     ]}
                   />
-                  {(() => {
-                    if (!settings?.model_telemetry) return null;
-                    // Accurate RPD limits per model as of June 2026 (v1beta free tier)
-                    const getLimit = (model: string): number => {
-                      const m = (model || "").toLowerCase()
-                      if (m.includes("gemma-4")) return 1500
-                      if (m.includes("3.1-flash-lite")) return 500
-                      if (m === "antigravity") return 100
-                      if (m.includes("flash")) return 20 // 3.5, 3.0, 2.5 flash are strictly capped at 20
-                      if (m.includes("pro")) return 0 // typically disabled on free tier
-                      return 20 // default for unknown models
-
-                    }
-                    try {
-                      const parsed = JSON.parse(settings.model_telemetry);
-                      const primaryModel = settings.gemini_model?.split(",")[0]?.trim() || "gemini-1.5-flash"
-                      const currentStats = parsed[primaryModel];
-                      if (currentStats) {
-                        const limit = getLimit(primaryModel)
-                        const todayUsed = currentStats.today_requests || 0
-                        const reqsLeft = limit === -1 ? null : Math.max(0, limit - todayUsed)
-                        return (
-                          <div className="p-3 bg-primary/5 border border-primary/20 rounded-md flex items-center justify-between text-xs">
-                            <div>
-                              <span className="block font-semibold text-primary">Active Model Usage</span>
-                              <span className="text-muted-foreground">{(currentStats.prompt_tokens + currentStats.candidate_tokens).toLocaleString()} tokens · {currentStats.requests} requests</span>
-                            </div>
-                            <div className="text-right">
-                              <span className="block font-semibold text-primary">Daily Quota</span>
-                              <span className={reqsLeft !== null && reqsLeft < 5 ? "text-destructive font-bold" : "text-foreground"}>
-                                {todayUsed} used / {reqsLeft === null ? "? (alias)" : `${reqsLeft} left`}
-                              </span>
-                            </div>
-                          </div>
-                        );
-                      }
-                    } catch (e) {}
-                    return null;
-                  })()}
                   <TosWarning level="warn" text="Google Free Tier API may use your prompts and outputs for model training. Switch to a paid key or use Local Ollama for full privacy." />
                 </>
               )}
 
-              {/* ── OpenAI / Anthropic / Grok: UI drafted ahead of the backend routing, which
-                  is not implemented yet (see ai_agent._generate_cloud_private). The options
-                  above are disabled so they can't actually be selected; this panel only
-                  renders as a fallback if generation_mode was set to one of these values
-                  before they were disabled. ── */}
               {["openai", "anthropic", "grok"].includes(localStorage.getItem("generation_mode") || "gemini") && (
                 <div className="p-4 bg-status-applied/10 border border-status-applied/20 rounded-md text-sm text-status-applied">
                   This provider isn't wired up on the backend yet — generation requests will fail with an error.
@@ -622,7 +583,6 @@ export function SettingsPage() {
                 </div>
               )}
 
-              {/* ── Local Ollama ── */}
               {(localStorage.getItem("generation_mode") || "gemini") === "ollama" && (
                 <>
                   <div>
