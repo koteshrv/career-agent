@@ -173,3 +173,38 @@ export async function generateMaterialsStream(
     }
   }
 }
+
+export async function* streamPlaybook(jobId: number, playbookName: string) {
+  const token = getToken()
+  const res = await fetch(`${API_BASE}/api/jobs/${jobId}/playbook/${playbookName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+    }
+  })
+  
+  if (!res.ok) throw new Error("Failed to run playbook")
+  if (!res.body) throw new Error("No response body")
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ""
+
+  while (true) {
+    const { value, done } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split("\n")
+    buffer = lines.pop() || ""
+    for (const line of lines) {
+      if (line.trim()) {
+        try {
+          yield JSON.parse(line)
+        } catch (e) {
+          console.error("Failed to parse chunk", line)
+        }
+      }
+    }
+  }
+}

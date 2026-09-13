@@ -361,6 +361,126 @@ export function SettingsPage() {
           <>
             <ScrapeConfig settings={settings} onChange={setSettings} />
 
+            {/* Autonomous Agent Section */}
+            <div className="bg-card rounded-lg border border-border p-6 space-y-4 mb-6 mt-6">
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-1">Autonomous Agent (Beta)</h3>
+                <p className="text-sm text-muted-foreground">Test the self-driving Playwright agent that uses Gemini to navigate search boxes and click buttons automatically.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Target URL</label>
+                  <input
+                    type="text"
+                    id="agent_url"
+                    placeholder="https://careers.google.com"
+                    className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Target Keyword</label>
+                  <input
+                    type="text"
+                    id="agent_keyword"
+                    placeholder="Software Engineer"
+                    className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">This runs a headless browser and LLM loop. May take 20-30 seconds.</p>
+                <Button 
+                  onClick={async () => {
+                    const url = (document.getElementById("agent_url") as HTMLInputElement).value
+                    const keyword = (document.getElementById("agent_keyword") as HTMLInputElement).value
+                    if (!url || !keyword) {
+                      toast("Please enter both URL and keyword", "error")
+                      return
+                    }
+                    toast("Agent is navigating...", "success")
+                    try {
+                      const res = await api.post("/api/jobs/agent-test", { url, keyword })
+                      toast(`Agent finished! Found ${res.data.found_jobs?.length || 0} jobs.`, "success")
+                      console.log("Agent results:", res.data.found_jobs)
+                    } catch (e: any) {
+                      toast(e.response?.data?.detail || "Agent failed.", "error")
+                    }
+                  }}
+                  className="bg-primary hover:bg-primary/80 text-foreground h-8 text-xs px-4"
+                >
+                  Test Autonomous Agent
+                </Button>
+              </div>
+            </div>
+
+            {/* Global Search Section */}
+            <div className="bg-card rounded-lg border border-border p-6 space-y-4 mb-6">
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-1">Reverse ATS Global Search (Beta)</h3>
+                <p className="text-sm text-muted-foreground">Automatically discover fresh postings across thousands of companies on Greenhouse and Lever.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="global_search_enabled"
+                  checked={settings.global_search_enabled || false}
+                  onChange={e => setSettings({...settings, global_search_enabled: e.target.checked})}
+                  className="w-4 h-4 text-primary bg-secondary border-border rounded focus:ring-primary focus:ring-2"
+                />
+                <label htmlFor="global_search_enabled" className="text-sm font-medium text-foreground">
+                  Enable Global Search
+                </label>
+              </div>
+
+              {settings.global_search_enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Target Titles (comma-separated)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Software Engineer, Frontend"
+                      value={settings.global_search_titles || ""}
+                      onChange={e => setSettings({...settings, global_search_titles: e.target.value})}
+                      className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Target Locations (comma-separated)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Remote, New York"
+                      value={settings.global_search_locations || ""}
+                      onChange={e => setSettings({...settings, global_search_locations: e.target.value})}
+                      className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+              )}
+              {settings.global_search_enabled && (
+                <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Run a quick test scan on 10 random ATS boards to see what it finds.</p>
+                  <Button 
+                    onClick={async () => {
+                      toast("Running test global scan...", "success")
+                      try {
+                        const res = await api.post("/api/jobs/global-search-test")
+                        toast(`Scan complete! Found ${res.data.found_jobs} jobs.`, "success")
+                        console.log("Global search sample:", res.data.sample)
+                      } catch (e: any) {
+                        toast(e.response?.data?.detail || "Global search failed.", "error")
+                      }
+                    }}
+                    className="bg-primary hover:bg-primary/80 text-foreground h-8 text-xs px-4"
+                  >
+                    Test Global Search
+                  </Button>
+                </div>
+              )}
+            </div>
+
             <div className="bg-card rounded-lg border border-border p-6 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">Minimum Match Score (%)</label>

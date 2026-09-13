@@ -263,10 +263,11 @@ async def websocket_logs(websocket: WebSocket, token: str = ""):
         manager.disconnect(websocket)
 
 # Include Modular Routers
-from .routers import jobs, settings, generation, history, resumes, extension, knowledge
+from .routers import jobs, settings, generation, playbooks, history, resumes, extension, knowledge
 app.include_router(jobs.router)
 app.include_router(settings.router)
 app.include_router(generation.router)
+app.include_router(playbooks.router)
 app.include_router(history.router)
 app.include_router(resumes.router)
 app.include_router(extension.router)
