@@ -24,6 +24,7 @@ from .sources.lever import process_lever
 from .sources.api_post import process_api_post
 from .sources.tech_mahindra import process_tech_mahindra
 from .sources.zwayam import process_zwayam
+from .sources.universal_api import process_universal_api
 from .sources.playwright_engine import (
     dismiss_popups, extract_playwright_jobs,
     fetch_job_descriptions_httpx, fetch_job_descriptions_batch,

@@ -132,12 +132,28 @@
   {
     "company": "TCS",
     "type": "playwright",
-    "url": "https://ibegin.tcsapps.com/candidate/jobs/search",
+    "url": "https://ibegin.tcsapps.com/candidate/next/en-IN/jobs/search?page=1&size=10&regular=true&walkin=true&sort=relevance%20desc",
     "search_input_selector": "input[data-ng-model='searchString']",
     "search_btn_selector": "span.glyphicon-search",
     "next_btn_selector": "ul.pagination li.active + li > a",
-    "job_url_pattern": "/candidate/jobs/\\d+J",
-    "extra_wait_ms": 7000
+    "job_url_pattern": "/jobs/\\d+J",
+    "extra_wait_ms": 7000,
+    "steps": [
+      {
+        "action": "wait_for_selector",
+        "selector": "[data-testid='search-input']",
+        "timeout": 10000
+      },
+      {
+        "action": "type",
+        "selector": "[data-testid='search-input']",
+        "value": "{keyword}"
+      },
+      {
+        "action": "click",
+        "selector": "[data-testid='search-button']"
+      }
+    ]
   },
   {
     "company": "Tech Mahindra",
@@ -152,7 +168,23 @@
     "no_results_text": "did not match any jobs",
     "extra_wait_ms": 5000,
     "job_url_pattern": "/results/\\d+",
-    "use_playwright": true
+    "use_playwright": true,
+    "steps": [
+      {
+        "action": "wait_for_selector",
+        "selector": "input[aria-label='Search by role or keyword']",
+        "timeout": 5000
+      },
+      {
+        "action": "type",
+        "selector": "input[aria-label='Search by role or keyword']",
+        "value": "{keyword}"
+      },
+      {
+        "action": "keyboard",
+        "key": "Enter"
+      }
+    ]
   },
   {
     "company": "Amazon",

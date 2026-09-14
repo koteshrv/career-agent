@@ -2,195 +2,143 @@ import asyncio
 import json
 import logging
 from typing import List, Optional
-from google import genai
-from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-def get_client(api_key: str):
-    if not api_key:
-        raise ValueError("Missing Gemini API Key for Agentic Scraper.")
-    return genai.Client(api_key=api_key)
-
-JS_GET_TREE = r"""() => {
-    let idCounter = 1;
-    const elements = document.querySelectorAll('a, button, input, select, textarea, [role="button"], [role="link"], [role="tab"], span[class*="btn"], span[class*="search"], span[class*="icon"], div[class*="btn"]');
-    const tree = [];
-    const mapping = {};
-    elements.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        const style = window.getComputedStyle(el);
-        if ((rect.width > 0 && rect.height > 0 || el.className.includes('search') || el.className.includes('btn') || style.cursor === 'pointer') && style.visibility !== 'hidden' && style.display !== 'none') {
-            let text = el.innerText || el.value || el.getAttribute('aria-label') || el.placeholder || el.className || '';
-            text = text.replace(/\s+/g, ' ').trim().substring(0, 100);
-            if (text || el.tagName === 'INPUT' || style.cursor === 'pointer') {
-                el.setAttribute('data-agent-id', idCounter);
-                let extra = "";
-                if (el.tagName === 'A' && el.href) extra = ` href="${el.href}"`;
-                tree.push(`[${idCounter}] ${el.tagName.toLowerCase()} "${text}"${extra}`);
-                mapping[idCounter] = el;
-                idCounter++;
-            }
-        }
-    });
-    return tree.join('\n');
-}"""
-
 async def run_agent_loop(url: str, api_key: str, model_names: List[str], keyword: str):
     from playwright.async_api import async_playwright
-    client = get_client(api_key)
     
-    def type_text(element_id: int, text: str):
-        return {"action": "type", "id": element_id, "text": text}
+    # Load targets.json
+    try:
+        with open("targets.json", "r") as f:
+            targets = json.load(f)
+    except Exception as e:
+        logger.error(f"Failed to load targets.json: {e}")
+        return []
         
-    def click(element_id: int):
-        return {"action": "click", "id": element_id}
+    # Determine which config to use based on URL
+    config = None
+    if isinstance(targets, list):
+        for data in targets:
+            c_url = data.get("url", "")
+            if c_url and (data["company"].lower().replace(" ", "") in url.lower() or c_url.split("//")[1].split("/")[0] in url):
+                config = data
+                break
+            
+    if not config:
+        logger.warning(f"No config found for URL: {url}. Falling back to default extraction.")
+    else:
+        # Override the entry URL with the optimal one from config
+        if "url" in config:
+            url = config["url"]
         
-    def finish(extracted_jobs: str):
-        return {"action": "finish", "jobs": extracted_jobs}
-
-    tools = [type_text, click, finish]
+    extracted_jobs = []
     
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=False)
-        page = await browser.new_page()
+        context = await browser.new_context()
+        page = await context.new_page()
         
         logger.info(f"Navigating to initial URL: {url}")
-        try:
-            await page.goto(url, wait_until="networkidle", timeout=15000)
-        except Exception as e:
-            logger.warning("Initial navigate timeout, continuing...")
         
-        await page.wait_for_timeout(7000)
-        
-        tree = ""
-        try:
-            tree = await page.evaluate(JS_GET_TREE)
-            current_state = f"Current Accessibility Tree:\n{tree}"
-        except Exception as e:
-            current_state = f"Failed to get tree: {e}"
-        
-        action_history = [f"Initial navigation to {url}"]
-        current_url = page.url
-        extracted_jobs_result = []
-        current_model_idx = 0
-        previous_tree = tree
-        
-        with open('last_tree.txt', 'w') as tf:
-            tf.write(tree)
+        with open('agent_debug.log', 'a') as logf:
+            logf.write(f"\n{'='*80}\n[RECORDER RUN] Starting Config-Driven Playwright Execution\n{'='*80}\n")
+            logf.write(f"Target URL: {url}\nKeyword: {keyword}\nConfig Matched: {config.get('company', 'Unknown') if config else 'None'}\n\n")
             
-        for turn in range(15):
-            history_str = "\n".join(action_history) if action_history else "None yet."
-            turn_prompt = f"Goal: Find job postings for '{keyword}'.\n\nPrevious Actions:\n{history_str}\n\nURL: {current_url}\n\nState:\n{current_state}\n\nDecide next action. Only output JSON if calling a tool."
+        try:
+            await page.goto(url, wait_until="domcontentloaded", timeout=15000)
+            await page.wait_for_timeout(3000) # Hydration wait
             
-            try:
-                current_model = model_names[current_model_idx] if current_model_idx < len(model_names) else model_names[-1]
-                req_url = f"POST https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent"
-                
-                with open('agent_debug.log', 'a') as logf:
-                    logf.write(f"\n{'='*80}\n[{turn+1}] 🚀 REQUEST -> {current_model}\n{'='*80}\n")
-                    logf.write(f"{turn_prompt}\n\n")
-                
-                response = client.models.generate_content(
-                    model=current_model,
-                    contents=turn_prompt,
-                    config=types.GenerateContentConfig(
-                        system_instruction="You are an autonomous web scraper. Call one tool at a time.",
-                        tools=tools,
-                        temperature=0.0,
-                        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True)
-                    )
-                )
-                
-                with open('agent_debug.log', 'a') as logf:
-                    tokens = "Unknown"
-                    if hasattr(response, 'usage_metadata') and response.usage_metadata:
-                        tokens = f"In: {response.usage_metadata.prompt_token_count} | Out: {response.usage_metadata.candidates_token_count}"
+            if config and "steps" in config:
+                for step_idx, step in enumerate(config["steps"]):
+                    action = step.get("action")
+                    selector = step.get("selector")
+                    optional = step.get("optional", False)
+                    desc = step.get("description", "")
                     
-                    logf.write(f"\n{'='*80}\n[{turn+1}] ✅ RESPONSE <- {tokens}\n{'='*80}\n")
-                    if response.text:
-                        logf.write(f"{response.text}\n")
-                    if response.function_calls:
-                        fc = response.function_calls[0]
-                        logf.write(f"Tool Call: {fc.name}({fc.args})\n")
-                    
-            except Exception as e:
-                error_msg = str(e)
-                if '429' in error_msg or '503' in error_msg or '500' in error_msg or 'quota' in error_msg.lower():
-                    logger.warning(f"Hit limit/error on {current_model}: {error_msg}")
                     with open('agent_debug.log', 'a') as logf:
-                        logf.write(f"[{turn+1}] ❌ RESPONSE FAILED: {error_msg}\n")
-                    if current_model_idx < len(model_names) - 1:
-                        current_model_idx += 1
-                        continue
-                    else:
-                        import time
-                        time.sleep(30)
-                        continue
-                else:
-                    logger.error(f"Gemini API error during agent loop: {e}")
-                    break
-                    
-            if response.function_calls:
-                fc = response.function_calls[0]
-                logger.info(f"Agent called: {fc.name}({fc.args})")
-                
-                with open('agent_debug.log', 'a') as logf:
-                    logf.write(f"\n[BROWSER ACTION] Executing Tool: {fc.name}\n[BROWSER ACTION] Arguments: {fc.args}\n")
-                
-                if fc.name == "type_text":
-                    el_id = fc.args.get("element_id")
-                    text = fc.args.get("text")
-                    action_history.append(f"Typed '{text}' into element [{el_id}]")
-                    with open('agent_debug.log', 'a') as logf:
-                        logf.write(f"[BROWSER ACTION] Playwright: locator('[data-agent-id=\"{el_id}\"]').fill('{text}')\n")
+                        logf.write(f"[STEP {step_idx+1}] Action: {action} | Selector: {selector} | Desc: {desc}\n")
+                        
                     try:
-                        await page.locator(f'[data-agent-id="{el_id}"]').fill(text, timeout=3000)
-                        await page.wait_for_timeout(1000)
+                        if action == "click":
+                            await page.locator(selector).first.click(force=True, timeout=5000)
+                            await page.wait_for_timeout(2000)
+                        elif action == "type":
+                            val = step.get("value", "").replace("{keyword}", keyword)
+                            await page.locator(selector).first.fill(val, timeout=5000)
+                            await page.wait_for_timeout(1000)
+                        elif action == "wait_for_selector":
+                            timeout = step.get("timeout", 5000)
+                            await page.locator(selector).first.wait_for(state="visible", timeout=timeout)
+                        elif action == "keyboard":
+                            key = step.get("key")
+                            await page.keyboard.press(key)
+                            await page.wait_for_timeout(2000)
+                            
+                        with open('agent_debug.log', 'a') as logf:
+                            logf.write(f"  -> SUCCESS\n")
                     except Exception as e:
-                        action_history[-1] += f" (FAILED: {str(e)[:50]})"
-                        
-                elif fc.name == "click":
-                    el_id = fc.args.get("element_id")
-                    action_history.append(f"Clicked element [{el_id}]")
-                    with open('agent_debug.log', 'a') as logf:
-                        logf.write(f"[BROWSER ACTION] Playwright: locator('[data-agent-id=\"{el_id}\"]').click()\n")
-                    try:
-                        await page.locator(f'[data-agent-id="{el_id}"]').click(timeout=3000, force=True)
-                        await page.wait_for_timeout(7000)
-                        current_url = page.url
-                    except Exception as e:
-                        action_history[-1] += f" (FAILED: {str(e)[:50]})"
-                        
-                elif fc.name == "finish":
-                    data_str = fc.args.get("extracted_jobs", "[]")
-                    with open('agent_debug.log', 'a') as logf:
-                        logf.write(f"[BROWSER ACTION] Agent successfully finished extraction and exited loop.\n")
-                    try:
-                        extracted_jobs_result = json.loads(data_str)
-                    except:
-                        extracted_jobs_result = []
-                    await browser.close()
-                    return extracted_jobs_result
-                    
-                try:
-                    tree = await page.evaluate(JS_GET_TREE)
-                    with open('last_tree.txt', 'w') as tf:
-                        tf.write(tree)
-                        
-                    if tree == previous_tree:
-                        current_state = f"Current Accessibility Tree:\n{tree}\n\nWARNING: Your last action had NO visual effect on the page. DO NOT repeat the same action."
-                    else:
-                        current_state = f"Current Accessibility Tree:\n{tree}"
-                    previous_tree = tree
-                    with open('agent_debug.log', 'a') as logf:
-                        logf.write(f"[BROWSER ACTION] Re-evaluating DOM... new tree has {len(tree.splitlines())} interactive elements.\n")
-                except Exception as e:
-                    current_state = f"Action failed or page crashed: {e}"
+                        with open('agent_debug.log', 'a') as logf:
+                            logf.write(f"  -> FAILED: {str(e).splitlines()[0]}\n")
+                        if not optional:
+                            with open('agent_debug.log', 'a') as logf:
+                                logf.write(f"  -> CRITICAL STEP FAILED. Aborting flow.\n")
+                            break
+                            
+            # Now extract the jobs
+            await page.wait_for_timeout(4000) # Wait for network requests to populate jobs
+            
+            with open('agent_debug.log', 'a') as logf:
+                logf.write(f"\n[EXTRACTION] Running DOM Distillation\n")
+                
+            js_extract = r'''() => {
+                // Remove noisy navigation, footers, headers
+                const root = document.querySelector('main, [role="main"], article') || document.body;
+                const clone = root.cloneNode(true);
+                clone.querySelectorAll('script, style, nav, header, footer, noscript, [aria-hidden="true"]').forEach(el => el.remove());
+                
+                // Find all links in the clean tree
+                const links = Array.from(clone.querySelectorAll('a[href]'));
+                const results = [];
+                links.forEach(el => {
+                    const text = (el.innerText || el.getAttribute('aria-label') || '').trim();
+                    const href = el.getAttribute('href');
+                    if (text.length > 3 && text.length < 100 && href && !href.startsWith('javascript:')) {
+                        results.push(`"${text}" -> ${href}`);
+                    }
+                });
+                return [...new Set(results)]; // Deduplicate
+            }'''
+            
+            extracted = await page.evaluate(js_extract)
+            
+            # Filter links by job_url_pattern if provided in config
+            job_pattern = config.get("job_url_pattern")
+            if job_pattern:
+                import re
+                filtered = []
+                for item in extracted:
+                    # item format: "Job Title" -> /url/path
+                    parts = item.split(" -> ")
+                    if len(parts) == 2:
+                        url_part = parts[1]
+                        if re.search(job_pattern, url_part):
+                            filtered.append(item)
+                extracted_jobs = filtered
+                with open('agent_debug.log', 'a') as logf:
+                    logf.write(f"  -> Applied filter '{job_pattern}', kept {len(extracted_jobs)}/{len(extracted)} links.\n")
             else:
-                current_state = "You did not call a tool. Please call a tool."
-                with open('agent_debug.log', 'a') as logf:
-                    logf.write(f"[BROWSER ACTION] Warning: Agent returned raw text instead of a tool call.\n")
-                    
+                extracted_jobs = extracted
+            
+            with open('agent_debug.log', 'a') as logf:
+                logf.write(f"  -> Extracted {len(extracted_jobs)} potential job links:\n")
+                for link in extracted_jobs:
+                    logf.write(f"     * {link}\n")
+                
+        except Exception as e:
+            logger.error(f"Error in config runner: {e}")
+            with open('agent_debug.log', 'a') as logf:
+                logf.write(f"\n[FATAL ERROR] {e}\n")
+                
         await browser.close()
-        return extracted_jobs_result
+        return extracted_jobs
