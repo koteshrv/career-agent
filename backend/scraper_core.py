@@ -25,10 +25,11 @@ from .sources.api_post import process_api_post
 from .sources.tech_mahindra import process_tech_mahindra
 from .sources.zwayam import process_zwayam
 from .sources.universal_api import process_universal_api
+from .sources.playwright_agentic import process_playwright_agentic
 from .sources.playwright_engine import (
     dismiss_popups, extract_playwright_jobs,
     fetch_job_descriptions_httpx, fetch_job_descriptions_batch,
-    fetch_job_description, process_playwright,
+    fetch_job_description, 
 )
 
 logger = logging.getLogger(__name__)
@@ -220,7 +221,7 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
         elif t_type == "zwayam":
             process_zwayam(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
         elif t_type == "playwright":
-            playwright_targets.append(target)
+            process_playwright_agentic(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
 
         if company_logs and company_logs[-1].get("company") == company:
             status = company_logs[-1].get("status")
@@ -236,38 +237,5 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
                 company_logs.append({"company": "Database commit", "status": "FAILED", "jobs_found": 0, "message": f"Failed to commit {len(new_jobs)} scraped job(s) to the database."})
             new_jobs.clear()
 
-    if playwright_targets:
-        try:
-            asyncio.run(process_playwright(db, user_id, playwright_targets, keywords, new_jobs, company_logs))
-        except Exception as e:
-            # A browser-launch/Playwright failure should not abort the whole run or
-            # discard jobs already collected from the API-based sources above.
-            logger.error(f"Playwright stage failed, continuing with API-sourced jobs: {e}")
-            company_logs.append({"company": "Playwright stage", "status": "FAILED", "jobs_found": 0, "message": str(e)})
-        if new_jobs:
-            if commit_jobs(db, user_id, new_jobs):
-                all_new_jobs.extend(new_jobs)
-            else:
-                # Don't count these as "found" — they were never actually persisted,
-                # and bulk_evaluate_jobs would just silently skip them anyway.
-                company_logs.append({"company": "Database commit", "status": "FAILED", "jobs_found": 0, "message": f"Failed to commit {len(new_jobs)} scraped job(s) to the database."})
-            new_jobs.clear()
-
-    # BULK AI FILTERING & COMMIT
-    logger.info(f"Total raw candidates collected across all companies: {len(all_new_jobs)}")
-
-    # Phase 2: AI Bulk Evaluation
-    try:
-        if all_new_jobs:
-            bulk_evaluate_jobs(db, user_id, all_new_jobs)
-    except Exception as e:
-        logger.error(f"Error during bulk AI evaluation: {e}")
-
-    logger.info("=" * 60)
-    try:
-        from .health_manager import update_health
-        update_health(db, user_id, company_logs)
-    except Exception as e:
-        logger.error(f"Error updating health status: {e}")
-        
+    
     return all_new_jobs, company_logs

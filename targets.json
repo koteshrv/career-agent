@@ -1,5 +1,41 @@
 [
   {
+  "company": "abc",
+  "type": "playwright",
+  "url": "https://ibegin.tcsapps.com/candidate/next/en-IN/jobs/search",
+  "job_url_pattern": "/candidate/next/en-IN/jobs/\\d+J",
+  "steps": [
+    {
+      "action": "type",
+      "selector": "[data-testid='search-input']",
+      "value": "{keyword}"
+    },
+    {
+      "action": "click",
+      "selector": "[data-testid='search-button']"
+    }
+  ],
+  "next_btn_selector": "button[aria-label='Next page']"
+},
+{
+  "company": "infosys-test",
+  "type": "playwright",
+  "url": "https://career.infosys.com/jobs?companyhiringtype=IL&countrycode=IN",
+  "job_url_pattern": "/jobdesc?jobReferenceCode={id}&sourceId=1",
+  "steps": [
+    {
+      "action": "type",
+      "selector": "#mat-input-0",
+      "value": "{keyword}"
+    },
+    {
+      "action": "click",
+      "selector": "button.DSA_wb_mat-suffix"
+    }
+  ],
+  "next_btn_selector": "img[src*=icon-next-arrow]"
+},
+  {
     "company": "Meesho",
     "type": "lever",
     "api_board_token": "meesho"
