@@ -458,11 +458,16 @@ async def fetch_job_descriptions_batch(urls: List[str], headless: bool = True) -
 
                     await page.wait_for_timeout(3000)
 
-                    await page.evaluate('''() => {
-                        document.querySelectorAll('script, style, noscript, nav, header, footer, iframe, svg, [role="navigation"], [role="banner"], [role="contentinfo"]').forEach(el => el.remove());
-                    }''')
-
-                    text = await page.locator("body").inner_text(timeout=5000)
+                    text = await page.evaluate('''() => {
+                const root = document.querySelector('main, [role="main"], article') || document.body;
+                let text = '';
+                if (root) {
+                    const clone = root.cloneNode(true);
+                    clone.querySelectorAll('script, style, nav, header, footer, noscript, iframe, svg, [role="navigation"], [role="banner"], [role="contentinfo"]').forEach(el => el.remove());
+                    text = clone.innerText || '';
+                }
+                return text;
+            }''')
                     clean_text = re.sub(r'\\n+', '\\n\\n', text).strip()
 
                     if "Cloudflare Ray ID:" in clean_text or "Sorry, you have been blocked" in clean_text:
@@ -506,7 +511,7 @@ async def fetch_job_description(url: str) -> str:
                 "--disable-reading-from-canvas",
                 "--disable-webgl"
             ]
-            browser = await p.chromium.launch(headless=False, args=args)
+            browser = await p.chromium.launch(headless=True, args=args)
             context = await browser.new_context(
                 viewport={"width": 1280, "height": 800},
                 user_agent=ua.random if ua else None
@@ -517,12 +522,16 @@ async def fetch_job_description(url: str) -> str:
             await page.goto(url, wait_until="domcontentloaded", timeout=20000)
 
             # Remove scripts, styles, and nav elements to get clean text
-            await page.evaluate('''() => {
-                document.querySelectorAll('script, style, noscript, nav, header, footer, iframe, svg').forEach(el => el.remove());
+            text = await page.evaluate('''() => {
+                const root = document.querySelector('main, [role="main"], article') || document.body;
+                let text = '';
+                if (root) {
+                    const clone = root.cloneNode(true);
+                    clone.querySelectorAll('script, style, nav, header, footer, noscript, iframe, svg, [role="navigation"], [role="banner"], [role="contentinfo"]').forEach(el => el.remove());
+                    text = clone.innerText || '';
+                }
+                return text;
             }''')
-
-            # Extract text from body
-            text = await page.locator("body").inner_text()
             await browser.close()
 
             # Clean up excessive whitespace

@@ -206,9 +206,6 @@ export function SettingsPage() {
   const [uploading, setUploading] = useState(false)
   const [resumes, setResumes] = useState<string[]>([])
   const [newSkill, setNewSkill] = useState("")
-  const [users, setUsers] = useState<any[]>([])
-  const [isAdmin, setIsAdmin] = useState(false)
-
   const requestedTab = searchParams.get("tab") as TabId | null
   const [activeTab, setActiveTab] = useState<TabId>(requestedTab || "jobsearch")
   const setTab = (id: TabId) => { setActiveTab(id); setSearchParams(id === "jobsearch" ? {} : { tab: id }) }
@@ -244,6 +241,9 @@ export function SettingsPage() {
     const updatedSettings = { ...settings, extracted_keywords: JSON.stringify(updatedKws) }
     setSettings(updatedSettings)
   }
+  const refreshResumes = () => {
+    api.get("/api/resumes").then(res => setResumes(res.data.resumes || []))
+  }
 
   useEffect(() => {
     api.get("/api/settings").then(res => {
@@ -251,31 +251,9 @@ export function SettingsPage() {
       setLoading(false)
     })
     refreshResumes()
-    refreshUsers()
-  }, [])
+    }, [])
 
-  // GET /api/users is admin-only (403 for everyone else) — a non-admin just never sees
-  // this section, same pattern App.tsx's Layout already uses for its own settings fetch.
-  const refreshUsers = () => {
-    api.get("/api/users")
-      .then(res => { setUsers(res.data); setIsAdmin(true) })
-      .catch(() => setIsAdmin(false))
-  }
-
-  const approveUser = async (id: number) => {
-    await api.post(`/api/users/${id}/approve`)
-    refreshUsers()
-  }
-
-  const rejectUser = async (id: number) => {
-    await api.post(`/api/users/${id}/reject`)
-    refreshUsers()
-  }
-
-  const refreshResumes = () => {
-    api.get("/api/resumes").then(res => setResumes(res.data.resumes || []))
-  }
-
+  
   const [cleaningTrash, setCleaningTrash] = useState(false)
   const [confirmTrash, setConfirmTrash] = useState(false)
 
@@ -339,7 +317,7 @@ export function SettingsPage() {
     </div>
   )
 
-  const visibleTabs = isAdmin ? [...TABS, { id: "members" as const, label: "Members" }] : TABS
+  const visibleTabs = TABS
   const showSaveButton = activeTab !== "health" && activeTab !== "members"
 
   return (
@@ -382,6 +360,126 @@ export function SettingsPage() {
         {activeTab === "jobsearch" && (
           <>
             <ScrapeConfig settings={settings} onChange={setSettings} />
+
+            {/* Autonomous Agent Section */}
+            <div className="bg-card rounded-lg border border-border p-6 space-y-4 mb-6 mt-6">
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-1">Autonomous Agent (Beta)</h3>
+                <p className="text-sm text-muted-foreground">Test the self-driving Playwright agent that uses Gemini to navigate search boxes and click buttons automatically.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Target URL</label>
+                  <input
+                    type="text"
+                    id="agent_url"
+                    placeholder="https://careers.google.com"
+                    className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Target Keyword</label>
+                  <input
+                    type="text"
+                    id="agent_keyword"
+                    placeholder="Software Engineer"
+                    className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">This runs a headless browser and LLM loop. May take 20-30 seconds.</p>
+                <Button 
+                  onClick={async () => {
+                    const url = (document.getElementById("agent_url") as HTMLInputElement).value
+                    const keyword = (document.getElementById("agent_keyword") as HTMLInputElement).value
+                    if (!url || !keyword) {
+                      toast("Please enter both URL and keyword", "error")
+                      return
+                    }
+                    toast("Agent is navigating...", "success")
+                    try {
+                      const res = await api.post("/api/jobs/agent-test", { url, keyword })
+                      toast(`Agent finished! Found ${res.data.found_jobs?.length || 0} jobs.`, "success")
+                      console.log("Agent results:", res.data.found_jobs)
+                    } catch (e: any) {
+                      toast(e.response?.data?.detail || "Agent failed.", "error")
+                    }
+                  }}
+                  className="bg-primary hover:bg-primary/80 text-foreground h-8 text-xs px-4"
+                >
+                  Test Autonomous Agent
+                </Button>
+              </div>
+            </div>
+
+            {/* Global Search Section */}
+            <div className="bg-card rounded-lg border border-border p-6 space-y-4 mb-6">
+              <div>
+                <h3 className="text-base font-semibold text-foreground mb-1">Reverse ATS Global Search (Beta)</h3>
+                <p className="text-sm text-muted-foreground">Automatically discover fresh postings across thousands of companies on Greenhouse and Lever.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="global_search_enabled"
+                  checked={settings.global_search_enabled || false}
+                  onChange={e => setSettings({...settings, global_search_enabled: e.target.checked})}
+                  className="w-4 h-4 text-primary bg-secondary border-border rounded focus:ring-primary focus:ring-2"
+                />
+                <label htmlFor="global_search_enabled" className="text-sm font-medium text-foreground">
+                  Enable Global Search
+                </label>
+              </div>
+
+              {settings.global_search_enabled && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Target Titles (comma-separated)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Software Engineer, Frontend"
+                      value={settings.global_search_titles || ""}
+                      onChange={e => setSettings({...settings, global_search_titles: e.target.value})}
+                      className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Target Locations (comma-separated)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Remote, New York"
+                      value={settings.global_search_locations || ""}
+                      onChange={e => setSettings({...settings, global_search_locations: e.target.value})}
+                      className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+              )}
+              {settings.global_search_enabled && (
+                <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Run a quick test scan on 10 random ATS boards to see what it finds.</p>
+                  <Button 
+                    onClick={async () => {
+                      toast("Running test global scan...", "success")
+                      try {
+                        const res = await api.post("/api/jobs/global-search-test")
+                        toast(`Scan complete! Found ${res.data.found_jobs} jobs.`, "success")
+                        console.log("Global search sample:", res.data.sample)
+                      } catch (e: any) {
+                        toast(e.response?.data?.detail || "Global search failed.", "error")
+                      }
+                    }}
+                    className="bg-primary hover:bg-primary/80 text-foreground h-8 text-xs px-4"
+                  >
+                    Test Global Search
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <div className="bg-card rounded-lg border border-border p-6 space-y-4">
               <div>
@@ -701,7 +799,7 @@ export function SettingsPage() {
             <p className="text-xs text-muted-foreground -mt-2">
               {settings.career_agent_account_email
                 ? "Sync unpushed jobs and pull new jobs from the community pool every 10 minutes."
-                : "Permanently disabled for local users. Connect a Google/GitHub account to enable."}
+                : "Disabled."}
             </p>
 
             <div className="flex items-center gap-3 pt-2">
@@ -748,46 +846,6 @@ export function SettingsPage() {
 
         {activeTab === "health" && <SystemHealth />}
 
-        {activeTab === "members" && isAdmin && (
-          <div className="bg-card rounded-lg border border-border p-6 space-y-4">
-            <h3 className="text-base font-semibold text-foreground mb-1">Members</h3>
-            <p className="text-xs text-muted-foreground -mt-2">People who've signed in with Google/GitHub. New sign-ins need your approval before they can access the app.</p>
-            {users.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No sign-in requests yet.</p>
-            ) : (
-              <div className="space-y-2">
-                {users.map(u => (
-                  <div key={u.id} className="flex items-center justify-between bg-secondary border border-border rounded-md px-4 py-2.5">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-sm font-medium text-foreground">{u.email || u.username}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-secondary border border-border font-medium text-muted-foreground">
-                          {u.role.charAt(0) + u.role.slice(1).toLowerCase()}
-                        </span>
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-medium ${u.status === 'ACTIVE' ? 'bg-status-interviewing/10 text-status-interviewing border-status-interviewing/20' : u.status === 'PENDING' ? 'bg-status-new/10 text-status-new border-status-new/20' : 'bg-destructive/10 text-destructive border-destructive/20'}`}>
-                          {u.status.charAt(0) + u.status.slice(1).toLowerCase()}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {u.status === "PENDING" && (
-                        <>
-                          <Button onClick={() => rejectUser(u.id)} className="bg-secondary text-foreground hover:bg-accent h-8 px-3 text-xs border border-border">Reject</Button>
-                          <Button onClick={() => approveUser(u.id)} className="bg-primary text-primary-foreground hover:opacity-90 h-8 px-3 text-xs">Approve</Button>
-                        </>
-                      )}
-                      {u.status === "ACTIVE" && (
-                        <button onClick={() => rejectUser(u.id)} className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors" title="Revoke Access">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   )

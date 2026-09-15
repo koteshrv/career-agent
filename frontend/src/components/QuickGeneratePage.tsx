@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react"
 import { api, generateMaterialsStream } from "@/lib/api"
 import { Button } from "@/components/ui/button"
-import { Download, Copy, Check, Sparkles, AlertCircle, FilePlus, PenTool } from "lucide-react"
+import { Download, Copy, Check, Sparkles, AlertCircle, FilePlus, PenTool, Link } from "lucide-react"
 
 export function QuickGeneratePage() {
   const [company, setCompany] = useState("")
@@ -21,6 +21,8 @@ export function QuickGeneratePage() {
   const [copiedCL, setCopiedCL] = useState(false)
   const [copiedResume, setCopiedResume] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [extractUrl, setExtractUrl] = useState('')
+  const [extracting, setExtracting] = useState(false)
   
   const [logs, setLogs] = useState<string[]>([])
   const logsEndRef = useRef<HTMLDivElement>(null)
@@ -128,6 +130,44 @@ export function QuickGeneratePage() {
             <div className="text-sm text-destructive">{error}</div>
           </div>
         )}
+
+        
+        {/* Extract from URL */}
+        <div className="mb-6 pb-6 border-b border-border">
+          <h3 className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2">
+            <Link className="w-4 h-4 text-primary" /> Extract from URL (Fallback Scraper)
+          </h3>
+          <p className="text-xs text-muted-foreground mb-3">Paste a job posting URL to automatically extract the title and description using Playwright and AI.</p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="https://company.com/careers/123"
+              value={extractUrl}
+              onChange={e => setExtractUrl(e.target.value)}
+              className="flex-1 bg-secondary border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+            <Button 
+              onClick={async () => {
+                if (!extractUrl) return
+                setExtracting(true)
+                try {
+                  // Assuming `toast` might not be defined in this file, we can just use setError or standard alert, or see if it has toast.
+                  // Wait, useToast is not imported in QuickGeneratePage? 
+                  const res = await api.post("/api/jobs/extract", { url: extractUrl })
+                  if (res.data.title) setTitle(res.data.title)
+                  if (res.data.description) setDescription(res.data.description)
+                } catch (e: any) {
+                  setError("Extraction failed: " + (e.response?.data?.detail || e.message))
+                }
+                setExtracting(false)
+              }}
+              disabled={extracting || !extractUrl}
+              className="bg-primary hover:bg-primary/80 text-foreground"
+            >
+              {extracting ? "Extracting..." : "Extract"}
+            </Button>
+          </div>
+        </div>
 
         <div className="space-y-5">
           <div className="grid grid-cols-2 gap-4">

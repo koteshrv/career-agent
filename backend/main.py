@@ -172,7 +172,7 @@ def health_check():
 
 # /api/ws/logs is NOT listed here — BaseHTTPMiddleware (below) never sees WebSocket scopes
 # at all regardless of this set, so it's authenticated separately inside websocket_logs().
-PUBLIC_PATHS = {"/api/login", "/api/auth/sso", "/healthz"}
+PUBLIC_PATHS = {"/api/login", "/healthz"}
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -263,10 +263,11 @@ async def websocket_logs(websocket: WebSocket, token: str = ""):
         manager.disconnect(websocket)
 
 # Include Modular Routers
-from .routers import jobs, settings, generation, history, resumes, extension, knowledge
+from .routers import jobs, settings, generation, playbooks, history, resumes, extension, knowledge
 app.include_router(jobs.router)
 app.include_router(settings.router)
 app.include_router(generation.router)
+app.include_router(playbooks.router)
 app.include_router(history.router)
 app.include_router(resumes.router)
 app.include_router(extension.router)
@@ -275,5 +276,3 @@ from .routers import health
 app.include_router(health.router)
 from .routers import crowdsourcing as crowdsourcing_router
 app.include_router(crowdsourcing_router.router)
-from .routers import users as users_router
-app.include_router(users_router.router)

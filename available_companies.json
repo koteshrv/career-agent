@@ -1,0 +1,602 @@
+[
+  {
+    "company": "Anthropic",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/anthropic/jobs"
+  },
+  {
+    "company": "OpenAI",
+    "type": "universal",
+    "url": "https://openai.com/careers"
+  },
+  {
+    "company": "PolyAI",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/polyai/jobs"
+  },
+  {
+    "company": "Parloa",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/parloa/jobs"
+  },
+  {
+    "company": "Intercom",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/intercom/jobs"
+  },
+  {
+    "company": "Hume AI",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/humeai/jobs"
+  },
+  {
+    "company": "ElevenLabs",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/elevenlabs"
+  },
+  {
+    "company": "Deepgram",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/deepgram"
+  },
+  {
+    "company": "Vapi",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/vapi"
+  },
+  {
+    "company": "Bland AI",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/bland"
+  },
+  {
+    "company": "Retool",
+    "type": "universal",
+    "url": "https://jobs.gem.com/retool"
+  },
+  {
+    "company": "Airtable",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/airtable/jobs"
+  },
+  {
+    "company": "Vercel",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/vercel/jobs"
+  },
+  {
+    "company": "Temporal",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/temporal/jobs"
+  },
+  {
+    "company": "Arize AI",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/arizeai/jobs"
+  },
+  {
+    "company": "RunPod",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/runpod/jobs"
+  },
+  {
+    "company": "Weights & Biases (CoreWeave)",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/coreweave/jobs"
+  },
+  {
+    "company": "Glean",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/gleanwork/jobs"
+  },
+  {
+    "company": "Ada",
+    "type": "universal",
+    "url": "https://job-boards.greenhouse.io/ada"
+  },
+  {
+    "company": "LivePerson",
+    "type": "universal",
+    "url": "https://liveperson.com/company/careers"
+  },
+  {
+    "company": "Sierra",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/sierra"
+  },
+  {
+    "company": "Decagon",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/decagon"
+  },
+  {
+    "company": "Talkdesk",
+    "type": "universal",
+    "url": "https://www.talkdesk.com/careers"
+  },
+  {
+    "company": "Twilio",
+    "type": "universal",
+    "url": "https://www.twilio.com/en-us/company/jobs"
+  },
+  {
+    "company": "Dialpad",
+    "type": "universal",
+    "url": "https://www.dialpad.com/careers"
+  },
+  {
+    "company": "Gong",
+    "type": "universal",
+    "url": "https://www.gong.io/careers"
+  },
+  {
+    "company": "Genesys",
+    "type": "universal",
+    "url": "https://www.genesys.com/careers"
+  },
+  {
+    "company": "Salesforce",
+    "type": "universal",
+    "url": "https://careers.salesforce.com"
+  },
+  {
+    "company": "Langfuse",
+    "type": "universal",
+    "url": "https://langfuse.com/careers"
+  },
+  {
+    "company": "Lindy",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/lindy"
+  },
+  {
+    "company": "Cognigy",
+    "type": "universal",
+    "url": "https://careers.cognigy.com"
+  },
+  {
+    "company": "Speechmatics",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/speechmatics/jobs"
+  },
+  {
+    "company": "n8n",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/n8n"
+  },
+  {
+    "company": "Zapier",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/zapier"
+  },
+  {
+    "company": "Make.com (Celonis)",
+    "type": "universal",
+    "url": "https://www.make.com/en/careers"
+  },
+  {
+    "company": "Boomi",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/boomilp/jobs"
+  },
+  {
+    "company": "Cohere",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/cohere"
+  },
+  {
+    "company": "LangChain",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/langchain"
+  },
+  {
+    "company": "Pinecone",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/pinecone"
+  },
+  {
+    "company": "Mistral AI",
+    "type": "universal",
+    "url": "https://jobs.lever.co/mistral"
+  },
+  {
+    "company": "Palantir",
+    "type": "universal",
+    "url": "https://jobs.lever.co/palantir"
+  },
+  {
+    "company": "Later",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/later/jobs"
+  },
+  {
+    "company": "Safari AI",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/safariai/jobs"
+  },
+  {
+    "company": "Hootsuite",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/hootsuite/jobs"
+  },
+  {
+    "company": "Klue",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/klue"
+  },
+  {
+    "company": "Glacis AI",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/glacis-ai"
+  },
+  {
+    "company": "Sanctuary AI",
+    "type": "universal",
+    "url": "https://jobs.lever.co/sanctuary"
+  },
+  {
+    "company": "Semios",
+    "type": "universal",
+    "url": "https://apply.workable.com/semios/"
+  },
+  {
+    "company": "Factorial",
+    "type": "universal",
+    "url": "https://job-boards.greenhouse.io/factorial"
+  },
+  {
+    "company": "Attio",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/attio"
+  },
+  {
+    "company": "Tinybird",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/tinybird"
+  },
+  {
+    "company": "Clarity AI",
+    "type": "universal",
+    "url": "https://jobs.lever.co/clarity-ai"
+  },
+  {
+    "company": "Travelperk",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/travelperk"
+  },
+  {
+    "company": "Aleph Alpha",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/AlephAlpha"
+  },
+  {
+    "company": "DeepL",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/DeepL"
+  },
+  {
+    "company": "Black Forest Labs",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/blackforestlabs/jobs"
+  },
+  {
+    "company": "Helsing",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/helsing/jobs"
+  },
+  {
+    "company": "Celonis",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/celonis/jobs"
+  },
+  {
+    "company": "Contentful",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/contentful/jobs"
+  },
+  {
+    "company": "GetYourGuide",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/getyourguide/jobs"
+  },
+  {
+    "company": "HelloFresh",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/hellofresh/jobs"
+  },
+  {
+    "company": "Allianz",
+    "type": "universal",
+    "url": "https://careers.allianz.com"
+  },
+  {
+    "company": "N26",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/n26/jobs"
+  },
+  {
+    "company": "Trade Republic",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/traderepublicbank/jobs"
+  },
+  {
+    "company": "SumUp",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/sumup/jobs"
+  },
+  {
+    "company": "Qonto",
+    "type": "universal",
+    "url": "https://jobs.lever.co/qonto"
+  },
+  {
+    "company": "Forto",
+    "type": "universal",
+    "url": "https://jobs.lever.co/forto"
+  },
+  {
+    "company": "Nortal",
+    "type": "universal",
+    "url": "https://careers-en-nortal.icims.com/jobs/search?ss=1"
+  },
+  {
+    "company": "Lakera",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/lakera.ai"
+  },
+  {
+    "company": "Scandit",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/scandit/jobs"
+  },
+  {
+    "company": "Cradle",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/cradlebio"
+  },
+  {
+    "company": "Hugging Face",
+    "type": "universal",
+    "url": "https://apply.workable.com/huggingface/"
+  },
+  {
+    "company": "Photoroom",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/photoroom"
+  },
+  {
+    "company": "Pigment",
+    "type": "universal",
+    "url": "https://jobs.lever.co/pigment"
+  },
+  {
+    "company": "Diabolocom",
+    "type": "universal",
+    "url": "https://jobs.eu.lever.co/diabolocom"
+  },
+  {
+    "company": "Wayve",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/wayve/jobs"
+  },
+  {
+    "company": "Isomorphic Labs",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/isomorphiclabs/jobs"
+  },
+  {
+    "company": "PhysicsX",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/physicsx/jobs"
+  },
+  {
+    "company": "Stability AI",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/stabilityai/jobs"
+  },
+  {
+    "company": "Synthesia",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/synthesia"
+  },
+  {
+    "company": "Faculty",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/faculty"
+  },
+  {
+    "company": "Causaly",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/causaly"
+  },
+  {
+    "company": "Lovable",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/lovable"
+  },
+  {
+    "company": "Legora",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/legora"
+  },
+  {
+    "company": "Spotify",
+    "type": "universal",
+    "url": "https://jobs.lever.co/spotify"
+  },
+  {
+    "company": "Vinted",
+    "type": "universal",
+    "url": "https://jobs.lever.co/vinted"
+  },
+  {
+    "company": "Corti",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/corti"
+  },
+  {
+    "company": "Pleo",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/pleo"
+  },
+  {
+    "company": "Templafy",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/templafy/jobs"
+  },
+  {
+    "company": "Amplemarket",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/amplemarket/jobs"
+  },
+  {
+    "company": "Perplexity",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/perplexity"
+  },
+  {
+    "company": "Clay Labs",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/claylabs"
+  },
+  {
+    "company": "Runway",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/runwayml/jobs"
+  },
+  {
+    "company": "Hightouch",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/hightouch/jobs"
+  },
+  {
+    "company": "WorkOS",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/workos"
+  },
+  {
+    "company": "Supabase",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/supabase"
+  },
+  {
+    "company": "Resend",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/resend"
+  },
+  {
+    "company": "Clerk",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/clerk"
+  },
+  {
+    "company": "Inngest",
+    "type": "universal",
+    "url": "https://jobs.ashbyhq.com/inngest"
+  },
+  {
+    "company": "PlanetScale",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/planetscale/jobs"
+  },
+  {
+    "company": "Zep AI",
+    "type": "universal",
+    "url": "https://www.getzep.com/careers"
+  },
+  {
+    "company": "Maxim AI",
+    "type": "universal",
+    "url": "https://www.getmaxim.ai/careers"
+  },
+  {
+    "company": "Trendyol",
+    "type": "universal",
+    "url": "https://www.trendyol.com/kariyerimiz"
+  },
+  {
+    "company": "Hepsiburada",
+    "type": "universal",
+    "url": "https://www.hepsiburada.com/kariyer"
+  },
+  {
+    "company": "Getir",
+    "type": "universal",
+    "url": "https://jobs.lever.co/getir"
+  },
+  {
+    "company": "Insider",
+    "type": "universal",
+    "url": "https://useinsider.com/careers"
+  },
+  {
+    "company": "Dream Games",
+    "type": "universal",
+    "url": "https://www.dreamgames.com/careers"
+  },
+  {
+    "company": "Peak Games (Zynga)",
+    "type": "universal",
+    "url": "https://www.peakgames.net/en/career"
+  },
+  {
+    "company": "Yemeksepeti (Delivery Hero)",
+    "type": "universal",
+    "url": "https://www.yemeksepeti.com/kariyer"
+  },
+  {
+    "company": "Sahibinden.com",
+    "type": "universal",
+    "url": "https://www.sahibinden.com/kariyer"
+  },
+  {
+    "company": "Garanti BBVA Technology",
+    "type": "universal",
+    "url": "https://www.garantibbvateknoloji.com.tr/kariyer"
+  },
+  {
+    "company": "Akbank Tech",
+    "type": "universal",
+    "url": "https://www.akbank.com/tr-tr/sayfalar/kariyer.aspx"
+  },
+  {
+    "company": "Turkcell",
+    "type": "universal",
+    "url": "https://kariyer.turkcell.com.tr"
+  },
+  {
+    "company": "Iyzico (PayU)",
+    "type": "universal",
+    "url": "https://iyzico.com/kariyer"
+  },
+  {
+    "company": "Papara",
+    "type": "universal",
+    "url": "https://papara.com/kariyer"
+  },
+  {
+    "company": "Craftgate",
+    "type": "universal",
+    "url": "https://craftgate.io/career"
+  },
+  {
+    "company": "n11.com (Do\u011fu\u015f)",
+    "type": "universal",
+    "url": "https://www.n11.com/kurumsal/kariyer"
+  },
+  {
+    "company": "Moniepoint",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/moniepoint/jobs"
+  },
+  {
+    "company": "Jumia",
+    "type": "universal",
+    "url": "https://boards-api.greenhouse.io/v1/boards/jumia/jobs"
+  },
+  {
+    "company": "Andela",
+    "type": "universal",
+    "url": "https://api.ashbyhq.com/posting-api/job-board/andela"
+  }
+]
