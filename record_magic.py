@@ -83,7 +83,26 @@ def smart_diff_selector(prev_el: dict, next_el: dict) -> str:
 def url_to_regex(href: str) -> str:
     """Turn a sample job URL path into a regex pattern."""
     path = urlparse(href).path or href
-    return re.sub(r'\d+', r'\\d+', path)
+    
+    if path.endswith('/'):
+        path = path[:-1]
+        
+    # 1. Replace all numbers with \d+
+    path = re.sub(r'\d+', r'\\d+', path)
+    
+    # 2. Replace any job-title slugs (words with hyphens) with a generic catch-all
+    segments = path.split('/')
+    for i in range(len(segments)):
+        seg = segments[i]
+        if seg.count('-') >= 1 and r'\d+' not in seg:
+            # Purely alphabetic slug (e.g. software-engineer)
+            segments[i] = r'[a-zA-Z0-9_-]+'
+        elif r'\d+' in seg and seg.count('-') >= 1:
+            # Slug containing ID (e.g. req-1234-engineer or r-1234)
+            segments[i] = r'[a-zA-Z0-9_.-]*?\\d+[a-zA-Z0-9_.-]*'
+            
+    pattern = '/'.join(segments)
+    return pattern + r'/?'
 
 # ── JavaScript snippets injected into the page ─────────────────────────────────
 
@@ -316,72 +335,115 @@ async def run_recorder(company: str, url: str) -> dict:
         ctx     = await browser.new_context()
         page    = await ctx.new_page()
 
-# ── Phase 1: Capture Search Box ─────────────────────────────────────────
-        print("\n[1/4] Click the Search Box where keywords are typed.")
-        print("      If no search box is needed, click Done to skip.\n")
+# ── Smart URL Deduction Phase ───────────────────────────────────────────
+        print("\n[1/4] Smart Search Deduction")
+        print("      Perform a search for 'engineer' manually on the website.")
+        print("      Wait for the results to load, then click Done.\n")
         
         await page.goto(url, wait_until="domcontentloaded")
         await page.wait_for_timeout(2000)
         
         await page.evaluate(overlay_js(
-            "🔍 <b>Phase 1 — Search Box</b><br>"
-            "Click the <b>Search Input Box</b> on the page.<br>"
-            "If none exists, click <b>Done</b> to skip."
+            "🔍 <b>Phase 1 — Smart Search Deduction</b><br>"
+            "Manually search for <b>engineer</b> (and optionally location).<br>"
+            "Wait for results, then click <b>Done</b>."
         ))
-        await page.evaluate("() => { window.__ca_done = false; }")
-        await page.evaluate(INTERCEPT_SEARCH_BOX_JS)
-
-        search_box_sel = None
+        
+                # Safely evaluate and handle page navigations
         while True:
-            cap  = await page.evaluate("() => window.__ca_captured || null")
-            done = await page.evaluate("() => !!window.__ca_done")
-            if cap:
-                search_box_sel = best_selector(json.loads(cap))
-                print(f"✅ Search Box: {search_box_sel}")
-                break
-            if done:
-                print("⏭️  Skipped search box.")
-                break
-            await asyncio.sleep(0.4)
-
-        # ── Phase 2: Capture Search Button ──────────────────────────────────────
+            try:
+                done = await page.evaluate("() => !!window.__ca_done")
+                if done:
+                    break
+                # Auto-heal: If the page reloads, the overlay disappears. Re-inject it!
+                has_overlay = await page.evaluate("() => !!document.getElementById('__ca_overlay')")
+                if not has_overlay:
+                    print("🔄 Page navigation detected or overlay missing. Re-injecting...")
+                    await page.wait_for_load_state("domcontentloaded", timeout=5000)
+                    await page.evaluate(overlay_js(
+                        "🔍 <b>Phase 1 — Smart Search Deduction</b><br>"
+                        "Wait for results, then click <b>Done</b>."
+                    ))
+            except Exception:
+                # If page is actively navigating, page.evaluate throws an error. Ignore and retry.
+                pass
+            await asyncio.sleep(0.5)
+            
+        current_url = page.url
+        search_box_sel = None
         search_btn_sel = None
-        if search_box_sel:
-            print("\n[2/4] Click the Search/Submit Button.")
+        
+        if "engineer" in current_url.lower():
+            print(f"\n✅ Awesome! The URL changed to include parameters: {current_url}")
+            # Replace engineer with {keyword} ignoring case
+            import re
+            smart_url = re.sub(r'engineer', '{keyword}', current_url, flags=re.IGNORECASE)
+            
+            # Also check if they passed 'India' as a location filter!
+            if "india" in smart_url.lower():
+                smart_url = re.sub(r'india', '{location}', smart_url, flags=re.IGNORECASE)
+                print("✅ Detected location parameter! Added {location} to the template.")
+                
+            url = smart_url  # Update the base URL to our smart URL!
+            print(f"✅ Generated Smart URL: {url}")
+            
+            # Show a success overlay to the user so they know what happened!
             await page.evaluate(overlay_js(
-                "🔘 <b>Phase 2 — Search Button</b><br>"
-                "Click the <b>Search Button</b>.<br>"
+                "✨ <b>URL Injection Detected!</b><br>"
+                "We noticed the URL updated with your keyword.<br>"
+                "Skipping UI steps since we can automate this natively!<br>"
+                "<i>Moving to Phase 3...</i>"
+            ))
+            await page.wait_for_timeout(4000)
+            print("⏭️  Skipping UI steps since URL injection is supported!")
+        else:
+            print("\n⚠️ URL did not change. The site hides search parameters (SPA).")
+            print("   Falling back to UI recording steps...")
+            
+            # ── Phase 1B: Capture Search Box ──────────────────────────────────────
+            print("\n[Fallback A] Click the Search Box.")
+            await page.evaluate(overlay_js(
+                "⚠️ <b>Fallback — Search Box</b><br>"
+                "Click the <b>Search Input Box</b>.<br>"
                 "Will auto-advance when captured."
             ))
-            await page.evaluate(INTERCEPT_SEARCH_BTN_JS)
+            await page.evaluate("() => { window.__ca_captured = null; window.__ca_done = false; }")
+            await page.evaluate(INTERCEPT_SEARCH_BOX_JS)
 
-            await page.evaluate("() => { window.__ca_done = false; }")
             while True:
-                cap = await page.evaluate("() => window.__ca_captured || null")
+                cap  = await page.evaluate("() => window.__ca_captured || null")
                 done = await page.evaluate("() => !!window.__ca_done")
                 if cap:
-                    search_btn_sel = best_selector(json.loads(cap))
-                    print(f"✅ Search Button: {search_btn_sel}")
+                    search_box_sel = best_selector(json.loads(cap))
+                    print(f"✅ Search Box: {search_box_sel}")
                     break
                 if done:
-                    print("⏭️  Skipped search button.")
+                    print("⏭️  Skipped search box.")
                     break
                 await asyncio.sleep(0.4)
-                
-            # Actually perform a search to load the results for the next phase
-            try:
-                await page.fill(search_box_sel, "engineer")
-            except Exception:
-                # If the selector is not a standard <input> (e.g. an Angular custom element wrapper),
-                # fallback to clicking it and sending raw keystrokes
-                await page.click(search_box_sel)
-                await page.keyboard.type("engineer")
-            
-            if search_btn_sel:
-                await page.click(search_btn_sel)
-            else:
-                await page.keyboard.press("Enter")
-            await page.wait_for_timeout(3000)
+
+            # ── Phase 1C: Capture Search Button ───────────────────────────────────
+            if search_box_sel:
+                print("\n[Fallback B] Click the Search/Submit Button.")
+                await page.evaluate(overlay_js(
+                    "🔘 <b>Fallback — Search Button</b><br>"
+                    "Click the <b>Search Button</b>.<br>"
+                    "Will auto-advance when captured."
+                ))
+                await page.evaluate("() => { window.__ca_captured = null; window.__ca_done = false; }")
+                await page.evaluate(INTERCEPT_SEARCH_BTN_JS)
+
+                while True:
+                    cap = await page.evaluate("() => window.__ca_captured || null")
+                    done = await page.evaluate("() => !!window.__ca_done")
+                    if cap:
+                        search_btn_sel = best_selector(json.loads(cap))
+                        print(f"✅ Search Button: {search_btn_sel}")
+                        break
+                    if done:
+                        print("⏭️  Skipped search button.")
+                        break
+                    await asyncio.sleep(0.4)
 
         # ── Phase 3: Capture a job link ─────────────────────────────────────────
         print("\n[3/4] Click on any ONE job title to capture the URL pattern.\n")
