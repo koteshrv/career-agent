@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  Open-source AI-powered job search. Runs locally via Docker. Evaluates every job against your resume, generates tailored LaTeX CVs, and tracks your pipeline — completely autonomously in the background.
+  Open-source AI-powered job search. Runs locally via Docker. Evaluates every job against your resume, generates tailored LaTeX CVs, and tracks your pipeline — autonomously in the background.
 </p>
 
 <p align="center">

@@ -187,10 +187,46 @@ export default {
         referer: `${ep.jobBase}/`,
       },
     };
-    const makeBody = (offset) => JSON.stringify({ limit: PAGE_SIZE, offset, searchText: '', appliedFacets: {} });
+    const makeBody = (offset, appliedFacets = {}) => JSON.stringify({ limit: PAGE_SIZE, offset, searchText: ctx?.keyword || '', appliedFacets });
     const sinceMs = typeof ctx?.sinceMs === 'number' ? ctx.sinceMs : null;
 
-    const first = await fetchJsonWithRetry(ctx, ep.api, { ...postOpts, body: makeBody(0) }, RETRY_POLICY);
+    // 1. Initial Pre-Flight Request to grab Facets & First Page
+    let first = await fetchJsonWithRetry(ctx, ep.api, { ...postOpts, body: makeBody(0, {}) }, RETRY_POLICY);
+    
+    // 2. Dynamic Auto-Facet Mapping
+    let activeFacets = {};
+    if (ctx?.location && Array.isArray(first?.facets)) {
+        const targetLoc = ctx.location.toLowerCase();
+        let foundFacetId = null;
+        let foundFacetParam = null;
+        
+        for (const facet of first.facets) {
+            if (facet.facetParameter && facet.facetParameter.toLowerCase().includes("location")) {
+                if (Array.isArray(facet.values)) {
+                    for (const val of facet.values) {
+                        if (val.descriptor && val.descriptor.toLowerCase().includes(targetLoc)) {
+                            foundFacetId = val.id;
+                            foundFacetParam = facet.facetParameter;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (foundFacetId) break;
+        }
+        
+        if (foundFacetId) {
+            console.log(`\n🔥 WORKDAY AUTO-FACET: Mapped location '${ctx.location}' to facet ID '${foundFacetId}' on ${foundFacetParam}! 🔥\n`);
+            activeFacets[foundFacetParam] = [foundFacetId];
+            
+            // Re-fetch the first page using the newly discovered Facet ID
+            first = await fetchJsonWithRetry(ctx, ep.api, { ...postOpts, body: makeBody(0, activeFacets) }, RETRY_POLICY);
+        } else {
+            console.warn(`⚠️ WORKDAY AUTO-FACET: Could not find a facet matching '${ctx.location}'. Falling back to global search.`);
+        }
+    }
+
+    const jobs = parseWorkdayResponse(first, entry);
     const jobs = parseWorkdayResponse(first, entry);
 
     const total = typeof first?.total === 'number' ? first.total : null;
@@ -249,7 +285,7 @@ export default {
         await sleep(INTER_PAGE_DELAY_MS, ctx);
         let json;
         try {
-          json = await fetchJsonWithRetry(ctx, ep.api, { ...postOpts, body: makeBody(page * PAGE_SIZE) }, RETRY_POLICY);
+          json = await fetchJsonWithRetry(ctx, ep.api, { ...postOpts, body: makeBody(page * PAGE_SIZE, activeFacets) }, RETRY_POLICY);
         } catch (err) {
           const jobsSummary = `${jobs.length}${total !== null ? ` of ${total}` : ''} jobs`;
           // err.attempts (set by fetchJsonWithRetry) is the actual request count —
