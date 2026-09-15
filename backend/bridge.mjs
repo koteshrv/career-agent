@@ -19,7 +19,9 @@ async function main() {
     return;
   }
   
-  const ctx = makeHttpCtx();
+    const ctx = makeHttpCtx();
+  ctx.keyword = process.argv[3] || "";
+  ctx.location = process.argv[4] || "";
   try {
     const detectResult = providerDef.provider.detect ? providerDef.provider.detect(entry) : null;
     const resolvedEntry = detectResult ? { ...entry, ...detectResult } : entry;

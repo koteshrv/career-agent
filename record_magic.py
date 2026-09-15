@@ -100,13 +100,13 @@ def overlay_js(phase_html: str) -> str:
     const old = document.getElementById('__ca_overlay');
     if (old) old.remove();
     // Inject Inter font if not already present
-        if (!document.getElementById('__ca_font')) {
+        if (!document.getElementById('__ca_font')) {{
             const fontLink = document.createElement('link');
             fontLink.id = '__ca_font';
             fontLink.rel = 'stylesheet';
             fontLink.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap';
             document.head.appendChild(fontLink);
-        }
+        }}
 
         const box = document.createElement('div');
     box.id = '__ca_overlay';
