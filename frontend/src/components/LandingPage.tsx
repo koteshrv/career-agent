@@ -54,7 +54,7 @@ export function LandingPage() {
               <span className="text-primary italic">intact.</span>
             </h1>
             <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed font-light">
-              Open source AI-powered job search. Runs locally on your machine via Docker. Evaluates jobs against your resume, generates tailored LaTeX CVs, and tracks your pipeline — completely autonomously in the background.
+              Open source AI-powered job search. Runs locally on your machine via Docker. Evaluates jobs against your resume, generates tailored LaTeX CVs, and tracks your pipeline — autonomously in the background.
             </p>
           </motion.div>
 
