@@ -18,7 +18,7 @@ def process_universal_api(db: Session, user_id: int, target: dict, keywords: Lis
 
     try:
         # Call the Node.js bridge script
-                primary_keyword = keywords[0] if keywords else ""
+        primary_keyword = keywords[0] if keywords else ""
         primary_location = locations[0] if locations else ""
         result = subprocess.run(["node", "backend/bridge.mjs", url, primary_keyword, primary_location], capture_output=True, text=True, timeout=30)
         
