@@ -6,7 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from .. import crud, ai_agent, auth, models, rag_engine
+from .. import crud, auth, models
+from ..ai import ai_agent, rag_engine
 from ..database import get_db
 
 logger = logging.getLogger(__name__)

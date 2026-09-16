@@ -125,7 +125,8 @@ def list_context(user_id: int) -> List[Dict]:
 def retrieve_relevant_experience(user_id: int, job_description: str, top_k: int = 4, api_key: str = None) -> str:
     """Retrieves the most relevant experience chunks for a given job description."""
     if not api_key:
-        raise ValueError("API key is required for experience retrieval.")
+        logger.warning("No Gemini API key provided. Skipping RAG retrieval.")
+        return "" 
 
     collection = _get_collection(user_id)
     count = collection.count()
@@ -136,8 +137,12 @@ def retrieve_relevant_experience(user_id: int, job_description: str, top_k: int 
     if not job_description or not job_description.strip():
         return ""
 
-    query_embedding, query_model = get_embedding_with_model(job_description.strip(), api_key)
-    _warn_on_mixed_embedding_models(user_id, query_model)
+    try:
+        query_embedding, query_model = get_embedding_with_model(job_description.strip(), api_key)
+        _warn_on_mixed_embedding_models(user_id, query_model)
+    except Exception as e:
+        logger.warning(f"RAG embedding failed (likely invalid API key). Skipping RAG. Error: {e}")
+        return "" 
 
     results = collection.query(
         query_embeddings=[query_embedding],

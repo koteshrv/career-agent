@@ -15,7 +15,7 @@ class KnowledgeRequest(BaseModel):
 
 @router.get("")
 def list_knowledge(current_user: models.User = Depends(auth.get_current_user)):
-    from .. import rag_engine
+    from ..ai import rag_engine
     return rag_engine.list_context(current_user.id)
 
 @router.post("")
@@ -25,7 +25,7 @@ def add_knowledge(req: KnowledgeRequest, db: Session = Depends(get_db), current_
     if not api_key:
         raise HTTPException(status_code=400, detail="Gemini API key is required to add knowledge")
 
-    from .. import rag_engine
+    from ..ai import rag_engine
     try:
         # Automatically split massive pasted documents into chunks by double newlines
         chunks = [chunk.strip() for chunk in req.text.split("\n\n") if chunk.strip()]
@@ -43,7 +43,7 @@ def add_knowledge(req: KnowledgeRequest, db: Session = Depends(get_db), current_
 
 @router.delete("/{doc_id}")
 def delete_knowledge(doc_id: str, current_user: models.User = Depends(auth.get_current_user)):
-    from .. import rag_engine
+    from ..ai import rag_engine
     try:
         rag_engine.remove_context(current_user.id, doc_id)
         return {"success": True}

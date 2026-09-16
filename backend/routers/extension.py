@@ -5,7 +5,7 @@ from typing import List
 
 from .. import schemas, crud, auth, models, log_context
 from ..database import get_db
-from ..ai_agent import parse_job_page_title, sanitize_job_description, extract_job_details_from_description, batch_extract_job_details
+from ..ai.ai_agent import parse_job_page_title, sanitize_job_description, extract_job_details_from_description, batch_extract_job_details
 from ..scraper_core import record_job, bulk_evaluate_jobs
 
 logger = logging.getLogger(__name__)

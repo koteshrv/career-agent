@@ -108,8 +108,8 @@ def extract_resume_text(user_id: int, name: str = None) -> str:
 
 def record_token_usage(user_id: int, model_name: str, prompt_tokens: int, candidate_tokens: int):
     """Accrues Gemini API token usage per model in this user's own Settings row."""
-    from .database import SessionLocal
-    from . import models
+    from ..database import SessionLocal
+    from .. import models
     import json
     from datetime import date
 
@@ -166,7 +166,7 @@ def _generate(prompt: str, api_key: str = None, model_name: str = None, user_id:
     # If the caller passed an encrypted Fernet token directly, decrypt it.
     if resolved_key and isinstance(resolved_key, str) and resolved_key.startswith("gAAAAA"):
         try:
-            from .crypto import decrypt_value
+            from ..crypto import decrypt_value
             decrypted = decrypt_value(resolved_key)
             if decrypted:
                 resolved_key = decrypted
@@ -177,14 +177,14 @@ def _generate(prompt: str, api_key: str = None, model_name: str = None, user_id:
     # extraction) that don't have an already-resolved key/model handy — scoped to user_id
     # so this never reads a different user's Settings row.
     if (not resolved_key or not resolved_model) and user_id:
-        from .database import SessionLocal
-        from . import models
+        from ..database import SessionLocal
+        from .. import models
         db = SessionLocal()
         try:
             settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
             if settings:
                 if not resolved_key and settings.gemini_api_key:
-                    from .crypto import decrypt_value
+                    from ..crypto import decrypt_value
                     decrypted = decrypt_value(settings.gemini_api_key)
                     if decrypted:
                         resolved_key = decrypted
@@ -420,8 +420,8 @@ def _route_generation(prompt: str, mode: str, settings: any, is_tex: bool = Fals
 
 def _get_custom_guidelines(user_id: int) -> str:
     """Helper to fetch custom user guidelines from the Settings database."""
-    from .database import SessionLocal
-    from . import models
+    from ..database import SessionLocal
+    from .. import models
     db = SessionLocal()
     try:
         settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
@@ -448,8 +448,8 @@ async def generate_application_materials(job_title: str, company: str, location:
         yield json.dumps({"status": "error", "message": "No career context found. Please add your career history to the Knowledge Base first."}) + "\n"
         return
         
-    from .database import SessionLocal
-    from . import models
+    from ..database import SessionLocal
+    from .. import models
     db = SessionLocal()
     settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
     db.close()

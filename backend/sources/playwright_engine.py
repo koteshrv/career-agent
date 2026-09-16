@@ -6,7 +6,7 @@ import json
 from typing import List, Dict
 
 from markdownify import markdownify
-from ..ai_agent import _generate
+from ..ai.ai_agent import _generate
 
 
 import httpx

@@ -12,7 +12,7 @@ from .tasks import task_manager
 from typing import List
 from sqlalchemy.orm import Session
 
-from . import models, ai_agent
+from .ai import ai_agent
 from .sources.common import (
     LOCATIONS, DEFAULT_KEYWORDS,
     is_valid_candidate, check_keywords_and_location,

@@ -10,7 +10,8 @@ from fastapi.responses import FileResponse, StreamingResponse
 from starlette.background import BackgroundTask
 from sqlalchemy.orm import Session
 
-from .. import crud, schemas, ai_agent, auth, models
+from .. import crud, schemas, auth, models
+from ..ai import ai_agent
 from ..database import get_db
 from ..tasks import task_manager
 

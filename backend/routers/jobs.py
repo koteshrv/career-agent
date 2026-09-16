@@ -8,7 +8,7 @@ import asyncio
 from .. import schemas, crud, auth, models
 from ..database import get_db
 from ..scraper_core import fetch_job_description
-from .. import ai_agent
+from ..ai import ai_agent
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
