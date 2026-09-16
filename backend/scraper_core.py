@@ -220,6 +220,8 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
             process_tech_mahindra(db, user_id, target, keywords, new_jobs, company_logs)
         elif t_type == "zwayam":
             process_zwayam(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
+        elif t_type == "universal":
+            process_universal_api(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
         elif t_type == "playwright":
             process_playwright_agentic(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
 
