@@ -629,11 +629,24 @@ export function SettingsPage() {
                     }}
                     className="w-full bg-secondary border border-border rounded-md px-4 py-2.5 pr-10 text-foreground appearance-none focus:outline-none focus:ring-1 focus:ring-ring cursor-pointer"
                   >
-                    <option value="gemini">Google Gemini</option>
-                    <option value="openai" disabled>OpenAI (Coming soon)</option>
-                    <option value="anthropic" disabled>Anthropic Claude (Coming soon)</option>
-                    <option value="grok" disabled>xAI Grok (Coming soon)</option>
-                    <option value="ollama">Local Ollama (Private)</option>
+                    <optgroup label="Cloud Providers">
+                      <option value="gemini">Google Gemini</option>
+                      <option value="openai" disabled>OpenAI (Coming soon)</option>
+                      <option value="anthropic" disabled>Anthropic Claude (Coming soon)</option>
+                      <option value="grok" disabled>xAI Grok (Coming soon)</option>
+                    </optgroup>
+                    <optgroup label="Local CLIs (Zero Configuration)">
+                      <option value="cli_agy">Antigravity CLI (agy)</option>
+                      <option value="cli_claude">Claude Code (claude)</option>
+                      <option value="cli_gemini">Gemini CLI (gemini)</option>
+                      <option value="cli_copilot">GitHub Copilot CLI (copilot)</option>
+                      <option value="cli_opencode">OpenCode (opencode)</option>
+                      <option value="cli_grok">Grok Build CLI (grok)</option>
+                      <option value="cli_qwen">Qwen CLI (qwen)</option>
+                    </optgroup>
+                    <optgroup label="Local Servers">
+                      <option value="ollama">Local Ollama (Private)</option>
+                    </optgroup>
                   </select>
                   <div className="absolute inset-y-0 right-0 flex items-center px-3 pointer-events-none text-muted-foreground">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"/></svg>

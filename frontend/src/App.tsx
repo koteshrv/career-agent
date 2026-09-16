@@ -83,6 +83,7 @@ function Layout() {
 
   const [accountEmail, setAccountEmail] = useState<string | null>(null)
   const [confirmLogout, setConfirmLogout] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   useEffect(() => {
@@ -131,27 +132,7 @@ function Layout() {
           <nav className="flex-1 px-4 py-6 space-y-1">
             <NavItems />
           </nav>
-
-          {!IS_DEMO && (
-            <div className="px-4 pb-6">
-              <button
-                onClick={handleLogoutClick}
-                className="w-full px-3 py-2.5 rounded-md flex items-center justify-between text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent border border-transparent group transition-colors text-left"
-                title="Logout"
-              >
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
-                    <User className="w-3.5 h-3.5 text-primary" />
-                  </div>
-                  <span className="truncate">
-                    {accountEmail ? accountEmail.split("@")[0] : "Local User"}
-                  </span>
-                </div>
-                <LogOut className="w-4 h-4 text-muted-foreground group-hover:text-destructive shrink-0 transition-colors" />
-              </button>
-            </div>
-          )}
-        </aside>
+          </aside>
 
         {/* Mobile nav drawer */}
         {mobileNavOpen && (
@@ -164,17 +145,7 @@ function Layout() {
               <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
                 <NavItems onNavigate={() => setMobileNavOpen(false)} />
               </nav>
-              {!IS_DEMO && (
-                <div className="px-4 pb-6">
-                  <button
-                    onClick={() => { setMobileNavOpen(false); handleLogoutClick() }}
-                    className="w-full px-3 py-2.5 rounded-md flex items-center gap-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent transition-colors text-left"
-                  >
-                    <LogOut className="w-4 h-4" /> Logout
-                  </button>
-                </div>
-              )}
-            </aside>
+              </aside>
           </div>
         )}
 
@@ -204,6 +175,46 @@ function Layout() {
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
               <NotificationTray />
+              {!IS_DEMO && (
+                <div className="relative ml-2">
+                  <button
+                    onClick={() => setProfileOpen(!profileOpen)}
+                    className="p-2 rounded-full hover:bg-accent transition-colors text-muted-foreground hover:text-foreground focus:outline-none"
+                    title="User Profile"
+                  >
+                    <User className="w-5 h-5" />
+                  </button>
+                  
+                  {profileOpen && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-40" 
+                        onClick={() => setProfileOpen(false)}
+                      />
+                      <div className="absolute right-0 mt-2 w-48 bg-popover border border-border rounded-md shadow-lg z-50 py-1 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-border">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {accountEmail ? accountEmail.split("@")[0] : "kotesh.rv"}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {accountEmail || "user@example.com"}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setProfileOpen(false);
+                            handleLogoutClick();
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-sm text-destructive hover:bg-destructive/10 flex items-center gap-2 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Log out
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </header>
 

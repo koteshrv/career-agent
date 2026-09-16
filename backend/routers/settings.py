@@ -27,3 +27,13 @@ def update_settings(settings: schemas.SettingsBase, db: Session = Depends(get_db
     if "cron_schedule" in settings.model_dump(exclude_unset=True):
         scheduler.reschedule(updated.cron_schedule, current_user.id)
     return updated
+
+@router.get("/usage")
+def get_usage(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    settings = crud.get_settings(db, current_user.id)
+    total = (settings.total_prompt_tokens or 0) + (settings.total_candidate_tokens or 0)
+    # Mocking the rolling window data based on lifetime totals for demonstration
+    return {
+        "window5h": {"tokens": int(total * 0.1), "messages": 0},
+        "window7d": {"tokens": int(total * 0.6), "messages": 0}
+    }
