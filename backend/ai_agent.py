@@ -157,6 +157,9 @@ def record_token_usage(user_id: int, model_name: str, prompt_tokens: int, candid
 
 def _generate(prompt: str, api_key: str = None, model_name: str = None, user_id: int = None) -> str:
     """Run a prompt through Gemini, falling back to lower models on error."""
+    if model_name and model_name.startswith("cli_"):
+        cli_name = model_name.split("_", 1)[1]
+        return _generate_cli(prompt, cli_name)
     resolved_key = api_key
     resolved_model = model_name
 
@@ -357,6 +360,44 @@ def batch_extract_job_details(jobs: list, api_key: str = None, model_name: str =
     
     return [{"company": "Unknown Company", "title": "Unknown Title", "clean_description": j["description"]} for j in jobs]
 
+import subprocess
+import json
+
+def _generate_cli(prompt: str, cli_name: str) -> str:
+    """Invokes a local AI CLI tool (headless mode)."""
+    cmd_map = {
+        "claude": ["claude", "-p"],
+        "codex": ["codex", "exec"],
+        "gemini": ["gemini", "-p"],
+        "opencode": ["opencode", "run"],
+        "copilot": ["copilot", "-p"],
+        "qwen": ["qwen", "-p"],
+        "agy": ["agy", "-p"],
+        "grok": ["grok", "-p"]
+    }
+    
+    if cli_name not in cmd_map:
+        return f"Error: Unknown CLI '{cli_name}'"
+        
+    cmd = cmd_map[cli_name]
+    cmd.append(prompt)
+    
+    try:
+        # Spawn the CLI without an open stdin to prevent interactive hanging
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL
+        )
+        if result.returncode != 0:
+            return f"Error: {cli_name} returned code {result.returncode}\n{result.stderr}"
+        return result.stdout.strip()
+    except FileNotFoundError:
+        return f"Error: {cmd[0]} executable not found on PATH. Is it installed?"
+    except Exception as e:
+        return f"Error executing {cli_name}: {str(e)}"
+
 def _route_generation(prompt: str, mode: str, settings: any, is_tex: bool = False, is_cl: bool = False, user_id: int = None) -> str:
     """Factory router for multi-provider AI generation."""
     if mode == "ollama":
@@ -364,9 +405,13 @@ def _route_generation(prompt: str, mode: str, settings: any, is_tex: bool = Fals
         return _generate_ollama(prompt, settings, schema)
     elif mode in ("openai", "anthropic", "grok"):
         return _generate_cloud_private(prompt, settings)
+    elif mode.startswith("cli_"):
+        cli_name = mode.split("_", 1)[1]
+        return _generate_cli(prompt, cli_name)
     else:
         # Default: Cloud Free (Gemini)
         return _generate(prompt, settings.gemini_api_key, settings.gemini_model, user_id)
+
 
 def _get_custom_guidelines(user_id: int) -> str:
     """Helper to fetch custom user guidelines from the Settings database."""
