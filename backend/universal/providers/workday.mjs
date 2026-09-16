@@ -227,7 +227,6 @@ export default {
     }
 
     const jobs = parseWorkdayResponse(first, entry);
-    const jobs = parseWorkdayResponse(first, entry);
 
     const total = typeof first?.total === 'number' ? first.total : null;
     const firstPostings = Array.isArray(first?.jobPostings) ? first.jobPostings : [];

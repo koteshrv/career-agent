@@ -178,3 +178,7 @@ Contributions are welcome! Check the open issues or open a PR. See [CONTRIBUTING
 ## 📄 License
 
 [MIT License](https://opensource.org/licenses/MIT) — free forever.
+
+## 🙏 Acknowledgments
+
+A special thanks to the [career-ops](https://github.com/ibttf/career-ops) open-source project. During the early development of CareerAgent, we were deeply inspired by their features and architectural decisions. We proudly utilize some of their Fast ATS API connectors and AI prompt strategies within our engine. Thank you to the `career-ops` maintainers for their fantastic open-source work!

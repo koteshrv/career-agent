@@ -1,5 +1,5 @@
-import { loadProviders, resolveProvider } from './universal/providers/_registry.mjs';
-import { makeHttpCtx } from './universal/providers/_http.mjs';
+import { loadProviders, resolveProvider } from './providers/_registry.mjs';
+import { makeHttpCtx } from './providers/_http.mjs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -9,7 +9,7 @@ async function main() {
   const url = process.argv[2];
   if (!url) { console.error(JSON.stringify({ error: "URL required" })); process.exit(1); }
   
-  const providers = await loadProviders(path.join(__dirname, 'universal/providers'));
+  const providers = await loadProviders(path.join(__dirname, 'providers'));
   
   const entry = { careers_url: url, name: "Test" };
   const providerDef = resolveProvider(entry, providers);
