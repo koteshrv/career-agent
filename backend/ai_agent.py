@@ -365,6 +365,8 @@ import json
 
 def _generate_cli(prompt: str, cli_name: str) -> str:
     """Invokes a local AI CLI tool (headless mode)."""
+    cli_name = cli_name.replace('cli_', '')
+    
     cmd_map = {
         "claude": ["claude", "-p"],
         "codex": ["codex", "exec"],
@@ -373,30 +375,33 @@ def _generate_cli(prompt: str, cli_name: str) -> str:
         "copilot": ["copilot", "-p"],
         "qwen": ["qwen", "-p"],
         "agy": ["agy", "-p"],
-        "grok": ["grok", "-p"]
+        "grok": ["grok", "-p"],
+        "kimi": ["kimi", "-p"]
     }
     
     if cli_name not in cmd_map:
         return f"Error: Unknown CLI '{cli_name}'"
         
-    cmd = cmd_map[cli_name]
+    cmd = list(cmd_map[cli_name])
     cmd.append(prompt)
     
     try:
-        # Spawn the CLI without an open stdin to prevent interactive hanging
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
-            stdin=subprocess.DEVNULL
+            stdin=subprocess.DEVNULL,
+            timeout=180
         )
         if result.returncode != 0:
             return f"Error: {cli_name} returned code {result.returncode}\n{result.stderr}"
         return result.stdout.strip()
     except FileNotFoundError:
-        return f"Error: {cmd[0]} executable not found on PATH. Is it installed?"
+        return f"Error: {cli_name} not found in PATH."
     except Exception as e:
-        return f"Error executing {cli_name}: {str(e)}"
+        return str(e)
+
+
 
 def _route_generation(prompt: str, mode: str, settings: any, is_tex: bool = False, is_cl: bool = False, user_id: int = None) -> str:
     """Factory router for multi-provider AI generation."""

@@ -8,150 +8,6 @@ import { SystemHealth } from "./SystemHealth"
 import { useToast } from "./Toast"
 import { FileText, Trash2, X, Check, ShieldCheck, ShieldAlert, Lock } from "lucide-react"
 
-// ── Model Priority Picker (drag-to-reorder) ────────────────────────────────────
-type ModelSuggestion = { value: string; label: string; badge?: string }
-
-function ModelPriorityPicker({ label, value, onChange, suggestions }: {
-  label: string; value: string; onChange: (v: string) => void; suggestions: ModelSuggestion[]
-}) {
-  const parseSelected = (v: string) => v.split(",").map(s => s.trim()).filter(Boolean)
-  const [selected, setSelected] = useState<string[]>(() => parseSelected(value))
-  const [dragOver, setDragOver] = useState<number | null>(null)
-  const dragIdx = useRef<number | null>(null)
-
-  useEffect(() => { setSelected(parseSelected(value)) }, [value])
-
-  const emit = (next: string[]) => { setSelected(next); onChange(next.join(", ")) }
-
-  const toggle = (modelValue: string) => {
-    if (selected.includes(modelValue)) emit(selected.filter(s => s !== modelValue))
-    else emit([...selected, modelValue])
-  }
-
-  const moveUp   = (i: number) => { if (i === 0) return; const n=[...selected];[n[i-1],n[i]]=[n[i],n[i-1]]; emit(n) }
-  const moveDown = (i: number) => { if (i===selected.length-1) return; const n=[...selected];[n[i],n[i+1]]=[n[i+1],n[i]]; emit(n) }
-
-  // ── Drag handlers ──
-  const onDragStart = (idx: number) => { dragIdx.current = idx }
-  const onDragOver  = (e: React.DragEvent, idx: number) => { e.preventDefault(); setDragOver(idx) }
-  const onDrop      = (e: React.DragEvent, idx: number) => {
-    e.preventDefault()
-    if (dragIdx.current === null || dragIdx.current === idx) { setDragOver(null); return }
-    const next = [...selected]
-    const [item] = next.splice(dragIdx.current, 1)
-    next.splice(idx, 0, item)
-    dragIdx.current = null
-    setDragOver(null)
-    emit(next)
-  }
-  const onDragEnd = () => { dragIdx.current = null; setDragOver(null) }
-
-  const allModels = [
-    ...suggestions,
-    ...selected
-      .filter(s => !suggestions.some(sg => sg.value === s))
-      .map(s => ({ value: s, label: s, badge: "custom" }))
-  ]
-
-  return (
-    <div>
-      <label className="block text-sm font-medium text-muted-foreground mb-2">{label}</label>
-
-      {/* ── Priority list (draggable) ── */}
-      {selected.length > 0 && (
-        <div className="mb-3 space-y-1.5">
-          {selected.map((modelVal, idx) => {
-            const suggestion = allModels.find(s => s.value === modelVal)
-            const isOver = dragOver === idx
-            return (
-              <div
-                key={modelVal}
-                draggable
-                onDragStart={() => onDragStart(idx)}
-                onDragOver={e => onDragOver(e, idx)}
-                onDrop={e => onDrop(e, idx)}
-                onDragEnd={onDragEnd}
-                className={`flex items-center gap-2 px-3 py-2 rounded-md border transition-all select-none
-                  ${isOver
-                    ? "border-primary/60 bg-primary/10 scale-[1.01]"
-                    : "border-primary/20 bg-primary/5"}`}
-              >
-                {/* Drag handle */}
-                <span
-                  className="text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing shrink-0 transition-colors"
-                  title="Drag to reorder"
-                >
-                  <svg className="w-3.5 h-5" viewBox="0 0 10 16" fill="currentColor">
-                    <circle cx="3" cy="2.5" r="1.2"/><circle cx="7" cy="2.5" r="1.2"/>
-                    <circle cx="3" cy="6.5" r="1.2"/><circle cx="7" cy="6.5" r="1.2"/>
-                    <circle cx="3" cy="10.5" r="1.2"/><circle cx="7" cy="10.5" r="1.2"/>
-                    <circle cx="3" cy="14.5" r="1.2"/><circle cx="7" cy="14.5" r="1.2"/>
-                  </svg>
-                </span>
-
-                {/* Position badge */}
-                <span className="w-5 h-5 flex items-center justify-center rounded-full bg-primary/15 text-primary text-[10px] font-bold shrink-0">
-                  {idx + 1}
-                </span>
-                <span className="flex-1 font-mono text-sm text-foreground truncate">{modelVal}</span>
-                {suggestion?.badge && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent text-muted-foreground shrink-0">{suggestion.badge}</span>
-                )}
-
-                {/* ↑↓ nudge buttons */}
-                <div className="flex flex-col gap-0.5 shrink-0">
-                  <button onClick={() => moveUp(idx)} disabled={idx === 0}
-                    className="w-5 h-4 flex items-center justify-center rounded hover:bg-accent disabled:opacity-20 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
-                    title="Move up">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 15l7-7 7 7"/></svg>
-                  </button>
-                  <button onClick={() => moveDown(idx)} disabled={idx === selected.length - 1}
-                    className="w-5 h-4 flex items-center justify-center rounded hover:bg-accent disabled:opacity-20 disabled:cursor-not-allowed text-muted-foreground hover:text-foreground transition-colors"
-                    title="Move down">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M19 9l-7 7-7-7"/></svg>
-                  </button>
-                </div>
-
-                {/* Remove */}
-                <button onClick={() => toggle(modelVal)}
-                  className="w-5 h-5 flex items-center justify-center rounded hover:bg-destructive/20 text-muted-foreground hover:text-destructive transition-colors shrink-0"
-                  title="Remove">
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            )
-          })}
-          <p className="text-[10px] text-muted-foreground pl-1">Drag ⠿ to reorder · #1 is tried first on failure</p>
-        </div>
-      )}
-
-      {/* ── Add Model Input ── */}
-      <div className="mt-2">
-        <input 
-          type="text" 
-          placeholder="+ Type a model name to add and press Enter..." 
-          className="w-full bg-secondary border border-border rounded-md px-3 py-1.5 text-sm font-mono text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && e.currentTarget.value.trim()) {
-              e.preventDefault();
-              const val = e.currentTarget.value.trim();
-              if (!selected.includes(val)) emit([...selected, val]);
-              e.currentTarget.value = '';
-            }
-          }}
-          list={`models-${label.replace(/\s+/g, '')}`}
-        />
-        <datalist id={`models-${label.replace(/\s+/g, '')}`}>
-          {suggestions.filter(s => !selected.includes(s.value)).map(s => (
-            <option key={s.value} value={s.value}>{s.badge || ''}</option>
-          ))}
-        </datalist>
-      </div>
-
-    </div>
-  )
-}
-
 // ── TOS / Privacy Warning Banner ──────────────────────────────────────────────
 type TosLevel = "warn" | "ok" | "private"
 function TosWarning({ level, text }: { level: TosLevel; text: string }) {
@@ -675,18 +531,7 @@ export function SettingsPage() {
                       />
                     </div>
                   </div>
-                  <ModelPriorityPicker
-                    label="Model Priority List (fallbacks in order)"
-                    value={settings.gemini_model || "gemini-3.1-flash-lite, gemini-3.5-flash, gemini-2.5-flash"}
-                    onChange={v => setSettings({...settings, gemini_model: v})}
-                    suggestions={[
-                      { value: "gemini-3.1-flash-lite", label: "gemini-3.1-flash-lite", badge: "500 RPD · High Capacity" },
-                      { value: "gemini-3.5-flash",      label: "gemini-3.5-flash",      badge: "20 RPD · Premium" },
-                      { value: "gemini-3-flash",        label: "gemini-3-flash",        badge: "20 RPD" },
-                      { value: "gemini-2.5-flash",      label: "gemini-2.5-flash",      badge: "20 RPD" },
-                      { value: "gemma-4-31b",           label: "gemma-4-31b",           badge: "1500 RPD · Text Only" },
-                    ]}
-                  />
+                  
                   <TosWarning level="warn" text="Google Free Tier API may use your prompts and outputs for model training. Switch to a paid key or use Local Ollama for full privacy." />
                 </>
               )}
@@ -710,19 +555,7 @@ export function SettingsPage() {
                       placeholder="http://localhost:11434"
                     />
                   </div>
-                  <ModelPriorityPicker
-                    label="Model Priority List (fallbacks in order)"
-                    value={settings.ollama_model || "llama3.1, llama3.2"}
-                    onChange={v => setSettings({...settings, ollama_model: v})}
-                    suggestions={[
-                      { value: "llama3.1", label: "llama3.1", badge: "recommended" },
-                      { value: "llama3.2", label: "llama3.2", badge: "latest" },
-                      { value: "llama3.1:8b", label: "llama3.1:8b", badge: "lighter" },
-                      { value: "deepseek-coder-v2", label: "deepseek-coder-v2", badge: "coding" },
-                      { value: "mistral", label: "mistral", badge: "fast" },
-                      { value: "qwen2.5", label: "qwen2.5", badge: "multilingual" },
-                    ]}
-                  />
+                  
                   <TosWarning level="private" text="100% local. Your data never leaves your machine. Pull models with: ollama pull llama3.1" />
                 </>
               )}

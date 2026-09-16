@@ -29,3 +29,4 @@
 
 ## 📝 Future Tasks
 - [ ] Implement automated application filling via Playwright MCP (Phase 2).
+- [ ] Document the hardcoded model routing matrix (which task uses which model) in CAREERAGENT_MANUAL.md
