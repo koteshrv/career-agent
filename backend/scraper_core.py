@@ -1,3 +1,4 @@
+import re
 """Scraper orchestration: dispatches each target to its source-specific scraper
 (backend/sources/), then runs bulk AI evaluation on everything collected.
 
@@ -34,6 +35,85 @@ from .sources.playwright_engine import (
 
 logger = logging.getLogger(__name__)
 
+
+
+import hashlib
+
+def compute_simhash(text: str) -> str:
+    """Computes a 64-bit SimHash over 3-token shingles of the text for deduping."""
+    if not text or len(text) < 200:
+        return ""
+    
+    # Normalize: lowercase, keep only alphanumeric
+    words = re.sub(r'[^a-z0-9\s]', '', text.lower()).split()
+    if len(words) < 3:
+        return ""
+        
+    # Generate 3-token shingles
+    shingles = [" ".join(words[i:i+3]) for i in range(len(words)-2)]
+    
+    # 64-bit voting array
+    v = [0] * 64
+    for shingle in shingles:
+        h = int(hashlib.sha1(shingle.encode('utf-8')).hexdigest()[:16], 16)
+        for i in range(64):
+            if (h & (1 << i)):
+                v[i] += 1
+            else:
+                v[i] -= 1
+                
+    # Compile final bits to 16-hex-char string
+    fingerprint = 0
+    for i in range(64):
+        if v[i] > 0:
+            fingerprint |= (1 << i)
+            
+    return f"{fingerprint:016x}"
+
+def hamming_distance(hex1: str, hex2: str) -> int:
+    if not hex1 or not hex2:
+        return 64
+    return bin(int(hex1, 16) ^ int(hex2, 16)).count('1')
+
+def check_liveness(html_text: str) -> str:
+    """Checks if a job posting is still alive (active/expired/uncertain)."""
+    if not html_text:
+        return "expired"
+        
+    text_lower = html_text.lower()
+    
+    # 404/410 equivalents in text bodies
+    if "404 not found" in text_lower or "410 gone" in text_lower:
+        return "expired"
+        
+    # Bot-challenge regexes (Cloudflare/hCaptcha)
+    if "please enable cookies" in text_lower or "checking if the site connection is secure" in text_lower or "cloudflare" in text_lower:
+        return "uncertain"
+        
+    # "no longer available/filled/closed" phrase bank
+    expired_phrases = [
+        "no longer available", "no longer accepting applications",
+        "job has been filled", "job is closed", "position is closed",
+        "position has been filled", "we are no longer hiring for this role"
+    ]
+    for phrase in expired_phrases:
+        if phrase in text_lower:
+            return "expired"
+            
+    # Apply button text pattern match
+    apply_patterns = [
+        "apply now", "apply for this job", "apply today", 
+        "bewerben", "submit application"
+    ]
+    for phrase in apply_patterns:
+        if phrase in text_lower:
+            return "active"
+            
+    # Body too short
+    if len(html_text) < 300:
+        return "expired"
+        
+    return "uncertain"
 
 def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
     """Takes a list of job dicts, chunks them into batches of 10, fetches HTML, strips it,
@@ -100,6 +180,31 @@ def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
 
         for db_job in db_jobs:
             raw_text = batch_jds.get(db_job.url, "")
+            
+            # Liveness Gate
+            liveness = check_liveness(raw_text)
+            if liveness == "expired":
+                logger.info(f"Skipping LLM eval for {db_job.url} - posting is DEAD.")
+                db_job.status = "IGNORED"
+                db_job.match_reason = "System detected the job posting is no longer available or closed."
+                continue
+                
+            # SimHash Cross-Listing Dedup
+            fp = compute_simhash(raw_text)
+            if fp:
+                db_job.fingerprint = fp
+                # Check for existing dupes in DB
+                existing_jobs = db.query(models.Job).filter(models.Job.user_id == user_id, models.Job.fingerprint != None, models.Job.id != db_job.id).all()
+                is_dupe = False
+                for ej in existing_jobs:
+                    if hamming_distance(fp, ej.fingerprint) <= 5:
+                        logger.info(f"Cross-listing detected! {db_job.url} is a duplicate of {ej.url}")
+                        db_job.status = "IGNORED"
+                        db_job.match_reason = f"Cross-listing duplicate of {ej.company} - {ej.title}"
+                        is_dupe = True
+                        break
+                if is_dupe:
+                    continue
 
             ai_payload.append({
                 "id": db_job.id,
@@ -133,10 +238,12 @@ def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
             if db_job:
                 db_job.match_score = score
                 db_job.match_reason = reason
-                db_job.score_tech_stack = res.get("score_tech_stack")
-                db_job.score_experience = res.get("score_experience")
-                db_job.score_domain = res.get("score_domain")
-                db_job.score_culture = res.get("score_culture")
+                db_job.score_match = str(res.get("score_match")) if res.get("score_match") else None
+                db_job.score_north_star = str(res.get("score_north_star")) if res.get("score_north_star") else None
+                db_job.score_comp = str(res.get("score_comp")) if res.get("score_comp") else None
+                db_job.score_culture = str(res.get("score_culture")) if res.get("score_culture") else None
+                db_job.score_red_flags = str(res.get("score_red_flags")) if res.get("score_red_flags") else None
+                db_job.legitimacy_tier = str(res.get("legitimacy_tier")) if res.get("legitimacy_tier") else None
 
                 if score is not None and score < min_match_score:
                     db_job.status = "IGNORED"

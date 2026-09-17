@@ -8,7 +8,7 @@ from typing import List, Dict
 logger = logging.getLogger(__name__)
 
 # Setup ChromaDB persistent client
-VECTOR_STORE_PATH = os.path.join(os.path.dirname(__file__), "vector_store")
+VECTOR_STORE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_store")
 chroma_client = chromadb.PersistentClient(path=VECTOR_STORE_PATH)
 
 # One collection per user — each user's knowledge base is retrieved independently.

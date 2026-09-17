@@ -38,10 +38,17 @@ class Job(Base):
     external_id = Column(String, nullable=True)
     yoe = Column(String, nullable=True)
     
+    score_match = Column(String, nullable=True)
+    score_north_star = Column(String, nullable=True)
+    score_comp = Column(String, nullable=True)
+    score_culture = Column(String, nullable=True)
+    score_red_flags = Column(String, nullable=True)
+    legitimacy_tier = Column(String, nullable=True)
+    fingerprint = Column(String, nullable=True)
+    # Legacy score columns (for backward compatibility before v3.0 ATS)
     score_tech_stack = Column(String, nullable=True)
     score_experience = Column(String, nullable=True)
     score_domain = Column(String, nullable=True)
-    score_culture = Column(String, nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -68,6 +75,9 @@ class Settings(Base):
     active_companies = Column(String, nullable=True) # JSON array of active companies
     search_keywords = Column(String, nullable=True) # JSON array of search keywords
     extracted_keywords = Column(String, nullable=True) # JSON array of keywords extracted from resume
+    target_roles = Column(String, nullable=True)
+    base_salary_expectations = Column(String, nullable=True)
+    profile_narrative = Column(Text, nullable=True)
     debug_logging_enabled = Column(Boolean, default=False)
     min_match_score = Column(Integer, default=50)
     total_prompt_tokens = Column(Integer, default=0)

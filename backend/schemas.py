@@ -37,10 +37,17 @@ class JobUpdate(BaseModel):
     match_reason: Optional[str] = None
     external_id: Optional[str] = None
     yoe: Optional[str] = None
+    score_match: Optional[str] = None
+    score_north_star: Optional[str] = None
+    score_comp: Optional[str] = None
+    score_culture: Optional[str] = None
+    score_red_flags: Optional[str] = None
+    legitimacy_tier: Optional[str] = None
+    fingerprint: Optional[str] = None
+    # Legacy fields
     score_tech_stack: Optional[str] = None
     score_experience: Optional[str] = None
     score_domain: Optional[str] = None
-    score_culture: Optional[str] = None
     applied_at: Optional[datetime] = None
 
 class Job(JobBase):
@@ -54,10 +61,17 @@ class Job(JobBase):
     match_reason: Optional[str] = None
     external_id: Optional[str] = None
     yoe: Optional[str] = None
+    score_match: Optional[str] = None
+    score_north_star: Optional[str] = None
+    score_comp: Optional[str] = None
+    score_culture: Optional[str] = None
+    score_red_flags: Optional[str] = None
+    legitimacy_tier: Optional[str] = None
+    fingerprint: Optional[str] = None
+    # Legacy fields
     score_tech_stack: Optional[str] = None
     score_experience: Optional[str] = None
     score_domain: Optional[str] = None
-    score_culture: Optional[str] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
     applied_at: Optional[datetime] = None
