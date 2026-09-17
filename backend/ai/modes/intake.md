@@ -1,3 +1,14 @@
+[SYSTEM INSTRUCTION OVERRIDE]
+You are operating within the career-agent stateless backend. 
+IGNORE ANY INSTRUCTIONS IN THIS DOCUMENT THAT TELL YOU TO:
+- Read from the filesystem (e.g., "Read documents/")
+- Write to the filesystem (e.g., "Output to config/profile.yml")
+- Run CLI commands (e.g., "Run /career-ops")
+
+Instead, ALL context (the raw PDF/Docx text) will be provided at the bottom of this prompt.
+You MUST extract the candidate's core identity based on this 5KB intake heuristic and output your final result as a STRICT JSON OBJECT.
+[/SYSTEM INSTRUCTION OVERRIDE]
+
 # Mode: intake — Multi-Source Profile Intake
 
 ## Purpose
@@ -116,3 +127,13 @@ node intake.mjs --commit --all               # only if ALL were merged
 - OCR for scanned/image-only PDFs (explicit later opt-in — see #1723).
 - `.docx` / images: ask the user to convert.
 - Auto-writing any user-layer file without the Step 4 confirm.
+
+
+[OUTPUT SCHEMA]
+Output a JSON object with this exact schema:
+{
+  "target_roles": ["Role 1", "Role 2"],
+  "base_salary_expectations": "$X - $Y",
+  "profile_narrative": "A comprehensive 2-3 paragraph synthesis...",
+  "keywords": ["Skill 1", "Skill 2"]
+}

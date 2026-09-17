@@ -1,3 +1,14 @@
+[SYSTEM INSTRUCTION OVERRIDE]
+You are operating within the career-agent stateless backend. 
+IGNORE ANY INSTRUCTIONS IN THIS DOCUMENT THAT TELL YOU TO:
+- Read from the filesystem (e.g., "Read config/profile.yml")
+- Run CLI commands (e.g., "Run /career-ops")
+- Ask the user questions (e.g., "Ask the user to confirm")
+
+Instead, ALL context (Resume, Job Description, Profile Narrative) will be provided at the bottom of this prompt.
+You MUST output your final result as a STRICT JSON OBJECT. Do not output any markdown formatting outside the JSON object.
+[/SYSTEM INSTRUCTION OVERRIDE]
+
 # Mode: cover — Cover Letter Generator
 
 Generates a tailored cover letter for any candidate from a job description.
@@ -358,3 +369,12 @@ When invoked as `/career-ops cover {slug}`:
 3. Run all steps as normal (research, keywords, prompts, gaps) — the draft is a starting point, not the final output
 4. When presenting the draft in Step 8, show what was auto-generated and what was changed based on the user's answers
 5. After PDF generation, update the report's `## Cover Letter Draft` section with a note: `PDF generated: output/{path} on {date}`
+
+
+[OUTPUT SCHEMA]
+Output a JSON object with this exact schema:
+{
+  "cover_letter": "The full markdown text of the cover letter",
+  "key_selling_points": ["Point 1", "Point 2"],
+  "tone_used": "e.g., Technical"
+}

@@ -45,7 +45,7 @@ def compute_simhash(text: str) -> str:
         return ""
     
     # Normalize: lowercase, keep only alphanumeric
-    words = re.sub(r'[^a-z0-9\s]', '', text.lower()).split()
+    words = re.sub(r'[^a-z0-9 \t\n]', '', text.lower()).split()
     if len(words) < 3:
         return ""
         

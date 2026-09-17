@@ -1,3 +1,14 @@
+[SYSTEM INSTRUCTION OVERRIDE]
+You are operating within the career-agent stateless backend. 
+IGNORE ANY INSTRUCTIONS IN THIS DOCUMENT THAT TELL YOU TO:
+- Read from the filesystem (e.g., "Read config/profile.yml")
+- Run CLI commands (e.g., "Run /career-ops")
+- Ask the user questions (e.g., "Ask the user to confirm")
+
+Instead, ALL context (Resume, Job Description, Profile Narrative) will be provided at the bottom of this prompt.
+You MUST output your final result as a STRICT JSON OBJECT. Do not output any markdown formatting outside the JSON object.
+[/SYSTEM INSTRUCTION OVERRIDE]
+
 # Mode: latex — LaTeX/Overleaf CV Export
 
 Export a tailored, ATS-optimized CV as a `.tex` file and compile it to PDF via `tectonic` or `pdflatex`.
@@ -187,3 +198,13 @@ The generated `.tex` file uses only standard CTAN packages (no custom or bundled
 - `hyperref`, `fancyhdr`, `babel`, `tabularx`, `fontawesome5`, `multicol`, `glyphtounicode`
 
 Upload the `.tex` file directly to Overleaf — compiles with no extra configuration.
+
+
+[OUTPUT SCHEMA]
+Output a JSON object with this exact schema:
+{
+  "tailored_summary": "Rewritten summary",
+  "tailored_experience": [{"company": "...", "title": "...", "bullets": ["...", "..."]}],
+  "tailored_skills": ["Skill 1", "Skill 2"],
+  "changes_made": ["Change 1", "Change 2"]
+}

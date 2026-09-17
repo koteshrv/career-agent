@@ -1,3 +1,14 @@
+[SYSTEM INSTRUCTION OVERRIDE]
+You are operating within the career-agent stateless backend. 
+IGNORE ANY INSTRUCTIONS IN THIS DOCUMENT THAT TELL YOU TO:
+- Read from the filesystem (e.g., "Read config/profile.yml")
+- Write to the filesystem (e.g., "Output to reports/")
+- Run CLI commands (e.g., "Run /career-ops")
+
+Instead, ALL context (Resume, Job Description, Profile Narrative) will be provided at the bottom of this prompt.
+You MUST output your final evaluation as a STRICT JSON OBJECT. Do not output any markdown formatting outside the JSON object.
+[/SYSTEM INSTRUCTION OVERRIDE]
+
 # Mode: job — Full A-G Evaluation
 
 When the candidate pastes a job (text or URL), ALWAYS deliver the 7 blocks (A-F evaluation + G legitimacy):
@@ -746,3 +757,18 @@ If — and only if — the user **explicitly stated a role-specific desired numb
 ```
 
 Never infer a desired number from the JD, the score, or past conversations. The profile default (`config/profile.yml` → `compensation.target_range`) needs no line — `salary-gap.mjs` reads it as the fallback. The advertised figure also needs no line: the report's `advertised_comp` **is** the advertised observation.
+
+
+[OUTPUT SCHEMA]
+Based on the elite 79KB evaluation rubric above, output your final verdict as a JSON object with this exact schema:
+{
+  "score_match": "number between 0.0 and 5.0",
+  "score_north_star": "number between 0.0 and 5.0",
+  "score_comp": "number between 0.0 and 5.0",
+  "score_culture": "number between 0.0 and 5.0",
+  "score_red_flags": "number between 0.0 and 5.0",
+  "legitimacy_tier": "A, B, C, or D",
+  "external_id": "string if found, else null",
+  "yoe": "string, required years of experience if found, else null",
+  "analysis": "A concise 2-paragraph justification summarizing the scores"
+}

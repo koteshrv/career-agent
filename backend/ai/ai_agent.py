@@ -670,8 +670,7 @@ def onboard_resume(resume_text: str, api_key: str = None, model_name: str = None
         
     try:
         from pathlib import Path
-        rubric_path = Path(__file__).parent / "prompts" / "modes" / "interview.md"
-        rubric_path = Path(__file__).parent / "prompts" / "modes" / "onboard.md"
+        rubric_path = Path(__file__).parent / "modes" / "intake.md"
         with open(rubric_path, "r") as f:
             interview_prompt = f.read()
     except Exception as e:
@@ -768,7 +767,7 @@ def batch_evaluate_jobs(jobs_data: list, resume_text: str, api_key: str = None, 
         
     try:
         from pathlib import Path
-        rubric_path = Path(__file__).parent / "prompts" / "evaluation_rubric.md"
+        rubric_path = Path(__file__).parent / "modes" / "oferta.md"
         with open(rubric_path, "r") as f:
             rubric_text = f.read()
     except Exception:

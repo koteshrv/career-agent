@@ -1,3 +1,14 @@
+[SYSTEM INSTRUCTION OVERRIDE]
+You are operating within the career-agent stateless backend. 
+IGNORE ANY INSTRUCTIONS IN THIS DOCUMENT THAT TELL YOU TO:
+- Read from the filesystem (e.g., "Read config/profile.yml")
+- Run CLI commands (e.g., "Run /career-ops")
+- Ask the user questions (e.g., "Ask the user to confirm")
+
+Instead, ALL context (Resume, Job Description, Profile Narrative) will be provided at the bottom of this prompt.
+You MUST output your final result as a STRICT JSON OBJECT. Do not output any markdown formatting outside the JSON object.
+[/SYSTEM INSTRUCTION OVERRIDE]
+
 # Mode: interview-prep — Company-Specific Interview Intelligence
 
 When the user asks to prep for an interview at a specific company+role, or when an evaluation scores 4.0+ and the user updates status to `Interview`, run this mode.
@@ -355,3 +366,13 @@ After delivering the report:
 - **Cite everything.** Every question, every stat, every claim gets a source or an `[inferred]` tag.
 - Generate in the language of the JD (EN default).
 - Be direct. This is a working prep document, not a pep talk.
+
+
+[OUTPUT SCHEMA]
+Output a JSON object with this exact schema:
+{
+  "recruiter_screen": [{"question": "...", "strategy": "..."}],
+  "technical_challenges": [{"challenge": "...", "context_from_jd": "..."}],
+  "star_stories": [{"achievement": "...", "situation": "...", "task": "...", "action": "...", "result": "..."}],
+  "questions_to_ask": ["Q1", "Q2"]
+}
