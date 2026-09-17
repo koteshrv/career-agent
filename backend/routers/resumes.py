@@ -46,13 +46,20 @@ async def upload_resume(file: UploadFile = File(...), name: str = Form(None), db
     resume_text = ai_agent.extract_resume_text(current_user.id, target)
     if resume_text and settings:
         try:
-            keywords_json = ai_agent.extract_resume_keywords(
+            import json
+            onboard_data = ai_agent.onboard_resume(
                 resume_text,
                 api_key=settings.gemini_api_key,
                 model_name=settings.gemini_model,
                 user_id=current_user.id,
             )
-            crud.update_settings(db, current_user.id, schemas.SettingsBase(extracted_keywords=keywords_json))
+            if onboard_data:
+                crud.update_settings(db, current_user.id, schemas.SettingsBase(
+                    extracted_keywords=json.dumps(onboard_data.get("keywords", [])),
+                    target_roles=json.dumps(onboard_data.get("target_roles", [])),
+                    base_salary_expectations=onboard_data.get("base_salary_expectations"),
+                    profile_narrative=onboard_data.get("profile_narrative")
+                ))
         except Exception as e:
             logger.error(f"Failed to extract keywords: {e}")
 

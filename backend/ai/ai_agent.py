@@ -662,6 +662,37 @@ Relevant Career Experiences (USE FOR FACTUAL CORRECTIONS ONLY):
         }
     }) + "\n"
 
+
+def onboard_resume(resume_text: str, api_key: str = None, model_name: str = None, user_id: int = None) -> dict:
+    """Extracts full onboarding profile (target roles, comp, narrative, keywords) from a resume."""
+    if not resume_text:
+        return {}
+        
+    try:
+        from pathlib import Path
+        rubric_path = Path(__file__).parent / "prompts" / "modes" / "interview.md"
+        rubric_path = Path(__file__).parent / "prompts" / "modes" / "onboard.md"
+        with open(rubric_path, "r") as f:
+            interview_prompt = f.read()
+    except Exception as e:
+        logger.error(f"Failed to read interview.md: {e}")
+        return {}
+        
+    prompt = f"{interview_prompt}\n\nResume:\n---\n{resume_text}\n---"
+    
+    result = _generate(prompt, api_key, model_name, user_id)
+    if result.startswith("Error"):
+        logger.error(f"Onboarding extraction error: {result}")
+        return {}
+
+    clean_json = strip_code_fences(result)
+    import json
+    try:
+        return json.loads(clean_json)
+    except Exception as e:
+        logger.error(f"Failed to parse onboarding JSON: {e}\nRaw: {clean_json}")
+        return {}
+
 def extract_resume_keywords(resume_text: str, api_key: str = None, model_name: str = None, user_id: int = None) -> str:
     """Extracts a JSON array of up to 30 technical keywords from the resume text."""
     if not resume_text:

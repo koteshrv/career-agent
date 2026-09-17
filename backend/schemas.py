@@ -113,6 +113,9 @@ class SettingsBase(BaseModel):
     active_companies: Optional[str] = None
     search_keywords: Optional[str] = None
     extracted_keywords: Optional[str] = None
+    target_roles: Optional[str] = None
+    base_salary_expectations: Optional[str] = None
+    profile_narrative: Optional[str] = None
     debug_logging_enabled: Optional[bool] = False
     min_match_score: Optional[int] = 50
     total_prompt_tokens: Optional[int] = 0
