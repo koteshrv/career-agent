@@ -47,10 +47,11 @@ async def upload_resume(file: UploadFile = File(...), name: str = Form(None), db
     if resume_text and settings:
         try:
             import json
+            model_to_use = settings.ai_mode if (settings.ai_mode and settings.ai_mode.startswith("cli_")) else settings.gemini_model
             onboard_data = ai_agent.onboard_resume(
                 resume_text,
                 api_key=settings.gemini_api_key,
-                model_name=settings.gemini_model,
+                model_name=model_to_use,
                 user_id=current_user.id,
             )
             if onboard_data:

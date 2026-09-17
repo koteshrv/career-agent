@@ -760,7 +760,7 @@ async def process_playwright(db: Session, user_id: int, targets: List[dict], key
                     content = (await page.content()).lower()
 
                     if company == "TCS":
-                        with open(f"/home/hari/job-scraper/tests/dump/tcs_debug_{keyword}.html", "w") as f:
+                        with open(f".data/dump/tcs_debug_{keyword}.html", "w") as f:
                             f.write(await page.content())
                         logger.info(f"Dumped TCS DOM to tcs_debug_{keyword}.html")
 

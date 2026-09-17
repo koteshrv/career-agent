@@ -7,7 +7,7 @@ DATA_DIR = Path("/app/data")
 if DATA_DIR.exists():
     KEY_FILE = DATA_DIR / ".encryption_key"
 else:
-    KEY_FILE = Path(__file__).parent / ".encryption_key"
+    KEY_FILE = Path(".data/.encryption_key")
 
 def _get_or_create_key() -> bytes:
     if KEY_FILE.exists():

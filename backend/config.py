@@ -24,7 +24,7 @@ _DEFAULTS = {
     "auth_token_ttl": 7 * 24 * 3600,
     # Matches crypto.py's DATA_DIR handling — defaults to the mounted volume path in
     # Docker so the DB isn't silently written to the container's ephemeral filesystem.
-    "database_url": "sqlite:////app/data/jobs.db" if _IN_DOCKER else "sqlite:///./jobs.db",
+    "database_url": "sqlite:////app/data/jobs.db" if _IN_DOCKER else "sqlite:///./.data/jobs.db",
     "log_level": "INFO",
     "crowdsource_api_url": "https://api.careeragent.fyi",
 }

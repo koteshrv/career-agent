@@ -32,7 +32,7 @@ def generate_application_materials_for_job(job_id: int, req: schemas.GenerationR
     async def stream_and_save():
         gen = ai_agent.generate_application_materials(
             db_job.title, db_job.company, db_job.location or "", db_job.description or "",
-            api_key=settings.gemini_api_key, model_name=settings.gemini_model, resume_name=req.resume,
+            api_key=settings.gemini_api_key, model_name=settings.ai_mode if (settings and settings.ai_mode and settings.ai_mode.startswith("cli_")) else settings.gemini_model, resume_name=req.resume,
             generation_mode=req.generation_mode, user_id=user_id
         )
         async for chunk in gen:
@@ -55,7 +55,7 @@ def generate_application_materials_for_job(job_id: int, req: schemas.GenerationR
 def generate_on_demand(req: schemas.OnDemandRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     settings = crud.get_settings(db, current_user.id)
     api_key = settings.gemini_api_key if settings else None
-    model_name = settings.gemini_model if settings else None
+    model_name = (settings.ai_mode if settings.ai_mode.startswith("cli_") else settings.gemini_model) if settings else None
 
     clean_desc = ai_agent.sanitize_job_description(req.description, api_key, current_user.id)
 

@@ -47,7 +47,7 @@ def strip_code_fences(text: str) -> str:
 # Substrings that indicate retrying a different model won't help (auth/config issues).
 _FATAL_ERROR_HINTS = ("api key not valid", "api_key_invalid", "permission denied", "unauthenticated")
 
-UPLOAD_DIR = Path(__file__).parent.parent / "uploads"
+UPLOAD_DIR = Path(".data/uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
 RESUMES_DIR = UPLOAD_DIR / "resumes"
 RESUMES_DIR.mkdir(parents=True, exist_ok=True)
@@ -232,6 +232,8 @@ def _generate(prompt: str, api_key: str = None, model_name: str = None, user_id:
                 record_token_usage(user_id, model, pt, ct)
             
             if response and response.text:
+                logger.info(f"[{model}] PROMPT FED TO AI:\n{prompt}\n--- END PROMPT ---")
+                logger.info(f"[{model}] FULL STDOUT OUTPUT:\n{response.text}\n--- END OUTPUT ---")
                 return response.text
                 
         except Exception as e:
@@ -374,7 +376,7 @@ def _generate_cli(prompt: str, cli_name: str) -> str:
         "opencode": ["opencode", "run"],
         "copilot": ["copilot", "-p"],
         "qwen": ["qwen", "-p"],
-        "agy": ["agy", "-p"],
+        "agy": ["agy", "--sandbox", "--dangerously-skip-permissions", "-p"],
         "grok": ["grok", "-p"],
         "kimi": ["kimi", "-p"]
     }
@@ -394,7 +396,14 @@ def _generate_cli(prompt: str, cli_name: str) -> str:
             timeout=180
         )
         if result.returncode != 0:
+            logger.error(f"[{cli_name}] CLI Error:\n{result.stderr}")
             return f"Error: {cli_name} returned code {result.returncode}\n{result.stderr}"
+        
+        if result.stderr:
+            logger.info(f"[{cli_name}] CLI stderr output:\n{result.stderr}")
+            
+        logger.info(f"[{cli_name}] PROMPT FED TO AI:\n{prompt}\n--- END PROMPT ---")
+        logger.info(f"[{cli_name}] FULL CLI STDOUT OUTPUT:\n{result.stdout.strip()}\n--- END OUTPUT ---")
         return result.stdout.strip()
     except FileNotFoundError:
         return f"Error: {cli_name} not found in PATH."

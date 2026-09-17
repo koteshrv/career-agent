@@ -35,8 +35,8 @@ def _enforce_rpm_limit_sync(rpm: int = 14):
 
 def _is_rate_limited(model: str) -> bool:
     """Check DB to see if this model is still in its rate-limit cooldown window."""
-    from .database import SessionLocal
-    from . import models as _models
+    from ..database import SessionLocal
+    from .. import models as _models
     db = SessionLocal()
     try:
         settings = db.query(_models.Settings).first()
@@ -56,8 +56,8 @@ def _is_rate_limited(model: str) -> bool:
 
 def _set_rate_limit(model: str, seconds: int = 60):
     """Persist a rate-limit cooldown for this model in DB model_telemetry."""
-    from .database import SessionLocal
-    from . import models as _models
+    from ..database import SessionLocal
+    from .. import models as _models
     db = SessionLocal()
     try:
         settings = db.query(_models.Settings).first()

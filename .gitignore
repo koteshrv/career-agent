@@ -1,15 +1,10 @@
+# Runtime data directory (logs, databases, uploads, secrets)
+.data/
+
 # Secrets & local config
 .env
 .env.local
-.encryption_key
 backend/config.json
-
-# Database & scraper data
-*.db
-/backend/vector_store/
-
-# Uploaded resumes
-/backend/uploads/*
 
 # Python
 __pycache__/
@@ -26,9 +21,6 @@ dist/
 # Logs & OS cruft
 *.log
 *.log*
-/dump/
-/tests/dump/
-/gemini_free_tier_limits.md
 .DS_Store
 Thumbs.db
 
@@ -36,6 +28,6 @@ Thumbs.db
 .claude
 .vscode/
 .idea/
-backend/vector_store/
+*.db
 *.db-wal
 *.db-shm

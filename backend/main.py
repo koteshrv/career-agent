@@ -27,7 +27,7 @@ console_handler = logging.StreamHandler()
 console_handler.setFormatter(formatter)
 root_logger.addHandler(console_handler)
 
-file_handler = logging.handlers.RotatingFileHandler('backend.log', maxBytes=10*1024*1024, backupCount=5)
+file_handler = logging.handlers.RotatingFileHandler('.data/backend.log', maxBytes=10*1024*1024, backupCount=5)
 file_handler.setFormatter(formatter)
 root_logger.addHandler(file_handler)
 

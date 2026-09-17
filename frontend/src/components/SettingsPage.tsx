@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useSearchParams } from "react-router-dom"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScrapeConfig } from "./ScrapeConfig"
-import { SystemHealth } from "./SystemHealth"
 import { useToast } from "./Toast"
 import { FileText, Trash2, X, Check, ShieldCheck, ShieldAlert, Lock } from "lucide-react"
 
@@ -34,7 +33,6 @@ const TABS = [
   { id: "resume", label: "Resume & AI" },
   { id: "notifications", label: "Notifications" },
   { id: "data", label: "Data" },
-  { id: "health", label: "System Health" },
 ] as const
 type TabId = typeof TABS[number]["id"] | "members"
 
@@ -153,7 +151,7 @@ export function SettingsPage() {
     formData.append("file", resumeFile)
     if (resumeName.trim()) formData.append("name", resumeName.trim())
     try {
-      await api.post("/api/upload-resume", formData, {
+      await api.post("/api/resumes/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" }
       })
       toast("Resume uploaded! AI cover letters & tailored resumes are now enabled.", "success")
@@ -174,7 +172,7 @@ export function SettingsPage() {
   )
 
   const visibleTabs = TABS
-  const showSaveButton = activeTab !== "health" && activeTab !== "members"
+  const showSaveButton = activeTab !== "members"
 
   return (
     <div className="max-w-4xl mx-auto pb-16">
@@ -472,6 +470,51 @@ export function SettingsPage() {
 
             <div className="bg-card rounded-lg border border-border p-6 space-y-4">
               <div>
+                <h4 className="text-base font-semibold text-foreground mb-1">Extracted Profile Identity</h4>
+                <p className="text-sm text-muted-foreground">This narrative and target role configuration was automatically extracted by the AI when you uploaded your resume. It is injected into all future evaluations and material generation.</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Target Roles</label>
+                {(() => {
+                  try {
+                    const roles = settings?.target_roles ? JSON.parse(settings.target_roles) : [];
+                    if (Array.isArray(roles) && roles.length > 0) {
+                      return (
+                        <div className="flex flex-wrap gap-2">
+                          {roles.map((r: string) => (
+                            <span key={r} className="px-2.5 py-1 rounded-md bg-status-interviewing/10 text-status-interviewing border border-status-interviewing/20 text-xs font-medium">
+                              {r}
+                            </span>
+                          ))}
+                        </div>
+                      )
+                    }
+                  } catch (e) {}
+                  return <div className="text-xs text-muted-foreground italic">No target roles extracted.</div>
+                })()}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Base Salary Expectations</label>
+                <div className="text-sm text-foreground bg-secondary px-3 py-2 rounded-md border border-border">
+                  {settings?.base_salary_expectations || <span className="text-muted-foreground italic">No salary expectation extracted.</span>}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Profile Narrative</label>
+                <textarea
+                  readOnly
+                  value={settings?.profile_narrative || ""}
+                  className="w-full bg-secondary border border-border rounded-md px-4 py-3 text-sm text-foreground focus:outline-none min-h-[120px] resize-y leading-relaxed"
+                  placeholder="Your extracted identity narrative will appear here..."
+                />
+              </div>
+            </div>
+
+            <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+              <div>
                 <h4 className="text-base font-semibold text-foreground mb-1">AI Generation Mode</h4>
                 <p className="text-sm text-muted-foreground">Configure the models used for scoring and formatting.</p>
               </div>
@@ -611,17 +654,7 @@ export function SettingsPage() {
               <label htmlFor="telegram_toggle" className="text-sm font-medium text-foreground">Enable Telegram Push Alerts</label>
             </div>
 
-            <div className="pt-4 border-t border-border">
-              <label className="block text-sm font-medium text-muted-foreground mb-1">Healthcheck Ping URL</label>
-              <input
-                type="text"
-                value={settings.healthcheck_ping_url || ""}
-                onChange={e => setSettings({...settings, healthcheck_ping_url: e.target.value})}
-                className="w-full bg-secondary border border-border rounded-md px-4 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                placeholder="e.g. https://hc-ping.com/your-uuid"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Pinged after every scheduled (cron) scrape run so a healthchecks.io-compatible service can alert you if the schedule ever stops firing entirely.</p>
-            </div>
+
           </div>
         )}
 
@@ -690,7 +723,6 @@ export function SettingsPage() {
           </div>
         )}
 
-        {activeTab === "health" && <SystemHealth />}
 
       </div>
     </div>
