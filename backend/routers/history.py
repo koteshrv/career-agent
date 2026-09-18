@@ -2,9 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 
-from .. import schemas, crud, auth, models
-from ..database import get_db
-from ..scraper_core import load_targets
+from backend.database import schemas
+from backend.database import crud
+from backend.core import auth
+from backend.database import models
+from backend.database.database import get_db
+from backend.services.scraper_core import load_targets
 
 router = APIRouter(tags=["History & Companies"])
 

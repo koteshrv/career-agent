@@ -5,9 +5,14 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
-from .database import SessionLocal
-from . import crud, schemas, notifications, crowdsourcing, models, log_context
-from .scraper_core import run_scraper
+from backend.database.database import SessionLocal
+from backend.database import crud
+from backend.database import schemas
+from backend.services import notifications
+from backend.services import crowdsourcing
+from backend.database import models
+from backend.core import log_context
+from backend.services.scraper_core import run_scraper
 
 logger = logging.getLogger(__name__)
 

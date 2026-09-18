@@ -28,10 +28,10 @@ export default {
 
   async fetch(entry, ctx) {
     const apiUrl = entry.api_url;
-    const domain = entry.domain;
+    const domain = entry.zwayam_domain;
     const companyId = entry.company_id;
     if (!apiUrl || !domain || !companyId) {
-      throw new Error('zwayam: entry.api_url, entry.domain, and entry.company_id are all required');
+      throw new Error('zwayam: entry.api_url, entry.zwayam_domain, and entry.company_id are all required');
     }
 
     const keywords = Array.isArray(entry.keywords) ? entry.keywords : [];

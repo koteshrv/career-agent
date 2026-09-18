@@ -3,7 +3,7 @@ import logging
 import subprocess
 from typing import List
 from sqlalchemy.orm import Session
-from .common import check_keywords_and_location, has_been_notified
+from backend.services.common import check_keywords_and_location, has_been_notified
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ def process_universal_api(db: Session, user_id: int, target: dict, keywords: Lis
 
     try:
         result = subprocess.run(
-            ["node", "backend/universal/bridge.mjs", json.dumps(entry)],
+            ["node", "sources/bridge.mjs", json.dumps(entry)],
             capture_output=True, text=True, timeout=30,
         )
 

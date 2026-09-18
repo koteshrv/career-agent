@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, BackgroundTasks, WebSocket, WebSocketDisconnect
-from .tasks import task_manager
-from .config import config
+from backend.services.tasks import task_manager
+from backend.core.config import config
 import asyncio
 from contextlib import asynccontextmanager
 from collections import deque
@@ -36,9 +36,15 @@ if _log_level == logging.DEBUG:
     logging.getLogger("google_genai").setLevel(logging.INFO)
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
-from . import models, schemas, crud, scheduler, auth, notifications, log_context
-from .database import engine, get_db, SessionLocal
-from .scraper_core import run_scraper
+from backend.database import models
+from backend.database import schemas
+from backend.database import crud
+from backend.services import scheduler
+from backend.core import auth
+from backend.services import notifications
+from backend.core import log_context
+from backend.database.database import engine, get_db, SessionLocal
+from backend.services.scraper_core import run_scraper
 
 logger = logging.getLogger(__name__)
 
@@ -173,6 +179,7 @@ def health_check():
 # /api/ws/logs is NOT listed here — BaseHTTPMiddleware (below) never sees WebSocket scopes
 # at all regardless of this set, so it's authenticated separately inside websocket_logs().
 PUBLIC_PATHS = {"/api/login", "/healthz"}
+PUBLIC_PATHS = {"/api/login", "/healthz", "/api/logo"}
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
@@ -227,7 +234,7 @@ def bg_scrape_task(user_id: int):
             notifications.notify_broken_targets(db, user_id)
 
             # Send Telegram Success Notification
-            from .notifications import send_telegram_message
+            from backend.services.notifications import send_telegram_message
             send_telegram_message(db, user_id, f"✅ Scrape completed successfully. Found {len(new_jobs)} new jobs.")
 
         except Exception as e:
@@ -263,7 +270,7 @@ async def websocket_logs(websocket: WebSocket, token: str = ""):
         manager.disconnect(websocket)
 
 # Include Modular Routers
-from .routers import jobs, settings, generation, playbooks, history, resumes, extension, knowledge
+from backend.routers import jobs, settings, generation, playbooks, history, resumes, extension, knowledge
 app.include_router(jobs.router)
 app.include_router(settings.router)
 app.include_router(generation.router)
@@ -272,7 +279,11 @@ app.include_router(history.router)
 app.include_router(resumes.router)
 app.include_router(extension.router)
 app.include_router(knowledge.router)
-from .routers import health
+from backend.routers import health
 app.include_router(health.router)
-from .routers import crowdsourcing as crowdsourcing_router
+from backend.routers import crowdsourcing as crowdsourcing_router
 app.include_router(crowdsourcing_router.router)
+from backend.routers import followups
+app.include_router(followups.router)
+from backend.routers import logo
+app.include_router(logo.router)

@@ -4,8 +4,10 @@ from sqlalchemy.orm import Session
 import logging
 import uuid
 
-from .. import crud, auth, models
-from ..database import get_db
+from backend.database import crud
+from backend.core import auth
+from backend.database import models
+from backend.database.database import get_db
 
 logger = logging.getLogger(__name__)
 

@@ -3,9 +3,13 @@ from fastapi import APIRouter, Depends, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 
-from .. import schemas, crud, auth, models, log_context
-from ..database import get_db
-from ..scraper_core import record_job, bulk_evaluate_jobs
+from backend.database import schemas
+from backend.database import crud
+from backend.core import auth
+from backend.database import models
+from backend.core import log_context
+from backend.database.database import get_db
+from backend.services.scraper_core import record_job, bulk_evaluate_jobs
 
 logger = logging.getLogger(__name__)
 

@@ -13,8 +13,12 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from .. import auth, crowdsourcing, crud, models, schemas
-from ..database import get_db
+from backend.core import auth
+from backend.services import crowdsourcing
+from backend.database import crud
+from backend.database import models
+from backend.database import schemas
+from backend.database.database import get_db
 
 router = APIRouter(prefix="/api/crowdsource", tags=["Crowdsourcing"])
 

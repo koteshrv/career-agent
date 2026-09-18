@@ -5,6 +5,7 @@ import { Sparkles, MapPin, Calendar, ExternalLink, X, FileText, Trash2, Download
 import { formatISTDate } from "@/lib/datetime"
 import { api, generateMaterialsStream } from "@/lib/api"
 import { useToast } from "./Toast"
+import { CompanyLogo } from "./CompanyLogo"
 import { ConfirmDialog } from "./ConfirmDialog"
 
 interface JobModalProps {
@@ -199,10 +200,15 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
         
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-border">
-          <div>
-            <h2 className="text-xl font-bold text-foreground">{job.title}</h2>
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-muted-foreground">
-              <span className="font-semibold text-status-new">{job.company}</span>
+          <div className="flex gap-4 items-start">
+            <CompanyLogo name={job.company} className="w-14 h-14 rounded-lg shadow-sm border border-border mt-0.5 hidden sm:flex" />
+            <div>
+              <h2 className="text-xl font-bold text-foreground">{job.title}</h2>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-sm text-muted-foreground">
+                <span className="font-semibold text-status-new flex items-center gap-2">
+                  <CompanyLogo name={job.company} className="w-5 h-5 rounded shadow-sm border border-border sm:hidden" />
+                  {job.company}
+                </span>
               {job.location && (
                 <span className="flex items-center gap-1">
                   {job.location.startsWith("Extension") ? (
@@ -225,6 +231,7 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
               )}
               <span className="flex items-center gap-1"><Calendar className="w-3.5 h-3.5" />{formatISTDate(job.created_at, true)}</span>
             </div>
+          </div>
           </div>
           <div className="flex items-center gap-2">
             <button

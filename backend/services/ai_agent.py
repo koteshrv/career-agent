@@ -1,5 +1,6 @@
 import logging
 import json
+import re
 import subprocess
 import PyPDF2
 from pathlib import Path
@@ -9,6 +10,42 @@ import time
 import asyncio
 
 logger = logging.getLogger(__name__)
+
+def extract_bracket_section(text: str, tag: str) -> str:
+    """
+    Extracts a `[TAG]\\n...\\n[/TAG]` section from AI-generated output.
+
+    Fail-closed by design: the AI output being parsed here was generated from
+    a prompt that embeds a scraped job description (untrusted third-party
+    content, see apply_legacy.md's "Untrusted input" notice) — an injected
+    `[TAG]`/`[/TAG]` pair in that content could otherwise smuggle fabricated
+    text into what the user is told is "their" cover letter/resume. So:
+    markers must own their line (not just appear anywhere inline), more than
+    one opening marker is refused rather than guessing which is real, and an
+    unclosed section is refused rather than silently taking whatever follows.
+    Mirrors career-ops's web/src/lib/cv-envelope.mjs, adapted to this
+    codebase's existing `[TAG]`/`[/TAG]` marker convention.
+
+    Returns the section's stripped text, or "" if it could not be safely
+    extracted (logged at warning level with the reason).
+    """
+    opener = re.compile(rf"^\[{re.escape(tag)}\][ \t]*$", re.MULTILINE)
+    closer = re.compile(rf"^\[/{re.escape(tag)}\][ \t]*$", re.MULTILINE)
+
+    openers = list(opener.finditer(text))
+    if not openers:
+        return ""
+    if len(openers) > 1:
+        logger.warning(f"[{tag}] appears {len(openers)} times in AI output; refusing to guess which is real.")
+        return ""
+
+    after = text[openers[0].end():]
+    match = closer.search(after)
+    if not match:
+        logger.warning(f"[{tag}] section was never closed in AI output.")
+        return ""
+
+    return after[:match.start()].strip()
 
 def strip_code_fences(text: str) -> str:
     """
@@ -117,8 +154,8 @@ def record_token_usage(user_id: int, model_name: str, prompt_tokens: int, candid
     Accrues AI API token usage per model in this user's own Settings row.
     Updates both total global counts and granular telemetry per-model in JSON.
     """
-    from ..database import SessionLocal
-    from .. import models
+    from backend.database.database import SessionLocal
+    from backend.database import models
     import json
     from datetime import date
 
@@ -164,16 +201,54 @@ def record_token_usage(user_id: int, model_name: str, prompt_tokens: int, candid
     finally:
         db.close()
 
+# Every prompt passed through _generate_cli embeds untrusted third-party
+# content (a scraped job description) — see apply_legacy.md's "Untrusted
+# input" notice and oferta.md's "[SYSTEM INSTRUCTION OVERRIDE]" block. This
+# function's job is text generation only: every caller (batch_evaluate_jobs,
+# generate_application_materials) already interpolates ALL needed context
+# (resume, JD, profile) directly into the prompt string before it gets here,
+# so the CLI never needs ANY tool to do its job — only the ability to hurt
+# something if a prompt injection in that JD text ever succeeds. Restrict
+# each CLI's tool access accordingly, mirroring career-ops's
+# web/src/lib/claude-invocation.mjs (built after real incidents — #2172,
+# #2185 — of a write-capable headless agent processing untrusted JD/report
+# content).
+#
+# Verified via each CLI's current docs (2026-09):
+#   claude — headless (-p) mode has no interactive fallback: an unlisted
+#            tool call FREEZES the process rather than failing safely or
+#            silently declining (https://code.claude.com/docs/en/headless),
+#            so denying only the dangerous tools isn't enough — a tool this
+#            call never asked for could still hang it for the full timeout.
+#            --allowedTools "" grants nothing, --disallowedTools names the
+#            built-in set explicitly (belt-and-suspenders once nothing is
+#            allowed) so a call that needs zero tools never has one to use.
+#   codex  — --sandbox read-only confirmed via developers.openai.com/codex —
+#            and is already codex exec's own DEFAULT when the flag is
+#            omitted, so this makes the existing safe behavior explicit
+#            rather than changing it (protects against that default ever
+#            changing without this call site noticing).
+# NOT YET HARDENED (no verified equivalent flag found for these — treat
+# their output with the same skepticism extract_bracket_section() already
+# applies, and verify a flag exists before relying on one of these for
+# untrusted-content generation): gemini, opencode, copilot, qwen, grok, kimi.
+# agy — "--dangerously-skip-permissions" is a known, self-inflicted risk
+# left as-is because removing it without a verified non-interactive
+# alternative would silently break the DEFAULT generation path (_generate()
+# hardcodes cli_name="agy" for every mode). "--sandbox" is Antigravity CLI's
+# own containment; verify its actual guarantees before trusting it alone.
+_CLAUDE_BUILTIN_TOOLS = "Write,Edit,MultiEdit,NotebookEdit,Bash,Task,Read,WebFetch,WebSearch,Glob,Grep"
+
 def _generate_cli(prompt: str, cli_name: str) -> str:
     """
     Invokes a local AI CLI tool (headless mode) for generation.
     Supports a variety of CLIs configured via the cmd_map.
     """
     cli_name = cli_name.replace('cli_', '')
-    
+
     cmd_map = {
-        "claude": ["claude", "-p"],
-        "codex": ["codex", "exec"],
+        "claude": ["claude", "-p", "--allowedTools", "", "--disallowedTools", _CLAUDE_BUILTIN_TOOLS],
+        "codex": ["codex", "exec", "--sandbox", "read-only"],
         "gemini": ["gemini", "-p"],
         "opencode": ["opencode", "run"],
         "copilot": ["copilot", "-p"],
@@ -182,10 +257,10 @@ def _generate_cli(prompt: str, cli_name: str) -> str:
         "grok": ["grok", "-p"],
         "kimi": ["kimi", "-p"]
     }
-    
+
     if cli_name not in cmd_map:
         return f"Error: Unknown CLI '{cli_name}'"
-        
+
     cmd = list(cmd_map[cli_name])
     cmd.append(prompt)
     
@@ -238,8 +313,8 @@ def _get_custom_guidelines(user_id: int) -> str:
     Helper to fetch custom user guidelines from the Settings database.
     Used to inject specific user preferences into AI prompts.
     """
-    from ..database import SessionLocal
-    from .. import models
+    from backend.database.database import SessionLocal
+    from backend.database import models
     db = SessionLocal()
     try:
         settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
@@ -260,8 +335,8 @@ async def generate_application_materials(job_title: str, company: str, location:
     yield json.dumps({"status": "progress", "message": "Fetching RAG Context and initializing..."}) + "\n"
     await asyncio.sleep(0)
     
-    from ..database import SessionLocal
-    from .. import crud
+    from backend.database.database import SessionLocal
+    from backend.database import crud
     
     db = SessionLocal()
     try:
@@ -275,7 +350,7 @@ async def generate_application_materials(job_title: str, company: str, location:
         yield json.dumps({"status": "error", "message": "No career context found. Please add your career history to the Knowledge Base first."}) + "\n"
         return
         
-    from .. import models
+    from backend.database import models
     settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
     db.close()
 
@@ -311,7 +386,7 @@ async def generate_application_materials(job_title: str, company: str, location:
 
     from pathlib import Path
     try:
-        with open(Path(__file__).parent / "modes" / "apply_legacy.md", "r") as f:
+        with open(Path(__file__).parent.parent / "prompts" / "apply_legacy.md", "r") as f:
             prompt_template = f.read()
     except Exception:
         prompt_template = ""
@@ -337,15 +412,10 @@ async def generate_application_materials(job_title: str, company: str, location:
         yield json.dumps({"status": "error", "message": draft_result}) + "\n"
         return
         
-    import re
-    cl_match = re.search(r"\[COVER_LETTER_START\](.*?)\[COVER_LETTER_END\]", draft_result, re.DOTALL)
-    em_match = re.search(r"\[COLD_EMAIL_START\](.*?)\[COLD_EMAIL_END\]", draft_result, re.DOTALL)
-    tr_match = re.search(r"\[TAILORED_RESUME_START\](.*?)\[TAILORED_RESUME_END\]", draft_result, re.DOTALL)
-    
-    cl = cl_match.group(1).strip() if cl_match else ""
-    em = em_match.group(1).strip() if em_match else ""
-    tr = tr_match.group(1).strip() if tr_match else ""
-    
+    cl = extract_bracket_section(draft_result, "COVER_LETTER")
+    em = extract_bracket_section(draft_result, "COLD_EMAIL")
+    tr = extract_bracket_section(draft_result, "TAILORED_RESUME")
+
     if not cl and not tr and not em:
         logger.error(f"AI Parse Error. Output: {draft_result[:500]}")
         yield json.dumps({"status": "error", "message": "Failed to parse AI output. AI did not use the requested delimiters."}) + "\n"
@@ -355,7 +425,7 @@ async def generate_application_materials(job_title: str, company: str, location:
     yield json.dumps({"status": "progress", "message": "Phase 2: Critic is reviewing drafts for hallucinations and formatting..."}) + "\n"
     await asyncio.sleep(0)
     try:
-        with open(Path(__file__).parent / "modes" / "review.md", "r") as f:
+        with open(Path(__file__).parent.parent / "prompts" / "review.md", "r") as f:
             reviewer_template = f.read()
     except Exception:
         reviewer_template = ""
@@ -378,7 +448,7 @@ async def generate_application_materials(job_title: str, company: str, location:
         yield json.dumps({"status": "progress", "message": "Phase 3: Refinement pass fixing Critic issues..."}) + "\n"
         await asyncio.sleep(0)
         try:
-            with open(Path(__file__).parent / "modes" / "fix.md", "r") as f:
+            with open(Path(__file__).parent.parent / "prompts" / "fix.md", "r") as f:
                 fix_template = f.read()
         except Exception:
             fix_template = ""
@@ -392,13 +462,13 @@ async def generate_application_materials(job_title: str, company: str, location:
         )
         final_result = await asyncio.to_thread(_route_generation, refinement_prompt, generation_mode, settings, False, False, user_id)
         
-        cl_match_f = re.search(r"\[COVER_LETTER_START\](.*?)\[COVER_LETTER_END\]", final_result, re.DOTALL)
-        em_match_f = re.search(r"\[COLD_EMAIL_START\](.*?)\[COLD_EMAIL_END\]", final_result, re.DOTALL)
-        tr_match_f = re.search(r"\[TAILORED_RESUME_START\](.*?)\[TAILORED_RESUME_END\]", final_result, re.DOTALL)
-        
-        if cl_match_f: cl = cl_match_f.group(1).strip()
-        if em_match_f: em = em_match_f.group(1).strip()
-        if tr_match_f: tr = tr_match_f.group(1).strip()
+        cl_fixed = extract_bracket_section(final_result, "COVER_LETTER")
+        em_fixed = extract_bracket_section(final_result, "COLD_EMAIL")
+        tr_fixed = extract_bracket_section(final_result, "TAILORED_RESUME")
+
+        if cl_fixed: cl = cl_fixed
+        if em_fixed: em = em_fixed
+        if tr_fixed: tr = tr_fixed
 
     yield json.dumps({
         "status": "success",
@@ -421,7 +491,7 @@ def onboard_resume(resume_text: str, api_key: str = None, model_name: str = None
         
     try:
         from pathlib import Path
-        rubric_path = Path(__file__).parent / "modes" / "intake.md"
+        rubric_path = Path(__file__).parent.parent / "prompts" / "intake.md"
         with open(rubric_path, "r") as f:
             interview_prompt = f.read()
     except Exception as e:
@@ -453,7 +523,7 @@ def batch_evaluate_jobs(jobs_data: list, resume_text: str, api_key: str = None, 
         return []
     try:
         from pathlib import Path
-        rubric_path = Path(__file__).parent / "modes" / "oferta.md"
+        rubric_path = Path(__file__).parent.parent / "prompts" / "oferta.md"
         with open(rubric_path, "r") as f:
             rubric_text = f.read()
     except Exception:

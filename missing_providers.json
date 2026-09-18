@@ -1,0 +1,246 @@
+[
+  {
+    "company": "Wells Fargo",
+    "url": "https://www.wellsfargojobs.com/en/jobs/?search={keyword}&country=India&pagesize=100&page=1",
+    "domain": "banking-finance"
+  },
+  {
+    "company": "Mastercard",
+    "url": "https://careers.mastercard.com/us/en/search-results?keywords={keyword}&location=India&country=India",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "Infosys",
+    "url": "https://career.infosys.com/jobs?companyhiringtype=IL&countrycode=IN",
+    "domain": "it-services"
+  },
+  {
+    "company": "Cognizant",
+    "url": "https://careers.cognizant.com/global-en/jobs/?keyword={keyword}&location=India&radius=100&lat=&lng=&cname=India&ccode=IN&pagesize=10#results",
+    "domain": "it-services"
+  },
+  {
+    "company": "Capgemini",
+    "url": "https://www.capgemini.com/in-en/careers/join-capgemini/job-search/?page=1&size=11&country_code=in-en&keyword={keyword}",
+    "domain": "it-services"
+  },
+  {
+    "company": "LTIMindtree",
+    "url": "https://careers.ltimindtree.com/search/?createNewAlert=false&q={keyword}&locationsearch=india",
+    "domain": "it-services"
+  },
+  {
+    "company": "Barclays",
+    "url": "https://search.jobs.barclays/search-jobs?k={keyword}&l=Telangana%2C+IN&orgIds=13015",
+    "domain": "banking-finance"
+  },
+  {
+    "company": "Citi",
+    "url": "https://jobs.citi.com/search-jobs?k={keyword}&l=India&orgIds=287",
+    "domain": "banking-finance"
+  },
+  {
+    "company": "Wipro",
+    "url": "https://careers.wipro.com/search/?q={keyword}&locationsearch=India&searchResultView=LIST",
+    "domain": "it-services"
+  },
+  {
+    "company": "HCLTech",
+    "url": "https://careers.hcltech.com/search/?q={keyword}&locationsearch=&searchResultView=LIST&markerViewed=&carouselIndex=&facetFilters=%7B%22custCountryRegion%22%3A%5B%22India%22%5D%7D&pageNumber=0",
+    "domain": "it-services"
+  },
+  {
+    "company": "Accenture",
+    "url": "https://www.accenture.com/in-en/careers/jobsearch?jk={keyword}&sb=0",
+    "domain": "it-services"
+  },
+  {
+    "company": "Deloitte",
+    "url": "https://southasiacareers.deloitte.com/search/?createNewAlert=false&q={keyword}&locationsearch=India&optionsFacetsDD_city=&optionsFacetsDD_customfield2=",
+    "domain": "it-services"
+  },
+  {
+    "company": "TCS",
+    "url": "https://ibegin.tcsapps.com/candidate/next/en-IN/jobs/search?page=1&size=10&regular=true&walkin=true&sort=relevance%20desc",
+    "domain": "it-services"
+  },
+  {
+    "company": "Google",
+    "url": "https://www.google.com/about/careers/applications/jobs/results/?q={keyword}&location=India",
+    "domain": "big-tech"
+  },
+  {
+    "company": "Microsoft",
+    "url": "https://apply.careers.microsoft.com/careers?query={keyword}&start=0&location=India&sort_by=relevance&filter_include_remote=1",
+    "domain": "big-tech"
+  },
+  {
+    "company": "Apple",
+    "url": "https://jobs.apple.com/en-in/search?search={keyword}&location=india-IND",
+    "domain": "big-tech"
+  },
+  {
+    "company": "Meta",
+    "url": "https://www.metacareers.com/jobs/?q={keyword}&location=India",
+    "domain": "big-tech"
+  },
+  {
+    "company": "Coinbase",
+    "url": "https://www.coinbase.com/careers/positions?department=Engineering",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "SmartRecruiters Global",
+    "url": "https://jobs.smartrecruiters.com/?keyword={keyword}",
+    "domain": "enterprise-saas"
+  },
+  {
+    "company": "Flipkart",
+    "url": "https://flipkart.turbohire.co/dashboardv2?orgId=4d757ba0-3d57-448a-b82c-238ed87ac90f&type=0",
+    "domain": "ecommerce-retail"
+  },
+  {
+    "company": "Swiggy",
+    "url": "https://careers.swiggy.com/#/careers?src=careers&search=title:{keyword}",
+    "domain": "ecommerce-retail"
+  },
+  {
+    "company": "Cred",
+    "url": "https://careers.cred.club/openings",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "Zepto",
+    "url": "https://zepto.talentrecruit.com/career-page",
+    "domain": "ecommerce-retail"
+  },
+  {
+    "company": "Zoho",
+    "url": "https://careers.zohocorp.com/jobs/Careers",
+    "domain": "enterprise-saas"
+  },
+  {
+    "company": "Mphasis",
+    "url": "https://mphasis.ripplehire.com/candidate/?token=ty4DfyWddnOrtpclQeia&source=CAREERSITE#list/search={keyword}",
+    "domain": "it-services"
+  },
+  {
+    "company": "Hexaware Technologies",
+    "url": "https://jobs.hexaware.com/#en/sites/CX_1/jobs?keyword={keyword}&location=India&locationId=300000000446279&locationLevel=country&mode=location",
+    "domain": "it-services"
+  },
+  {
+    "company": "OpenAI",
+    "url": "https://openai.com/careers"
+  },
+  {
+    "company": "LivePerson",
+    "url": "https://liveperson.com/company/careers",
+    "notes": "Remote EMEA. Conversational AI enterprise."
+  },
+  {
+    "company": "Talkdesk",
+    "url": "https://www.talkdesk.com/careers",
+    "notes": "Lisbon. Contact center AI. EMEA friendly."
+  },
+  {
+    "company": "Twilio",
+    "url": "https://jobs.twilio.com",
+    "notes": "Voice/messaging infrastructure."
+  },
+  {
+    "company": "Dialpad",
+    "url": "https://www.dialpad.com/careers",
+    "notes": "Voice AI for business comms."
+  },
+  {
+    "company": "Gong",
+    "url": "https://www.gong.io/careers",
+    "notes": "Revenue intelligence with voice AI."
+  },
+  {
+    "company": "Genesys",
+    "url": "https://www.genesys.com/careers",
+    "notes": "Contact center cloud + AI."
+  },
+  {
+    "company": "Salesforce",
+    "url": "https://careers.salesforce.com",
+    "notes": "Agentforce = AI agents platform."
+  },
+  {
+    "company": "Langfuse",
+    "url": "https://langfuse.com/careers",
+    "notes": "Berlin. LLMOps / observability."
+  },
+  {
+    "company": "Cognigy",
+    "url": "https://careers.cognigy.com",
+    "notes": "Dusseldorf EMEA. Conversational AI enterprise."
+  },
+  {
+    "company": "Make.com (Celonis)",
+    "url": "https://www.make.com/en/careers",
+    "notes": "Celonis parent company. Automation platform."
+  },
+  {
+    "company": "Factorial",
+    "url": "https://careers.factorialhr.com",
+    "notes": "Barcelona. HR SaaS unicorn."
+  },
+  {
+    "company": "Vinted",
+    "url": "https://careers.vinted.com",
+    "notes": "Vilnius LT / Berlin. C2C marketplace unicorn, data science & ML roles. Greenhouse-backed custom board."
+  },
+  {
+    "company": "Revolut",
+    "url": "https://www.revolut.com/careers",
+    "notes": "London / EU remote. Fintech super-app. Custom board at /careers/position/."
+  },
+  {
+    "company": "Klarna",
+    "url": "https://www.klarna.com/careers/",
+    "notes": "Stockholm. Fintech. SPA at klarna.com/careers."
+  },
+  {
+    "company": "Bosch",
+    "url": "https://jobs.bosch.com",
+    "notes": "Germany/Remote. IoT and automotive. Custom e-spirit CaaS portal (bosch-i3-caas-api.e-spirit.cloud)."
+  },
+  {
+    "company": "Shopify",
+    "url": "https://www.shopify.com/careers",
+    "notes": "Remote-first. E-commerce platform. Greenhouse-backed SPA."
+  },
+  {
+    "company": "Aiven",
+    "url": "https://aiven.io/careers",
+    "notes": "Helsinki/Remote EU. Managed open-source data infra. Greenhouse-backed custom board."
+  },
+  {
+    "company": "Zendesk",
+    "url": "https://careers.zendesk.com",
+    "notes": "Global remote. Customer service SaaS. Cloudflare-walled careers page."
+  },
+  {
+    "company": "MessageBird",
+    "url": "https://bird.com/careers",
+    "notes": "Amsterdam. Communications platform (rebranded Bird). Custom SPA board."
+  },
+  {
+    "company": "Tiqets",
+    "url": "https://www.tiqets.com/jobs",
+    "notes": "Amsterdam. Travel tech."
+  },
+  {
+    "company": "Zep AI",
+    "url": "https://www.getzep.com/careers",
+    "notes": "Context engineering platform for AI agents. YC W24. Lead FDE + DevRel Lead roles. US-only currently."
+  },
+  {
+    "company": "Maxim AI",
+    "url": "https://www.getmaxim.ai/careers",
+    "notes": "AI evaluation and observability platform. Bangalore-based, mostly on-site."
+  }
+]

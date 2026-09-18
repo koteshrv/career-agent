@@ -19,11 +19,12 @@ import logging
 import requests
 from sqlalchemy.orm import Session
 
-from . import crud, models
-from .config import config
-from .sources.common import record_job
-from .scraper_core import bulk_evaluate_jobs
-from .tasks import task_manager
+from backend.database import crud
+from backend.database import models
+from backend.core.config import config
+from backend.services.common import record_job
+from backend.services.scraper_core import bulk_evaluate_jobs
+from backend.services.tasks import task_manager
 
 logger = logging.getLogger(__name__)
 

@@ -5,10 +5,13 @@ import logging
 logger = logging.getLogger(__name__)
 import asyncio
 
-from .. import schemas, crud, auth, models
-from ..database import get_db
-from ..sources.common import process_jobs
-from ..ai import agent
+from backend.database import schemas
+from backend.database import crud
+from backend.core import auth
+from backend.database import models
+from backend.database.database import get_db
+from backend.services.common import process_jobs
+from backend.services import ai_agent as agent
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
@@ -69,7 +72,7 @@ async def fetch_jd(job_id: int, db: Session = Depends(get_db), current_user: mod
     db_job = crud.update_job_status(db, current_user.id, job_id, schemas.JobUpdate(description=description))
     return {"description": description}
 
-from ..sources import global_scanner
+from backend.services import global_scanner
 
 @router.post("/global-search-test")
 async def test_global_search(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):

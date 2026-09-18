@@ -11,7 +11,7 @@ import logging
 import requests
 from sqlalchemy.orm import Session
 
-from . import crud
+from backend.database import crud
 
 logger = logging.getLogger(__name__)
 

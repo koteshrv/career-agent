@@ -5,6 +5,7 @@ import { formatISTDate } from "@/lib/datetime"
 import { api } from "@/lib/api"
 import { BriefcaseBusiness, Calendar, ExternalLink, ChevronDown, ChevronUp, Search, Trash2, Check, X, Globe, DownloadCloud, Database, RefreshCw, Filter, Inbox } from "lucide-react"
 import { JobModal } from "./JobModal"
+import { CompanyLogo } from "./CompanyLogo"
 import { useToast } from "./Toast"
 import { ConfirmDialog } from "./ConfirmDialog"
 
@@ -260,6 +261,11 @@ export function JobsBoard() {
             <BriefcaseBusiness className="w-3.5 h-3.5 text-muted-foreground" />
           )}
         </div>
+        <CompanyLogo 
+          name={job.company} 
+          className="w-8 h-8 rounded shrink-0 shadow-sm border border-border" 
+          fallbackIcon={job.external_id ? <Globe className="w-2.5 h-2.5 text-primary" /> : null} 
+        />
 
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-foreground truncate" title={job.title}>{job.title}</p>
@@ -488,6 +494,10 @@ export function JobsBoard() {
                   className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-accent/40 transition-colors"
                 >
                   <span className="font-semibold text-sm text-foreground truncate">{company}</span>
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <CompanyLogo name={company} className="w-6 h-6 rounded shrink-0 shadow-sm border border-border" />
+                    <span className="font-semibold text-sm text-foreground truncate">{company}</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-status-new/15 text-status-new hover:bg-status-new/25">{companyJobs.length}</Badge>
                     {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}

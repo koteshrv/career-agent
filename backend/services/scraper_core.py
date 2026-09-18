@@ -8,19 +8,19 @@ scraper functions directly from `backend.scraper_core`.
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from .tasks import task_manager
+from backend.services.tasks import task_manager
 from typing import List
 from sqlalchemy.orm import Session
 
-from . import models
-from .ai import agent
-from .sources.common import (
+from backend.database import models
+from backend.services import ai_agent as agent
+from backend.services.common import (
     LOCATIONS, DEFAULT_KEYWORDS,
     check_keywords_and_location,
     load_keywords, load_targets, has_been_notified, record_job,
     get_active_companies, commit_jobs, process_jobs,
 )
-from .sources.universal_api import process_universal_api
+from backend.services.universal_api import process_universal_api
 
 logger = logging.getLogger(__name__)
 
@@ -200,7 +200,7 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
             logger.info(f"Scraping all {len(targets)} companies (no filter set)")
 
     # Filter out BLOCKED targets for cooldown
-    from .health_manager import is_provider_blocked, update_health
+    from backend.core.health_manager import is_provider_blocked, update_health
     filtered_targets = []
     for t in targets:
         company = t.get("company")

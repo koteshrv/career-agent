@@ -8,9 +8,9 @@ from pathlib import Path
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from .config import config
-from .database import get_db
-from . import models
+from backend.core.config import config
+from backend.database.database import get_db
+from backend.database import models
 
 # Credentials are configured via backend/config.json (see config.example.json). Defaults
 # are intentionally weak and should be overridden before exposing this past localhost.
@@ -25,7 +25,7 @@ def _secret() -> bytes:
     if s:
         return s.encode()
     try:
-        from .crypto import KEY_FILE
+        from backend.core.crypto import KEY_FILE
         return Path(KEY_FILE).read_bytes()
     except Exception:
         return b"insecure-default-secret-change-me"

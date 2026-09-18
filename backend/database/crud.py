@@ -1,7 +1,8 @@
 import json
 from sqlalchemy.orm import Session
-from . import models, schemas
-from .crypto import encrypt_value, decrypt_value
+from backend.database import models
+from backend.database import schemas
+from backend.core.crypto import encrypt_value, decrypt_value
 from datetime import datetime, timedelta, timezone
 
 def get_jobs(db: Session, user_id: int, skip: int = 0, limit: int = 100):
@@ -14,6 +15,29 @@ def get_jobs(db: Session, user_id: int, skip: int = 0, limit: int = 100):
 
 def get_job(db: Session, user_id: int, job_id: int):
     return db.query(models.Job).filter(models.Job.id == job_id, models.Job.user_id == user_id).first()
+
+def log_follow_up(db: Session, user_id: int, job_id: int):
+    """Records that the user actually followed up (emailed, called, etc.) — the
+    only thing that ever advances the cadence; a snooze does not count as one."""
+    db_job = get_job(db, user_id, job_id)
+    if not db_job:
+        return None
+    db_job.last_follow_up_at = datetime.now(timezone.utc)
+    db_job.follow_up_count = (db_job.follow_up_count or 0) + 1
+    db_job.follow_up_snoozed_until = None
+    db.commit()
+    db.refresh(db_job)
+    return db_job
+
+def snooze_follow_up(db: Session, user_id: int, job_id: int, until: datetime):
+    """Pushes the next due date to `until` without counting as a real follow-up."""
+    db_job = get_job(db, user_id, job_id)
+    if not db_job:
+        return None
+    db_job.follow_up_snoozed_until = until
+    db.commit()
+    db.refresh(db_job)
+    return db_job
 
 def update_job_status(db: Session, user_id: int, job_id: int, job_update: schemas.JobUpdate):
     db_job = get_job(db, user_id, job_id)

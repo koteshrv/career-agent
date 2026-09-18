@@ -2,11 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import List
 
-from .. import auth, models, log_context
-from ..database import get_db, SessionLocal
-from ..models import ScraperHealth
-from ..schemas import ScraperHealth as ScraperHealthSchema
-from ..scraper_core import run_scraper
+from backend.core import auth
+from backend.database import models
+from backend.core import log_context
+from backend.database.database import get_db, SessionLocal
+from backend.database.models import ScraperHealth
+from backend.database.schemas import ScraperHealth as ScraperHealthSchema
+from backend.services.scraper_core import run_scraper
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,7 +21,7 @@ router = APIRouter(
 @router.get("/scraper-health", response_model=List[ScraperHealthSchema])
 def get_scraper_health(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     """Fetch health data for all scraper integrations."""
-    from ..sources.common import load_targets
+    from backend.services.common import load_targets
     db_health = {h.provider_name: h for h in db.query(ScraperHealth).filter(ScraperHealth.user_id == current_user.id).all()}
     all_targets = load_targets()
 

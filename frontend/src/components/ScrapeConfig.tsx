@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { api } from "@/lib/api"
 import { X, Check, Minus } from "lucide-react"
+import { CompanyLogo } from "./CompanyLogo"
 
 type Company = { name: string; domain: string }
 
@@ -171,6 +172,7 @@ export function ScrapeConfig({ settings, onChange }: { settings: any, onChange: 
                         <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${checked ? "bg-primary border-primary" : "border-border"}`}>
                           {checked && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                         </span>
+                        <CompanyLogo name={c.name} className="w-5 h-5 rounded shrink-0 shadow-sm border border-border" />
                         <span className="truncate text-left">{c.name}</span>
                       </button>
                     )

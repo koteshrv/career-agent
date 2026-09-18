@@ -2,8 +2,12 @@ import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from .. import schemas, crud, scheduler, auth, models
-from ..database import get_db
+from backend.database import schemas
+from backend.database import crud
+from backend.services import scheduler
+from backend.core import auth
+from backend.database import models
+from backend.database.database import get_db
 
 logger = logging.getLogger(__name__)
 

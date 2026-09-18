@@ -6,9 +6,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from .. import crud, auth, models
-from ..ai import agent
-from ..database import get_db
+from backend.database import crud
+from backend.core import auth
+from backend.database import models
+from backend.services import ai_agent as agent
+from backend.database.database import get_db
 
 logger = logging.getLogger(__name__)
 

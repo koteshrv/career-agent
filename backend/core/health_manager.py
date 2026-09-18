@@ -1,8 +1,8 @@
 import logging
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone, timedelta
-from .models import ScraperHealth
-from .notifications import send_telegram_message, escape_md
+from backend.database.models import ScraperHealth
+from backend.services.notifications import send_telegram_message, escape_md
 
 logger = logging.getLogger(__name__)
 

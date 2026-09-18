@@ -10,10 +10,13 @@ from fastapi.responses import FileResponse, StreamingResponse
 from starlette.background import BackgroundTask
 from sqlalchemy.orm import Session
 
-from .. import crud, schemas, auth, models
-from ..ai import agent
-from ..database import get_db
-from ..tasks import task_manager
+from backend.database import crud
+from backend.database import schemas
+from backend.core import auth
+from backend.database import models
+from backend.services import ai_agent as agent
+from backend.database.database import get_db
+from backend.services.tasks import task_manager
 
 logger = logging.getLogger(__name__)
 

@@ -11,7 +11,7 @@ from typing import List, Dict, Any
 
 from sqlalchemy.orm import Session
 
-from .. import models
+from backend.database import models
 
 logger = logging.getLogger(__name__)
 

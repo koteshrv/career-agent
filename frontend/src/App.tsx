@@ -10,13 +10,15 @@ import { getToken, clearToken, IS_DEMO, api } from "@/lib/api"
 import { QuickGeneratePage } from "./components/QuickGeneratePage"
 import { KnowledgeBasePage } from "./components/KnowledgeBasePage"
 import { NotificationTray } from "./components/NotificationTray"
-import { Home, Briefcase, Zap, Settings, History, LogOut, LineChart, Database, User, Menu, Sun, Moon } from "lucide-react"
+import { FollowUpsPage } from "./components/FollowUpsPage"
+import { Home, Briefcase, Zap, Settings, History, LogOut, LineChart, Database, User, Menu, Sun, Moon, CalendarClock } from "lucide-react"
 import { useState, useEffect } from "react"
 import type { ReactNode } from "react"
 
 const NAV = [
   { to: "/app/home", label: "Home", title: "Home", subtitle: "What's happening, and what to do next.", icon: Home },
   { to: "/app/applications", label: "Pipeline", title: "Pipeline", subtitle: "Every job you're tracking, in one list.", icon: Briefcase },
+  { to: "/app/followups", label: "Follow-ups", title: "Follow-ups", subtitle: "Applications waiting on a nudge.", icon: CalendarClock },
   { to: "/app/quick-generate", label: "Quick Generate", title: "Quick Generate", subtitle: "Instantly generate a tailored resume or cover letter without tracking the job in your pipeline.", icon: Zap },
   { to: "/app/analytics", label: "Analytics", title: "Analytics", subtitle: "Insights and metrics on your job search progress.", icon: LineChart },
   { to: "/app/knowledge", label: "Knowledge Base", title: "Career Knowledge Base", subtitle: "Manage your career history for RAG generation.", icon: Database },
@@ -266,6 +268,7 @@ function App() {
         <Route index element={<Navigate to="/app/home" replace />} />
         <Route path="home" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><HomePage /></div>} />
         <Route path="applications" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><JobsBoard /></div>} />
+        <Route path="followups" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><FollowUpsPage /></div>} />
         <Route path="analytics" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><AnalyticsPage /></div>} />
         <Route path="history" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><HistoryPage /></div>} />
         <Route path="quick-generate" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><QuickGeneratePage /></div>} />

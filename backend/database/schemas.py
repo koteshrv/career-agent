@@ -49,6 +49,9 @@ class JobUpdate(BaseModel):
     score_experience: Optional[str] = None
     score_domain: Optional[str] = None
     applied_at: Optional[datetime] = None
+    last_follow_up_at: Optional[datetime] = None
+    follow_up_count: Optional[int] = None
+    follow_up_snoozed_until: Optional[datetime] = None
 
 class Job(JobBase):
     id: int
@@ -75,6 +78,9 @@ class Job(JobBase):
     created_at: datetime
     updated_at: Optional[datetime] = None
     applied_at: Optional[datetime] = None
+    last_follow_up_at: Optional[datetime] = None
+    follow_up_count: Optional[int] = None
+    follow_up_snoozed_until: Optional[datetime] = None
 
     class Config:
         from_attributes = True

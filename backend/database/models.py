@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Text, Boolean, UniqueConstraint, ForeignKey
 from sqlalchemy.sql import func
-from .database import Base
+from backend.database.database import Base
 
 class User(Base):
     __tablename__ = "users"
@@ -53,6 +53,14 @@ class Job(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     applied_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Follow-up cadence (see backend/followups.py). last_follow_up_at/count
+    # advance only when the user logs a real follow-up action (never set
+    # automatically); snoozed_until is a one-off manual override of the next
+    # computed due date, cleared once it passes.
+    last_follow_up_at = Column(DateTime(timezone=True), nullable=True)
+    follow_up_count = Column(Integer, default=0)
+    follow_up_snoozed_until = Column(DateTime(timezone=True), nullable=True)
 
     # Set once this job has been successfully pushed to the crowdsourcing API
     # (career-agent-api). NULL means "never pushed" — the crowdsource push cycle only
