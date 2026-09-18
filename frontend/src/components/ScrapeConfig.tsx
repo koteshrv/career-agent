@@ -1,14 +1,46 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { api } from "@/lib/api"
-import { X, Check } from "lucide-react"
+import { X, Check, Minus } from "lucide-react"
+
+type Company = { name: string; domain: string }
+
+// Slug -> display label. An unlisted slug (e.g. a future "other") just
+// title-cases itself below, so this only needs entries worth a nicer name.
+const DOMAIN_LABELS: Record<string, string> = {
+  "ai-ml": "AI / ML",
+  "voice-conversational-ai": "Voice & Conversational AI",
+  "dev-tools-infra": "Dev Tools & Infra",
+  "customer-engagement": "Customer Engagement",
+  "automation-agentic": "Automation & Agentic",
+  "fintech-payments": "Fintech & Payments",
+  "banking-finance": "Banking & Finance",
+  "it-services": "IT Services",
+  "big-tech": "Big Tech",
+  "ecommerce-retail": "E-commerce & Retail",
+  "automotive-industrial": "Automotive & Industrial",
+  "enterprise-saas": "Enterprise SaaS",
+  "gaming": "Gaming",
+  "security": "Security",
+  "telecom": "Telecom",
+  "other": "Other",
+}
+const domainLabel = (d: string) => DOMAIN_LABELS[d] || d.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())
 
 export function ScrapeConfig({ settings, onChange }: { settings: any, onChange: (s: any) => void }) {
-  const [companies, setCompanies] = useState<string[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
   const [keywordInput, setKeywordInput] = useState("")
 
   useEffect(() => {
     api.get("/api/companies").then(res => setCompanies(res.data.companies || []))
   }, [])
+
+  const groupedByDomain = useMemo(() => {
+    const groups: Record<string, Company[]> = {}
+    for (const c of companies) {
+      (groups[c.domain] ||= []).push(c)
+    }
+    return Object.entries(groups).sort(([a], [b]) => domainLabel(a).localeCompare(domainLabel(b)))
+  }, [companies])
 
   const parseList = (raw: string | null | undefined): string[] => {
     if (!raw) return []
@@ -43,10 +75,23 @@ export function ScrapeConfig({ settings, onChange }: { settings: any, onChange: 
 
   const removeKeyword = (kw: string) => setKeywords(keywords.filter(k => k !== kw))
 
-  const toggleCompany = (c: string) =>
-    setActiveCompanies(activeCompanies.includes(c) ? activeCompanies.filter(x => x !== c) : [...activeCompanies, c])
-
   const allCompanies = activeCompanies.length === 0
+
+  // Every checkbox renders as checked while activeCompanies is [] ("all"),
+  // so a click there must mean "deselect this one" (-> all except it), not
+  // "select this one" (-> only it) — materialize the full list first, same
+  // as toggleDomain below.
+  const toggleCompany = (c: string) => {
+    const base = allCompanies ? companies.map(x => x.name) : activeCompanies
+    setActiveCompanies(base.includes(c) ? base.filter(x => x !== c) : [...base, c])
+  }
+
+  const toggleDomain = (domainCompanies: Company[]) => {
+    const base = allCompanies ? companies.map(c => c.name) : activeCompanies
+    const names = domainCompanies.map(c => c.name)
+    const allSelected = names.every(n => base.includes(n))
+    setActiveCompanies(allSelected ? base.filter(n => !names.includes(n)) : [...new Set([...base, ...names])])
+  }
 
   return (
     <div className="bg-card rounded-lg border border-border p-6 space-y-6">
@@ -86,33 +131,54 @@ export function ScrapeConfig({ settings, onChange }: { settings: any, onChange: 
           <label className="block text-sm font-medium text-muted-foreground">Target Companies</label>
           <span className="text-xs text-muted-foreground">{allCompanies ? "All companies" : `${activeCompanies.length} selected`}</span>
         </div>
-        <div className="bg-secondary border border-border rounded-md p-3 max-h-56 overflow-y-auto custom-scrollbar">
+        <div className="bg-secondary border border-border rounded-md p-3 max-h-96 overflow-y-auto custom-scrollbar">
           <button
             onClick={() => setActiveCompanies([])}
-            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium mb-1 transition-colors ${allCompanies ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-accent"}`}
+            className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium mb-2 transition-colors ${allCompanies ? "text-primary bg-primary/10" : "text-muted-foreground hover:bg-accent"}`}
           >
             <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center ${allCompanies ? "bg-primary border-primary" : "border-border"}`}>
               {allCompanies && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
             </span>
             All (scrape everything)
           </button>
-          <div className="grid grid-cols-2 gap-0.5">
-            {companies.map(c => {
-              const checked = activeCompanies.includes(c)
-              return (
+
+          {groupedByDomain.map(([domain, domainCompanies]) => {
+            const names = domainCompanies.map(c => c.name)
+            const selectedCount = allCompanies ? names.length : names.filter(n => activeCompanies.includes(n)).length
+            const domainState = selectedCount === 0 ? "none" : selectedCount === names.length ? "all" : "some"
+            return (
+              <div key={domain} className="mb-2 last:mb-0">
                 <button
-                  key={c}
-                  onClick={() => toggleCompany(c)}
-                  className="flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-foreground hover:bg-accent transition-colors"
+                  onClick={() => toggleDomain(domainCompanies)}
+                  className="w-full flex items-center gap-2 px-2 py-1 rounded text-xs font-semibold text-foreground hover:bg-accent transition-colors"
                 >
-                  <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${checked ? "bg-primary border-primary" : "border-border"}`}>
-                    {checked && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                  <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${domainState !== "none" ? "bg-primary border-primary" : "border-border"}`}>
+                    {domainState === "all" && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                    {domainState === "some" && <Minus className="w-2.5 h-2.5 text-primary-foreground" />}
                   </span>
-                  <span className="truncate text-left">{c}</span>
+                  {domainLabel(domain)}
+                  <span className="text-muted-foreground font-normal ml-auto">{selectedCount}/{names.length}</span>
                 </button>
-              )
-            })}
-          </div>
+                <div className="grid grid-cols-2 gap-0.5 pl-1">
+                  {domainCompanies.map(c => {
+                    const checked = allCompanies || activeCompanies.includes(c.name)
+                    return (
+                      <button
+                        key={c.name}
+                        onClick={() => toggleCompany(c.name)}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded text-xs font-medium text-foreground hover:bg-accent transition-colors"
+                      >
+                        <span className={`w-3.5 h-3.5 rounded-sm border flex items-center justify-center shrink-0 ${checked ? "bg-primary border-primary" : "border-border"}`}>
+                          {checked && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
+                        </span>
+                        <span className="truncate text-left">{c.name}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 

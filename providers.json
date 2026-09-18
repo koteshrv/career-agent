@@ -1,0 +1,239 @@
+[
+  {
+    "company": "Meesho",
+    "provider": "lever",
+    "api": "https://api.lever.co/v0/postings/meesho",
+    "domain": "ecommerce-retail"
+  },
+  {
+    "company": "Atlassian",
+    "provider": "lever",
+    "api": "https://api.lever.co/v0/postings/atlassian",
+    "domain": "enterprise-saas"
+  },
+  {
+    "company": "PhonePe",
+    "provider": "greenhouse",
+    "api": "https://boards-api.greenhouse.io/v1/boards/phonepe/jobs",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "Wells Fargo",
+    "url": "https://www.wellsfargojobs.com/en/jobs/?search={keyword}&country=India&pagesize=100&page=1",
+    "domain": "banking-finance"
+  },
+  {
+    "company": "Mastercard",
+    "url": "https://careers.mastercard.com/us/en/search-results?keywords={keyword}&location=India&country=India",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "JP Morgan Chase",
+    "url": "https://jpmc.fa.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1001/jobs?location=India&locationId=300000000289360&locationLevel=country&mode=location",
+    "domain": "banking-finance"
+  },
+  {
+    "company": "Infosys",
+    "url": "https://career.infosys.com/jobs?companyhiringtype=IL&countrycode=IN",
+    "domain": "it-services"
+  },
+  {
+    "company": "Cognizant",
+    "url": "https://careers.cognizant.com/global-en/jobs/?keyword={keyword}&location=India&radius=100&lat=&lng=&cname=India&ccode=IN&pagesize=10#results",
+    "domain": "it-services"
+  },
+  {
+    "company": "Capgemini",
+    "url": "https://www.capgemini.com/in-en/careers/join-capgemini/job-search/?page=1&size=11&country_code=in-en&keyword={keyword}",
+    "domain": "it-services"
+  },
+  {
+    "company": "LTIMindtree",
+    "url": "https://careers.ltimindtree.com/search/?createNewAlert=false&q={keyword}&locationsearch=india",
+    "domain": "it-services"
+  },
+  {
+    "company": "Barclays",
+    "url": "https://search.jobs.barclays/search-jobs?k={keyword}&l=Telangana%2C+IN&orgIds=13015",
+    "domain": "banking-finance"
+  },
+  {
+    "company": "Citi",
+    "url": "https://jobs.citi.com/search-jobs?k={keyword}&l=India&orgIds=287",
+    "domain": "banking-finance"
+  },
+  {
+    "company": "Visa",
+    "url": "https://careers.smartrecruiters.com/Visa",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "Wipro",
+    "url": "https://careers.wipro.com/search/?q={keyword}&locationsearch=India&searchResultView=LIST",
+    "domain": "it-services"
+  },
+  {
+    "company": "HCLTech",
+    "url": "https://careers.hcltech.com/search/?q={keyword}&locationsearch=&searchResultView=LIST&markerViewed=&carouselIndex=&facetFilters=%7B%22custCountryRegion%22%3A%5B%22India%22%5D%7D&pageNumber=0",
+    "domain": "it-services"
+  },
+  {
+    "company": "Accenture",
+    "url": "https://www.accenture.com/in-en/careers/jobsearch?jk={keyword}&sb=0",
+    "domain": "it-services"
+  },
+  {
+    "company": "IBM",
+    "url": "https://www.ibm.com/in-en/careers/search",
+    "provider": "ibm",
+    "ibm": {
+      "country": "India"
+    },
+    "domain": "big-tech"
+  },
+  {
+    "company": "Deloitte",
+    "url": "https://southasiacareers.deloitte.com/search/?createNewAlert=false&q={keyword}&locationsearch=India&optionsFacetsDD_city=&optionsFacetsDD_customfield2=",
+    "domain": "it-services"
+  },
+  {
+    "company": "TCS",
+    "url": "https://ibegin.tcsapps.com/candidate/next/en-IN/jobs/search?page=1&size=10&regular=true&walkin=true&sort=relevance%20desc",
+    "domain": "it-services"
+  },
+  {
+    "company": "Tech Mahindra",
+    "url": "https://careers.techmahindra.com/",
+    "no_results_text": "0 results",
+    "provider": "tech-mahindra",
+    "domain": "it-services"
+  },
+  {
+    "company": "Google",
+    "url": "https://www.google.com/about/careers/applications/jobs/results/?q={keyword}&location=India",
+    "domain": "big-tech"
+  },
+  {
+    "company": "Amazon",
+    "url": "https://www.amazon.jobs/en/search?loc_query=India",
+    "amazon": {
+      "loc_query": "India"
+    },
+    "domain": "big-tech"
+  },
+  {
+    "company": "Microsoft",
+    "url": "https://apply.careers.microsoft.com/careers?query={keyword}&start=0&location=India&sort_by=relevance&filter_include_remote=1",
+    "domain": "big-tech"
+  },
+  {
+    "company": "Apple",
+    "url": "https://jobs.apple.com/en-in/search?search={keyword}&location=india-IND",
+    "domain": "big-tech"
+  },
+  {
+    "company": "Meta",
+    "url": "https://www.metacareers.com/jobs/?q={keyword}&location=India",
+    "domain": "big-tech"
+  },
+  {
+    "company": "Stripe",
+    "provider": "greenhouse",
+    "api": "https://boards-api.greenhouse.io/v1/boards/stripe/jobs",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "Airbnb",
+    "provider": "greenhouse",
+    "api": "https://boards-api.greenhouse.io/v1/boards/airbnb/jobs",
+    "domain": "ecommerce-retail"
+  },
+  {
+    "company": "Snowflake",
+    "provider": "greenhouse",
+    "api": "https://boards-api.greenhouse.io/v1/boards/snowflakecomputing/jobs",
+    "domain": "dev-tools-infra"
+  },
+  {
+    "company": "Databricks",
+    "provider": "greenhouse",
+    "api": "https://boards-api.greenhouse.io/v1/boards/databricks/jobs",
+    "domain": "dev-tools-infra"
+  },
+  {
+    "company": "Coinbase",
+    "url": "https://www.coinbase.com/careers/positions?department=Engineering",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "Figma",
+    "provider": "lever",
+    "api": "https://api.lever.co/v0/postings/figma",
+    "domain": "enterprise-saas"
+  },
+  {
+    "company": "Notion",
+    "provider": "lever",
+    "api": "https://api.lever.co/v0/postings/notionhq",
+    "domain": "enterprise-saas"
+  },
+  {
+    "company": "SmartRecruiters Global",
+    "url": "https://jobs.smartrecruiters.com/?keyword={keyword}",
+    "domain": "enterprise-saas"
+  },
+  {
+    "company": "Flipkart",
+    "url": "https://flipkart.turbohire.co/dashboardv2?orgId=4d757ba0-3d57-448a-b82c-238ed87ac90f&type=0",
+    "domain": "ecommerce-retail"
+  },
+  {
+    "company": "Swiggy",
+    "url": "https://careers.swiggy.com/#/careers?src=careers&search=title:{keyword}",
+    "domain": "ecommerce-retail"
+  },
+  {
+    "company": "Paytm",
+    "provider": "lever",
+    "api": "https://api.lever.co/v0/postings/paytmpayments",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "Cred",
+    "url": "https://careers.cred.club/openings",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "Razorpay",
+    "provider": "greenhouse",
+    "api": "https://boards-api.greenhouse.io/v1/boards/razorpaysoftwareprivatelimited/jobs",
+    "domain": "fintech-payments"
+  },
+  {
+    "company": "Zepto",
+    "url": "https://zepto.talentrecruit.com/career-page",
+    "domain": "ecommerce-retail"
+  },
+  {
+    "company": "Zoho",
+    "url": "https://careers.zohocorp.com/jobs/Careers",
+    "domain": "enterprise-saas"
+  },
+  {
+    "company": "Persistent Systems",
+    "api_url": "https://apipersistent.zwayam.com/jobs/search",
+    "domain": "it-services",
+    "company_id": "MTQ5Nzc=",
+    "provider": "zwayam"
+  },
+  {
+    "company": "Mphasis",
+    "url": "https://mphasis.ripplehire.com/candidate/?token=ty4DfyWddnOrtpclQeia&source=CAREERSITE#list/search={keyword}",
+    "domain": "it-services"
+  },
+  {
+    "company": "Hexaware Technologies",
+    "url": "https://jobs.hexaware.com/#en/sites/CX_1/jobs?keyword={keyword}&location=India&locationId=300000000446279&locationLevel=country&mode=location",
+    "domain": "it-services"
+  }
+]

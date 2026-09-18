@@ -33,7 +33,7 @@ ATS was built to save recruiters' time. CareerAgent was built to save yours.
 
 The average software engineer spends hours each week manually filtering job boards, copy-pasting descriptions, and reformatting resumes. CareerAgent replaces all of that with a local, autonomous agent that runs in the background — it finds jobs, scores them against your profile using a rubric-guided LLM, and prepares every application material right up to the submit button. You stay in control; the drudgery disappears.
 
-**No accounts. No subscriptions. No cloud. 100% free and open-source.**
+**No vendor account. No subscriptions. No cloud. 100% free and open-source.**
 
 ---
 
@@ -41,14 +41,14 @@ The average software engineer spends hours each week manually filtering job boar
 
 | Feature | Description |
 |---|---|
-| 🔍 **Playwright Hybrid Scrapers** | Headless background scrapers for standard ATS platforms (Greenhouse, Lever, Ashby). For heavily protected sites like LinkedIn, the companion Chrome Extension bypasses IP bans entirely. |
+| 🔍 **Zero-Token Job Scrapers** | No browser automation for standard ATS platforms — Greenhouse, Lever, Ashby, Workday, SmartRecruiters, and 80+ others are read straight from their own public JSON APIs (the connectors are vendored from [career-ops](https://github.com/career-ops-hq/career-ops), see Acknowledgments). For sites with no public API and heavily protected ones like LinkedIn, the companion Chrome Extension saves jobs directly from the page you're browsing. |
 | 🎯 **Agentic Deep Evaluation** | A massive LLM rubric grades each job against your resume across 5 dimensions: technical match, experience level, compensation, cultural signals, and red flags. Outputs a strict 0–100 score. |
 | 📄 **Native LaTeX CVs** | 1-click injects missing keywords into your base resume and natively compiles a pristine ATS-friendly PDF. No cloud PDF service, no templates. |
 | ✍️ **Drafts Open-Ended Answers** | Greenhouse, Ashby, and Lever forms ask "Why this role?". The agent reads the form, drafts paste-ready answers based on your CV, and leaves the final click to you. It never auto-submits. |
 | 🌐 **Global Crowdsourced Job Network** | Opt-in to a shared, anonymous job pool powered by [career-agent-api](https://github.com/koteshrv/career-agent-api) — a standalone open-source serverless API. Your instance pushes scraped job postings to the network and pulls back jobs scraped by others. **Only public job listing data is ever exchanged. Your resume, profile, scores, and any personal information never leave your machine.** Deduplication is automatic. Community flagging removes fake and expired listings. |
-| 🛡️ **Your Data, Your Machine** | All personal data — your resume, scores, notes, and application history — lives in a local SQLite database. No telemetry, no accounts, no third-party data mining. The only external calls your instance makes are: (1) the Gemini API for job scoring (replaceable with Ollama), and (2) the crowdsource API if you choose to opt in. |
+| 🛡️ **Your Data, Your Machine** | All personal data — your resume, scores, notes, and application history — lives in a local SQLite database. No telemetry, no third-party data mining. The only external calls your instance makes are: (1) your chosen AI provider for job scoring, and (2) the crowdsource API if you choose to opt in. |
 | 📊 **Application Pipeline** | Track every application across New, Applied, Interviewing, and Rejected stages. Full history log included. |
-| 🤖 **Bring Your Own AI** | Works with Google Gemini (free tier available), OpenAI, Anthropic, or fully locally via Ollama. You control the model. |
+| 🤖 **Bring Your Own AI** | Works with Google Gemini (free tier available), OpenAI, Anthropic, fully locally via Ollama, or your own AI coding CLI (Claude Code, Codex, Gemini CLI, and others) if you already pay for one. You control the model. |
 
 ---
 
@@ -68,7 +68,7 @@ curl -O https://raw.githubusercontent.com/koteshrv/career-agent/main/docker-comp
 docker compose up -d
 ```
 
-Visit **[http://localhost:5173](http://localhost:5173)** — no sign-up, no OAuth, no accounts required.
+Visit **[http://localhost:5173](http://localhost:5173)** — no vendor sign-up, no third-party OAuth. Set your own admin login on first visit and you're in; see the FAQ below ("Does it need an account or sign-in?") if you're running it for more than yourself.
 
 Your jobs, resume, and settings are stored locally in a SQLite database via Docker volumes. Nothing leaves your machine except the Gemini API call for resume scoring.
 
@@ -78,7 +78,7 @@ Your jobs, resume, and settings are stored locally in a SQLite database via Dock
 
 ### Chrome Extension (Optional — for LinkedIn & Naukri)
 
-Standard Playwright scrapers are blocked by LinkedIn and similar platforms. The companion Chrome Extension bypasses this by extracting job data directly from the page you're browsing:
+LinkedIn and similar platforms block server-side scraping entirely, no matter how it's done. The companion Chrome Extension bypasses this by extracting job data directly from the page you're browsing:
 
 1. Open `chrome://extensions/` → Enable **Developer mode**
 2. Click **Load unpacked** → Select the `chrome-extension/` folder from this repo
@@ -91,7 +91,11 @@ Standard Playwright scrapers are blocked by LinkedIn and similar platforms. The 
 ```bash
 # Backend
 python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements.txt -r requirements-dev.txt
+
+# Backend's zero-token scraper layer (backend/universal/) — a separate Node
+# package, vendored from career-ops (see Acknowledgments)
+cd backend/universal && npm install && cd ../..
 
 # Frontend
 cd frontend && npm install && cd ..
@@ -100,7 +104,7 @@ cd frontend && npm install && cd ..
 ./scripts/run.sh
 ```
 
-**Prerequisites:** Node.js 20+, Python 3.11+, `pdflatex` (TexLive/MiKTeX)
+**Prerequisites:** Node.js 18+, Python 3.11+, `pdflatex` (TexLive/MiKTeX)
 
 ---
 
@@ -113,11 +117,11 @@ graph LR
     classDef storage fill:#1E293B,stroke:#8B5CF6,stroke-width:2px,color:#F8FAFC
     classDef ai fill:#1E293B,stroke:#F59E0B,stroke-width:2px,color:#F8FAFC
 
-    subgraph Machine["Your Machine"]
+    subgraph Machine["Your Machine (or self-hosted server)"]
         UI[React Dashboard]:::frontend
         Ext[Chrome Extension]:::frontend
         API[FastAPI Backend]:::backend
-        Cron[Playwright Scrapers]:::backend
+        Cron[Zero-Token Scrapers]:::backend
         Compiler[LaTeX PDF Compiler]:::backend
         DB[(SQLite)]:::storage
         UI <--> API
@@ -127,18 +131,18 @@ graph LR
         API --> Compiler
     end
 
-    subgraph AI["External AI"]
-        LLM[Gemini / OpenAI / Ollama]:::ai
+    subgraph AI["Your Chosen AI"]
+        LLM[Gemini / OpenAI / Anthropic / Ollama / your own CLI]:::ai
     end
 
-    subgraph Network["Optional — Community Network"]
+    subgraph Network["Optional, Opt-In — Community Network"]
         CF[Crowdsource API]:::backend
         DB2[(Community Job Pool)]:::storage
         CF <--> DB2
     end
 
     Machine --> AI
-    Machine -.->|enabled by default| Network
+    Machine -.->|opt-in only| Network
 ```
 
 ---
@@ -152,11 +156,11 @@ No. It prepares every application right up to the click — resume, cover letter
 A rubric-guided LLM evaluation across 5 dimensions (technical match, experience, compensation, culture, red flags) produces a 0–100 score. Anything below your configured threshold is auto-moved to Ignored so it doesn't clutter your New Matches.
 
 **Is this really free?**
-Yes, permanently. MIT-licensed. No paid tier, no waitlist, no accounts. The only optional cost is an AI API key — and Google's Gemini free tier is more than enough for personal use.
+Yes, permanently. MIT-licensed. No paid tier, no waitlist, no vendor account. The only optional cost is an AI API key — and Google's Gemini free tier is more than enough for personal use.
 
 **Where does my data go?**
 Almost nowhere. All personal data — your resume, scores, notes, and application history — stays in a local SQLite file on your own disk. Your instance makes exactly two types of external calls:
-1. **Gemini API** — to score and tailor jobs against your resume. Replaceable with a local Ollama model for fully air-gapped operation.
+1. **Your chosen AI provider** — Gemini by default (free tier), swappable for OpenAI, Anthropic, a local AI coding CLI you already have, or a fully local Ollama model for air-gapped operation — to score and tailor jobs against your resume.
 2. **Crowdsource API** — *only if you opt in*. See below.
 
 **What is the Global Crowdsourced Job Network?**
@@ -167,7 +171,7 @@ An optional, opt-in feature backed by [career-agent-api](https://github.com/kote
 - ❌ Never shared: your resume, your match scores, your application notes, your settings, or any information about you
 
 **Does it need an account or sign-in?**
-No. CareerAgent is single-user and runs entirely locally. No SSO, no OAuth, no Google/GitHub sign-in. Just Docker.
+It's self-hosted, not a SaaS you sign up for — there's no CareerAgent account, no third-party service in the loop, and nothing about your install talks to us. The instance itself does have a lightweight login so it's safe to run for more than just you: the person who deploys it is the admin (local username/password, set at install), and anyone else signs in with their own Google or GitHub identity and waits for that admin to approve them — useful if you're running one instance for your household or a small team, unnecessary if it's just you. Running solo, you'll only ever see your own single login screen.
 
 ---
 
@@ -181,4 +185,4 @@ Contributions are welcome! Check the open issues or open a PR. See [CONTRIBUTING
 
 ## 🙏 Acknowledgments
 
-A special thanks to the [career-ops](https://github.com/ibttf/career-ops) open-source project. During the early development of CareerAgent, we were deeply inspired by their features and architectural decisions. We proudly utilize some of their Fast ATS API connectors and AI prompt strategies within our engine. Thank you to the `career-ops` maintainers for their fantastic open-source work!
+CareerAgent's zero-token ATS connectors (`backend/universal/providers/`) build directly on [career-ops](https://github.com/career-ops-hq/career-ops) (MIT), Santiago Fernández de Valderrama's open-source job-search CLI. Most of the modules that talk to Greenhouse, Lever, Ashby, Workday, and 80+ other job boards without a browser are vendored from career-ops with light adaptation for our multi-user backend; a few (for ATS platforms specific to the Indian market that career-ops's own catalog doesn't cover) are ours, built the same way and intended to be contributed back upstream. Its evaluation rubric and scoring philosophy also shaped how CareerAgent grades job fit. Huge thanks to the career-ops maintainers and community for building something this solid in the open.

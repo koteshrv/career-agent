@@ -24,9 +24,11 @@ def get_companies_health(run_limit: int = 20, db: Session = Depends(get_db), cur
 @router.get("/api/companies")
 def get_companies():
     targets = load_targets()
-    seen = []
+    seen = set()
+    companies = []
     for t in targets:
         name = t.get("company")
         if name and name not in seen:
-            seen.append(name)
-    return {"companies": seen}
+            seen.add(name)
+            companies.append({"name": name, "domain": t.get("domain") or "other"})
+    return {"companies": companies}

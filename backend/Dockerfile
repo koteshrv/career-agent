@@ -24,7 +24,7 @@ RUN mkdir -p /app/backend
 
 # Copy backend source
 COPY backend/ ./backend/
-COPY targets.json keywords.json ./
+COPY providers.json keywords.json ./
 
 # Playwright + Chromium for backend/universal/ (npm-side, matching career-ops's
 # own dependency — see backend/universal/package.json). --with-deps pulls the

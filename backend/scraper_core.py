@@ -181,7 +181,7 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
     targets = load_targets()
     keywords = load_keywords(db, user_id)
     logger.info(f"Keywords: {keywords}")
-    logger.debug(f"Loaded {len(targets)} total targets from targets.json")
+    logger.debug(f"Loaded {len(targets)} total targets from providers.json")
     all_new_jobs = []
     new_jobs = []
     company_logs = []

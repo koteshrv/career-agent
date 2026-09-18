@@ -5,7 +5,7 @@ See `CAREERAGENT_MANUAL.md` for a complete system overview.
 
 ## 1. Adding a New Scraper Target
 
-Every target in `targets.json` has `"type": "universal"` and is dispatched via
+Every target in `providers.json` is dispatched the same way, via
 `backend/sources/universal_api.py` → `node backend/universal/bridge.mjs` →
 `backend/universal/providers/*.mjs`. There is no Playwright and no per-vendor
 Python scraper module — job pulling is zero-token HTTP, in the `.mjs` layer,
@@ -26,7 +26,7 @@ import('./backend/universal/providers/_registry.mjs').then(async ({loadProviders
 "
 ```
 
-If it prints a match, just add the `targets.json` entry — `careers_url` alone
+If it prints a match, just add the `providers.json` entry — `careers_url` alone
 is often enough (`detect()` derives the real API endpoint); some providers
 need an explicit `provider:` field plus a config block (see `ibm.mjs`'s and
 `amazon.mjs`'s own header comments for their config shape). No new code.
@@ -47,12 +47,18 @@ need an explicit `provider:` field plus a config block (see `ibm.mjs`'s and
    before fetching, pass `redirect: 'error'` on every request (SSRF guard),
    and use `ctx.fetchJson`/`ctx.fetchText` from `_http.mjs` (never a bare
    `fetch`) so retry/backoff/DNS-pacing apply.
-3. Smoke-test it directly before wiring it into `targets.json`:
+3. Smoke-test it directly before wiring it into `providers.json`:
    ```bash
    node backend/universal/bridge.mjs '{"name":"NewCo","provider":"newco","careers_url":"https://..."}'
    ```
-4. Add the `targets.json` entry with `"type": "universal"` and whatever
-   `provider`/config keys the new module reads.
+4. Add the `providers.json` entry: `company`, `careers_url`/`api`, `domain`
+   (for the frontend's company-picker grouping — see `/api/companies`), and
+   whatever `provider`/config keys the new module reads. No `type` field —
+   every entry dispatches through `process_universal_api()` the same way.
+   No `enabled` field either: whether a company is active is per-user
+   dynamic state in `Settings.active_companies` (the DB), never written back
+   to this file — `providers.json` is a static catalog of *how* to scrape a
+   company, not *whether* to right now.
 5. If the source is a *shared* ATS vendor (not a single company's own portal)
    and clears career-ops's [Source Indexing
    Policy](https://github.com/career-ops-hq/career-ops/blob/main/CONTRIBUTING.md#source-indexing-policy),
@@ -225,7 +231,7 @@ This guide is intended for AI agents to quickly diagnose common issues in the `c
 
 **Symptom**: A target's `company_logs` entry says `"Bridge execution failed"` or times out.
 - **Diagnosis**: `backend/sources/universal_api.py` shells out to `node backend/universal/bridge.mjs`; either `node` isn't on `PATH` (check the Docker image installs it — `backend/Dockerfile`), or the provider itself threw (network error, changed API shape, SSRF-allowlist rejection).
-- **Fix**: Reproduce directly: `node backend/universal/bridge.mjs '<the target as JSON, matching its targets.json row plus "careers_url">'` and read the error. If a provider's endpoint shape changed, fix the `.mjs` file (see `backend/universal/providers/README.md`); this is the same class of fix career-ops's own maintainers make when an ATS vendor changes their API.
+- **Fix**: Reproduce directly: `node backend/universal/bridge.mjs '<the target as JSON, matching its providers.json row plus "careers_url">'` and read the error. If a provider's endpoint shape changed, fix the `.mjs` file (see `backend/universal/providers/README.md`); this is the same class of fix career-ops's own maintainers make when an ATS vendor changes their API.
 
 **Symptom**: A specific target returns 0 jobs but the company is definitely hiring ("Silent Failure").
 - **Diagnosis**: Either the site genuinely has no matching keyword right now, the provider's `detect()`/`resolveApiUrl` no longer matches the site's current URL shape, or (for the bespoke `api-post`/`tech-mahindra`-style providers) the underlying page structure changed and the link-sniffing heuristic in `_generic-extract.mjs` no longer finds real job links.

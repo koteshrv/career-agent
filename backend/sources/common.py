@@ -39,10 +39,10 @@ def load_keywords(db: Session, user_id: int) -> List[str]:
 
 def load_targets() -> List[Dict[str, Any]]:
     try:
-        with open("targets.json", "r") as f:
+        with open("providers.json", "r") as f:
             return json.load(f)
     except Exception as e:
-        logger.error(f"Failed to load targets.json: {e}")
+        logger.error(f"Failed to load providers.json: {e}")
         return []
 
 def has_been_notified(db: Session, user_id: int, url: str) -> bool:

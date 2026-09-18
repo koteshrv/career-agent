@@ -9,7 +9,7 @@
 > - `scan.mjs` / `verify-portals.mjs` are career-ops's own orchestrators;
 >   this repo's equivalent entry points are `backend/universal/bridge.mjs`
 >   (single-target) and `backend/sources/universal_api.py` (calls it).
->   `portals.yml` is this repo's `targets.json` — see its own docs for the
+>   `portals.yml` is this repo's `providers.json` — see its own docs for the
 >   field-name differences (`api_board_token` etc. still get mapped to
 >   `api`/`provider` before reaching a provider).
 > - Section 5's "Pre-PR checklist" and the Source Indexing Policy gate apply
