@@ -10,18 +10,24 @@ logger = logging.getLogger(__name__)
 def process_universal_api(db: Session, user_id: int, target: dict, keywords: List[str], locations: List[str], new_jobs: list, company_logs: list):
     company = target.get("company", "Unknown")
     url = target.get("url")
-    
-    if not url:
-        logger.error(f"[{company}] URL required for universal")
-        company_logs.append({"company": company, "status": "FAILED", "jobs_found": 0, "message": "URL required"})
+
+    if not url and not target.get("api") and not target.get("provider"):
+        logger.error(f"[{company}] url, api, or provider required for universal")
+        company_logs.append({"company": company, "status": "FAILED", "jobs_found": 0, "message": "url, api, or provider required"})
         return
 
+    # Build a career-ops-style PortalEntry: `target` already carries whatever
+    # explicit `provider`/`api`/vendor-config keys (e.g. `amazon: {...}`,
+    # `ibm: {...}`) this company needs — passed through opaque to bridge.mjs,
+    # same as career-ops's own portals.yml entries.
+    entry = {**target, "name": company, "careers_url": url}
+
     try:
-        # Call the Node.js bridge script
-        primary_keyword = keywords[0] if keywords else ""
-        primary_location = locations[0] if locations else ""
-        result = subprocess.run(["node", "backend/universal/bridge.mjs", url, primary_keyword, primary_location], capture_output=True, text=True, timeout=30)
-        
+        result = subprocess.run(
+            ["node", "backend/universal/bridge.mjs", json.dumps(entry)],
+            capture_output=True, text=True, timeout=30,
+        )
+
         if result.returncode != 0:
             logger.error(f"[{company}] bridge.mjs failed: {result.stderr}")
             company_logs.append({"company": company, "status": "FAILED", "jobs_found": 0, "message": "Bridge execution failed"})

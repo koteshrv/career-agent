@@ -5,39 +5,69 @@ See `CAREERAGENT_MANUAL.md` for a complete system overview.
 
 ## 1. Adding a New Scraper Target
 
-All scraping targets are defined in `targets.json` and executed via `backend/scraper_core.py`.
-There are two main paradigms:
+Every target in `targets.json` has `"type": "universal"` and is dispatched via
+`backend/sources/universal_api.py` → `node backend/universal/bridge.mjs` →
+`backend/universal/providers/*.mjs`. There is no Playwright and no per-vendor
+Python scraper module — job pulling is zero-token HTTP, in the `.mjs` layer,
+mirroring [career-ops](https://github.com/career-ops-hq/career-ops) (MIT),
+which most of `backend/universal/providers/` is vendored from verbatim.
 
-### A. API-Based Scraper (Greenhouse, Lever, Custom JSON APIs)
-1. Determine the API endpoint the target's career site calls in the background.
-2. Add an entry to `targets.json`:
-   ```json
-   {
-       "company": "NewCompany",
-       "type": "api_post",
-       "url": "https://api.newcompany.com/jobs",
-       ...
-   }
-   ```
-3. If the API is highly custom (requires complex pagination, auth tokens, or payload structures), create a new file in `backend/sources/new_company.py`.
-4. In `new_company.py`, implement a `process_new_company(db, target, keywords, new_jobs, company_logs)` function.
-   - Use `httpx` to fetch data.
-   - For each job found, check if it already exists using `common.has_been_notified(db, url)`.
-   - If new, use `common.record_job()` to add it to the `new_jobs` list.
-5. In `backend/scraper_core.py`, import your new `process_new_company` function and add a branch in `run_scraper`:
-   ```python
-   elif t_type == "new_company":
-       process_new_company(db, target, keywords, new_jobs, company_logs)
-   ```
+### A. The target already matches a known ATS vendor
+Most companies run on a handful of ATS platforms career-ops already has a
+provider for (Greenhouse, Lever, Ashby, SmartRecruiters, Oracle Cloud,
+Workday, IBM's own careers API, Amazon's, ...). Check first:
 
-### B. Playwright SPA Scraper (Client-rendered React/Angular sites)
-1. Add an entry to `targets.json` with `"type": "playwright"`.
-2. Determine how pagination works on the site:
-   - Does the URL change? (`"force_url_pagination": true`)
-   - Is there a "Next" button? Define `"next_btn_selector"`.
-   - Is there a search box? Define `"search_input_selector"` and `"search_btn_selector"`.
-3. If the site is heavily protected or uses a broken SPA framework (like TCS iBegin's Angular issues), you will need to add a network interceptor in `backend/sources/playwright_engine.py`.
-   - Look at `intercept_json_responses` for examples of sniffing API responses in Playwright.
+```bash
+node -e "
+import('./backend/universal/providers/_registry.mjs').then(async ({loadProviders, resolveProvider}) => {
+  const providers = await loadProviders('./backend/universal/providers');
+  console.log(resolveProvider({careers_url: 'PASTE_THE_CAREERS_URL_HERE'}, providers));
+});
+"
+```
+
+If it prints a match, just add the `targets.json` entry — `careers_url` alone
+is often enough (`detect()` derives the real API endpoint); some providers
+need an explicit `provider:` field plus a config block (see `ibm.mjs`'s and
+`amazon.mjs`'s own header comments for their config shape). No new code.
+
+### B. No provider claims it — write one
+1. Open the site's career page, open the browser's Network tab, and search
+   (or paginate). Almost every "SPA" career site — including ones that look
+   client-rendered — calls a real JSON (or, less often, XML/HTML) endpoint
+   under the hood; find it. A few (classic ASP.NET WebForms sites, some
+   internal-tool-branded portals) genuinely have no such endpoint and need a
+   POST-back or hidden-field extraction approach instead — see
+   `backend/universal/providers/tech-mahindra.mjs` for that pattern.
+2. Write `backend/universal/providers/<company-or-vendor>.mjs` following the
+   contract in `backend/universal/providers/README.md` (mirror `ibm.mjs` for
+   a single-company JSON API, `zwayam.mjs` for a multi-tenant vendor, or
+   `api-post.mjs`/`tech-mahindra.mjs` for a templated-POST/link-sniffing
+   fallback). **Every provider must**: validate/allowlist the resolved host
+   before fetching, pass `redirect: 'error'` on every request (SSRF guard),
+   and use `ctx.fetchJson`/`ctx.fetchText` from `_http.mjs` (never a bare
+   `fetch`) so retry/backoff/DNS-pacing apply.
+3. Smoke-test it directly before wiring it into `targets.json`:
+   ```bash
+   node backend/universal/bridge.mjs '{"name":"NewCo","provider":"newco","careers_url":"https://..."}'
+   ```
+4. Add the `targets.json` entry with `"type": "universal"` and whatever
+   `provider`/config keys the new module reads.
+5. If the source is a *shared* ATS vendor (not a single company's own portal)
+   and clears career-ops's [Source Indexing
+   Policy](https://github.com/career-ops-hq/career-ops/blob/main/CONTRIBUTING.md#source-indexing-policy),
+   consider upstreaming it to career-ops — see its
+   `providers/ADDING_A_PROVIDER.md` for the PR checklist (tests, docs, the
+   same SSRF/pagination guards). Several Indian ATS platforms have no
+   career-ops provider yet; this is a real, welcome gap to fill, not just a
+   career-agent-local fix.
+
+Fetching a job's full description (when the listing payload didn't include
+one for free) and computing its SimHash fingerprint / liveness classification
+also happen in this layer — `node backend/universal/process-jobs.mjs`, called
+from `backend/sources/common.py`'s `process_jobs()`. Don't add Python-side
+`httpx`/`BeautifulSoup` scraping code for a new target; if it needs
+network-facing logic, it belongs in a `.mjs` module here.
 
 ## 2. Modifying Database Models
 1. The project uses SQLAlchemy (`backend/models.py`) and SQLite (`jobs.db`).
@@ -191,15 +221,15 @@ The extension operates completely statelessly relative to the backend until the 
 
 This guide is intended for AI agents to quickly diagnose common issues in the `career-agent` platform.
 
-## 1. Scraper Failures & Playwright Issues
+## 1. Scraper Failures (Node bridge / provider issues)
 
-**Symptom**: `playwright.errors.TimeoutError: Timeout 30000ms exceeded.`
-- **Diagnosis**: The SPA site (like Workday, Oracle HCM, or TCS) took too long to render, or the selector changed.
-- **Fix**: Check `backend/sources/playwright_engine.py` for the specific company's logic. You may need to update the `next_btn_selector` in `targets.json` or increase the `extra_wait_ms`.
+**Symptom**: A target's `company_logs` entry says `"Bridge execution failed"` or times out.
+- **Diagnosis**: `backend/sources/universal_api.py` shells out to `node backend/universal/bridge.mjs`; either `node` isn't on `PATH` (check the Docker image installs it — `backend/Dockerfile`), or the provider itself threw (network error, changed API shape, SSRF-allowlist rejection).
+- **Fix**: Reproduce directly: `node backend/universal/bridge.mjs '<the target as JSON, matching its targets.json row plus "careers_url">'` and read the error. If a provider's endpoint shape changed, fix the `.mjs` file (see `backend/universal/providers/README.md`); this is the same class of fix career-ops's own maintainers make when an ATS vendor changes their API.
 
-**Symptom**: All scraping targets suddenly return 0 jobs ("Silent Failure").
-- **Diagnosis**: The site structure changed or Cloudflare anti-bot protection was triggered.
-- **Fix**: The backend has a `probe_extraction_pipeline` canary mechanism. If this fails, investigate if `playwright-stealth` needs an update, or if a proxy is required. Check the raw logs in the Kanban History page (`GET /api/jobs/history`).
+**Symptom**: A specific target returns 0 jobs but the company is definitely hiring ("Silent Failure").
+- **Diagnosis**: Either the site genuinely has no matching keyword right now, the provider's `detect()`/`resolveApiUrl` no longer matches the site's current URL shape, or (for the bespoke `api-post`/`tech-mahindra`-style providers) the underlying page structure changed and the link-sniffing heuristic in `_generic-extract.mjs` no longer finds real job links.
+- **Fix**: Run the target through `node backend/universal/bridge.mjs '<entry JSON>'` directly and inspect the raw `jobs` array it returns — that isolates "provider found nothing" from "career-agent's own keyword/location post-filter dropped everything" (`check_keywords_and_location` in `backend/sources/common.py`, applied *after* the provider returns).
 
 ## 2. AI Generation Errors (Gemini / Rate Limits)
 

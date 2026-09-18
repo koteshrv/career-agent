@@ -1,0 +1,12 @@
+{
+  "name": "career-agent-universal",
+  "private": true,
+  "type": "module",
+  "description": "Zero-token job-listing providers (vendored from career-ops, MIT) plus career-agent's own JD-fetch/liveness/fingerprint processing. Playwright is a dependency for features that need real rendering (JS-only JD pages, future automated apply-form-fill) — the ATS-listing scrapers themselves stay Playwright-free.",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "playwright": "1.62.1"
+  }
+}

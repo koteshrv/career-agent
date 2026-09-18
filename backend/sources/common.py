@@ -1,12 +1,14 @@
-"""Shared helpers used across every scraper source: link filtering, dedup against
-the DB, and the target/keyword config loaders."""
+"""Shared helpers used across every scraper source: link filtering against
+already-scraped jobs, dedup against the DB, and the target/keyword config
+loaders. Candidate-link validation and job-sniffing heuristics
+(is_valid_candidate / _extract_jobs_from_text — filtering raw scraped ATS
+content) now live in backend/universal/providers/_generic-extract.mjs; there
+is no Python HTTP/HTML-parsing path left here."""
 import json
 import logging
-import urllib.parse
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 
-from bs4 import BeautifulSoup
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -16,131 +18,6 @@ logger = logging.getLogger(__name__)
 LOCATIONS = ["india", "bangalore", "hyderabad", "pune", "gurgaon", "noida", "remote"]
 
 DEFAULT_KEYWORDS = ["software", "engineer", "developer", "backend", "frontend", "python"]
-
-# Tokens in a URL that strongly suggest it points to an actual individual job posting.
-JOB_HREF_HINTS = (
-    "requisition", "posting", "vacanc", "gh_jid", "opening",
-    "/jobs/", "/job/", "/position/", "/role/", "/apply",
-    "jobId", "job_id", "jid=", "id=", "req=", "reqid",
-    "detail", "description", "profile",
-)
-
-# URL patterns that are definitely NOT individual job listings — exclude them.
-EXCLUDED_HREF_PATTERNS = (
-    # Auth / account pages
-    "login", "signin", "sign-in", "logout", "register",
-    "dashboard", "my-profile", "user/details", "applicant/",
-    # Policy pages
-    "privacy", "cookie", "terms", "legal",
-    # Generic nav / non-job pages
-    "about", "contact", "news", "blog", "press", "media",
-    "investor", "alumni", "supplier",
-    "accessibility", "sitemap", "faq",
-    # Company life/culture/benefits
-    "life-at", "culture", "benefits", "diversity", "inclusion",
-    "early-careers", "business-divisions", "locations", "job-categories",
-    "business_categories", "job_categories", "our-workplace",
-    # Saved/My job dashboards
-    "saved-jobs", "saved_jobs", "my-jobs", "talent-community", "join-talent",
-    # Specific company non-job pages
-    "amazon.jobs/en/search", "amazon.jobs/content/",
-    "apple.com/in/", "apple.com/shop", "apple.com/careers/in", "jobs.apple.com/careers/", "jobs.apple.com/app/",
-    "microsoft.com/en-us", "microsoft.com/software",
-    "xbox.com", "azure.microsoft.com", "marketplace.microsoft.com",
-    "wellsfargojobs.com/en/resources", "wellsfargojobs.com/en/well-life", "wellsfargojobs.com/en/ready-to-work", "wellsfargojobs.com/en/create-a-job-alert",
-    # glassdoor (all TLDs e.g. .co.in), EEOC, shorteners, support
-    "glassdoor", "eeoc.gov", "bit.ly", "goo.gl",
-    "go.microsoft.com", "support.google.com", "support.microsoft.com", "support.apple.com",
-    # nav anchors that are literally anchor links, not job pages
-    "#main", "#top", "#footer", "#skip", "#collapse",
-)
-
-# Title text patterns that are definitely NOT job titles — exclude them.
-EXCLUDED_TITLE_PATTERNS = (
-    "saved jobs", "job search", "click here", "access application",
-    "log in", "sign in", "register", "apply now",
-    "privacy policy", "cookie", "terms",
-    "life at ", "about us", "contact us",
-    "view profile", "view all",
-    "skip to", "join the network", "join our talent",
-    "(english)", "(french)", "(german)", "(spanish)", "(portuguese)",
-    "(japanese)", "(polish)", "(dutch)", "(slovak)",
-)
-
-def is_valid_candidate(href: str, title: str, strict_hints: bool = False) -> bool:
-    """Pre-filter out obvious garbage links so the AI doesn't waste tokens or hallucinate."""
-    if not href or not title: return False
-    if len(title) < 3 or len(title) > 200: return False
-
-    hl = href.lower()
-    tl = title.lower()
-
-    if any(p in hl for p in EXCLUDED_HREF_PATTERNS):
-        return False
-    if any(p in tl for p in EXCLUDED_TITLE_PATTERNS):
-        return False
-
-    if strict_hints:
-        # Must satisfy at least ONE of:
-        # 1. URL contains a known job-page keyword hint
-        has_hint = any(h in hl for h in JOB_HREF_HINTS)
-
-        # 2. Last path segment contains digits (job IDs like /12345, /req-9876)
-        last_part = href.split('?')[0].strip('/').split('/')[-1]
-        has_digits = any(char.isdigit() for char in last_part)
-
-        # 3. URL is deeply nested (4+ non-empty path segments).
-        #    Nav/social links are shallow (e.g. /about, /login).
-        #    Job detail pages are deep (e.g. /company/careers/jobs/software-engineer)
-        path_segments = [s for s in href.split('?')[0].split('/') if s]
-        is_deep_path = len(path_segments) >= 4
-
-        if not (has_hint or has_digits or is_deep_path):
-            return False
-
-    return True
-
-
-def _find_jobs_in_json(data):
-    jobs = []
-    if isinstance(data, dict):
-        title = data.get("title") or data.get("jobTitle") or data.get("reqTitle") or data.get("name") or data.get("postingTitle")
-        link = data.get("url") or data.get("jobUrl") or data.get("link") or data.get("id") or data.get("jobId") or data.get("jobReqId") or data.get("postingId")
-        if title and link and isinstance(title, str) and isinstance(link, (str, int)):
-            if is_valid_candidate(str(link), title):
-                jobs.append({"title": title, "href": str(link)})
-
-        for v in data.values():
-            if isinstance(v, (dict, list)):
-                jobs.extend(_find_jobs_in_json(v))
-    elif isinstance(data, list):
-        for item in data:
-            if isinstance(item, (dict, list)):
-                jobs.extend(_find_jobs_in_json(item))
-    return jobs
-
-def _extract_jobs_from_text(text, base_url):
-    try:
-        data = json.loads(text)
-        jobs = _find_jobs_in_json(data)
-        for j in jobs:
-            if not j["href"].startswith("http"):
-                j["href"] = urllib.parse.urljoin(base_url, j["href"])
-        if jobs:
-            return jobs
-    except Exception:
-        pass
-
-    soup = BeautifulSoup(text, "html.parser")
-    jobs = []
-    for a in soup.find_all("a", href=True):
-        title = a.get_text(strip=True)
-        if title and len(title) >= 3:
-            href = urllib.parse.urljoin(base_url, a["href"])
-            if is_valid_candidate(href, title):
-                jobs.append({"title": title, "href": href})
-    return jobs
-
 
 def load_keywords(db: Session, user_id: int) -> List[str]:
     # Prefer keywords configured in Settings, then keywords.json, then defaults.
@@ -213,6 +90,43 @@ def get_active_companies(db: Session, user_id: int) -> List[str]:
         return active if isinstance(active, list) else []
     except Exception:
         return []
+
+async def process_jobs(items: Dict[str, str]) -> Dict[str, dict]:
+    """Fetch (for a URL mapped to `None`/empty) or reuse (for a URL already
+    mapped to known text) job posting content, and return `{text, fingerprint,
+    liveness}` per URL.
+
+    Delegates entirely to backend/universal/process-jobs.mjs: fetching reuses
+    the same hardened HTTP layer (_http.mjs: timeout, retry, redirect:'error')
+    and entity decoder the job-listing providers use, and the SimHash
+    fingerprint / liveness classification are career-ops's own
+    fingerprint-core.mjs / liveness-core.mjs designs. There is no separate
+    Python HTTP/HTML-parsing or content-processing path.
+    """
+    import asyncio
+    from pathlib import Path
+
+    empty = {"text": "", "fingerprint": "", "liveness": "expired"}
+    results = {url: empty for url in items}
+    if not items:
+        return results
+
+    script = Path(__file__).resolve().parents[2] / "backend" / "universal" / "process-jobs.mjs"
+    proc = await asyncio.create_subprocess_exec(
+        "node", str(script), json.dumps(items),
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        logger.error(f"process-jobs.mjs failed: {stderr.decode(errors='ignore')}")
+        return results
+
+    try:
+        results.update(json.loads(stdout.decode()))
+    except Exception as e:
+        logger.error(f"process-jobs.mjs returned unparseable output: {e}")
+    return results
+
 
 def commit_jobs(db: Session, user_id: int, jobs: list) -> bool:
     """Persist collected jobs. Returns False if the commit failed — jobs were NOT saved.

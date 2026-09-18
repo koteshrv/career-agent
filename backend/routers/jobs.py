@@ -7,7 +7,7 @@ import asyncio
 
 from .. import schemas, crud, auth, models
 from ..database import get_db
-from ..scraper_core import fetch_job_description
+from ..sources.common import process_jobs
 from ..ai import agent
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
@@ -59,10 +59,8 @@ async def fetch_jd(job_id: int, db: Session = Depends(get_db), current_user: mod
     if not db_job.url:
         raise HTTPException(status_code=400, detail="Job has no URL")
 
-    try:
-        description = await fetch_job_description(db_job.url)
-    except ValueError as e:
-        raise HTTPException(status_code=403, detail=str(e))
+    results = await process_jobs({db_job.url: None})
+    description = results.get(db_job.url, {}).get("text", "")
 
     settings = crud.get_settings(db, current_user.id)
     api_key = settings.gemini_api_key if settings else None
@@ -93,11 +91,10 @@ class ExtractUrlRequest(BaseModel):
 
 @router.post("/extract")
 async def extract_job_from_url(req: ExtractUrlRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    """Generic fallback scraper using Playwright Compact DOM + Gemini"""
-    from ..sources import playwright_engine
-    
-    compact_text = await playwright_engine.fetch_job_description(req.url)
-    
+    """Generic fallback scraper: process-jobs.mjs + AI extraction (no browser)."""
+    results = await process_jobs({req.url: None})
+    compact_text = results.get(req.url, {}).get("text", "")
+
     settings = crud.get_settings(db, current_user.id)
     api_key = settings.gemini_api_key
     model_name = settings.gemini_model
@@ -133,23 +130,3 @@ Web Page Text:
         logger.error(f"Failed to parse extraction: {e}")
         return {"title": "Unknown Title", "description": compact_text}
 
-from pydantic import BaseModel
-class AgentTestRequest(BaseModel):
-    url: str
-    keyword: str
-
-@router.post("/agent-test")
-async def test_agentic_scraper(req: AgentTestRequest, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    from ..sources import agentic_scraper
-    
-    settings = crud.get_settings(db, current_user.id)
-    if not settings.gemini_api_key:
-        raise HTTPException(status_code=400, detail="Gemini API Key required for Agent.")
-        
-    try:
-        # Run it in the background thread if it is blocking, wait async_playwright is fully async so we can await it natively!
-        jobs = await agentic_scraper.run_agent_loop(req.url, settings.gemini_api_key, ["gemma-4-31b-it", "gemma-4-26b-a4b-it"], req.keyword)
-        return {"status": "success", "found_jobs": jobs}
-    except Exception as e:
-        logger.error(f"Agent failed: {e}")
-        raise HTTPException(status_code=500, detail=str(e))

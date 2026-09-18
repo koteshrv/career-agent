@@ -1,4 +1,3 @@
-import re
 """Scraper orchestration: dispatches each target to its source-specific scraper
 (backend/sources/), then runs bulk AI evaluation on everything collected.
 
@@ -13,107 +12,27 @@ from .tasks import task_manager
 from typing import List
 from sqlalchemy.orm import Session
 
+from . import models
 from .ai import agent
 from .sources.common import (
     LOCATIONS, DEFAULT_KEYWORDS,
-    is_valid_candidate, check_keywords_and_location,
+    check_keywords_and_location,
     load_keywords, load_targets, has_been_notified, record_job,
-    get_active_companies, commit_jobs,
+    get_active_companies, commit_jobs, process_jobs,
 )
-from .sources.greenhouse import process_greenhouse
-from .sources.lever import process_lever
-from .sources.api_post import process_api_post
-from .sources.tech_mahindra import process_tech_mahindra
-from .sources.zwayam import process_zwayam
 from .sources.universal_api import process_universal_api
-from .sources.playwright_agentic import process_playwright_agentic
-from .sources.playwright_engine import (
-    dismiss_popups, extract_playwright_jobs,
-    fetch_job_descriptions_httpx, fetch_job_descriptions_batch,
-    fetch_job_description, 
-)
 
 logger = logging.getLogger(__name__)
 
 
-
-import hashlib
-
-def compute_simhash(text: str) -> str:
-    """Computes a 64-bit SimHash over 3-token shingles of the text for deduping."""
-    if not text or len(text) < 200:
-        return ""
-    
-    # Normalize: lowercase, keep only alphanumeric
-    words = re.sub(r'[^a-z0-9 \t\n]', '', text.lower()).split()
-    if len(words) < 3:
-        return ""
-        
-    # Generate 3-token shingles
-    shingles = [" ".join(words[i:i+3]) for i in range(len(words)-2)]
-    
-    # 64-bit voting array
-    v = [0] * 64
-    for shingle in shingles:
-        h = int(hashlib.sha1(shingle.encode('utf-8')).hexdigest()[:16], 16)
-        for i in range(64):
-            if (h & (1 << i)):
-                v[i] += 1
-            else:
-                v[i] -= 1
-                
-    # Compile final bits to 16-hex-char string
-    fingerprint = 0
-    for i in range(64):
-        if v[i] > 0:
-            fingerprint |= (1 << i)
-            
-    return f"{fingerprint:016x}"
-
 def hamming_distance(hex1: str, hex2: str) -> int:
+    """Compares two already-computed SimHash fingerprints (see
+    backend/universal/process-content.mjs, which computes each one at fetch
+    time) — pure integer arithmetic on two hex strings, not itself ATS/network
+    processing, so it stays here rather than round-tripping through Node."""
     if not hex1 or not hex2:
         return 64
     return bin(int(hex1, 16) ^ int(hex2, 16)).count('1')
-
-def check_liveness(html_text: str) -> str:
-    """Checks if a job posting is still alive (active/expired/uncertain)."""
-    if not html_text:
-        return "expired"
-        
-    text_lower = html_text.lower()
-    
-    # 404/410 equivalents in text bodies
-    if "404 not found" in text_lower or "410 gone" in text_lower:
-        return "expired"
-        
-    # Bot-challenge regexes (Cloudflare/hCaptcha)
-    if "please enable cookies" in text_lower or "checking if the site connection is secure" in text_lower or "cloudflare" in text_lower:
-        return "uncertain"
-        
-    # "no longer available/filled/closed" phrase bank
-    expired_phrases = [
-        "no longer available", "no longer accepting applications",
-        "job has been filled", "job is closed", "position is closed",
-        "position has been filled", "we are no longer hiring for this role"
-    ]
-    for phrase in expired_phrases:
-        if phrase in text_lower:
-            return "expired"
-            
-    # Apply button text pattern match
-    apply_patterns = [
-        "apply now", "apply for this job", "apply today", 
-        "bewerben", "submit application"
-    ]
-    for phrase in apply_patterns:
-        if phrase in text_lower:
-            return "active"
-            
-    # Body too short
-    if len(html_text) < 300:
-        return "expired"
-        
-    return "uncertain"
 
 def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
     """Takes a list of job dicts, chunks them into batches of 10, fetches HTML, strips it,
@@ -148,49 +67,34 @@ def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
             continue
 
         ai_payload = []
-        targets = load_targets()
 
-        playwright_urls = []
-        httpx_urls = []
-
-        batch_jds = {}
-        for db_job in db_jobs:
-            if db_job.description and len(db_job.description) > 200:
-                # Already populated (e.g. by the Chrome Extension)
-                batch_jds[db_job.url] = db_job.description
-                continue
-
-            config = next((t for t in targets if t.get("company") == db_job.company), {})
-            if config.get("use_playwright", False):
-                playwright_urls.append(db_job.url)
-            else:
-                httpx_urls.append(db_job.url)
+        # For a job whose description is already populated (e.g. by the Chrome
+        # Extension, or a universal provider that returned it for free — see
+        # backend/universal/providers), pass the known text through so
+        # process-jobs.mjs fingerprints/classifies it without re-fetching;
+        # `None` means "fetch this URL".
+        items = {
+            db_job.url: db_job.description if db_job.description and len(db_job.description) > 200 else None
+            for db_job in db_jobs
+        }
 
         # Always invoked from a synchronous context (scheduler job or background
         # task thread), so a fresh event loop via asyncio.run is safe and correct.
-        if httpx_urls:
-            logger.info(f"Fetching {len(httpx_urls)} JDs via fast HTTPx...")
-            httpx_results = asyncio.run(fetch_job_descriptions_httpx(httpx_urls))
-            batch_jds.update(httpx_results)
-
-        if playwright_urls:
-            logger.info(f"Fetching {len(playwright_urls)} JDs via Playwright (SPA mode)...")
-            pw_results = asyncio.run(fetch_job_descriptions_batch(playwright_urls, True))
-            batch_jds.update(pw_results)
+        processed = asyncio.run(process_jobs(items))
 
         for db_job in db_jobs:
-            raw_text = batch_jds.get(db_job.url, "")
-            
+            result = processed.get(db_job.url, {"text": "", "fingerprint": "", "liveness": "expired"})
+            raw_text = result["text"]
+
             # Liveness Gate
-            liveness = check_liveness(raw_text)
-            if liveness == "expired":
+            if result["liveness"] == "expired":
                 logger.info(f"Skipping LLM eval for {db_job.url} - posting is DEAD.")
                 db_job.status = "IGNORED"
                 db_job.match_reason = "System detected the job posting is no longer available or closed."
                 continue
-                
+
             # SimHash Cross-Listing Dedup
-            fp = compute_simhash(raw_text)
+            fp = result["fingerprint"]
             if fp:
                 db_job.fingerprint = fp
                 # Check for existing dupes in DB
@@ -281,7 +185,6 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
     all_new_jobs = []
     new_jobs = []
     company_logs = []
-    playwright_targets = []
 
     if target_name:
         targets = [t for t in targets if t.get("company") == target_name]
@@ -312,25 +215,9 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
     targets = filtered_targets
 
     for target in targets:
-        t_type = target.get("type", "")
         company = target.get("company", "Unknown")
-        if t_type != "playwright":
-            logger.info(f"[{company}] Scraping via {t_type}...")
-
-        if t_type == "greenhouse":
-            process_greenhouse(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
-        elif t_type == "lever":
-            process_lever(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
-        elif t_type == "api_post":
-            process_api_post(db, user_id, target, keywords, new_jobs, company_logs)
-        elif t_type == "tech_mahindra":
-            process_tech_mahindra(db, user_id, target, keywords, new_jobs, company_logs)
-        elif t_type == "zwayam":
-            process_zwayam(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
-        elif t_type == "universal":
-            process_universal_api(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
-        elif t_type == "playwright":
-            process_playwright_agentic(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
+        logger.info(f"[{company}] Scraping via {target.get('provider') or 'auto-detect'}...")
+        process_universal_api(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
 
         if company_logs and company_logs[-1].get("company") == company:
             status = company_logs[-1].get("status")

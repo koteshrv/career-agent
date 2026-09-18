@@ -1,6 +1,5 @@
 from backend import models
 from backend.scraper_core import (
-    is_valid_candidate,
     check_keywords_and_location,
     record_job,
     has_been_notified,
@@ -8,39 +7,6 @@ from backend.scraper_core import (
 
 USER = 1
 OTHER_USER = 2
-
-
-# ── is_valid_candidate ──────────────────────────────────────────────────────
-
-def test_rejects_missing_href_or_title():
-    assert not is_valid_candidate("", "Software Engineer")
-    assert not is_valid_candidate("https://example.com/jobs/123", "")
-
-def test_rejects_title_too_short_or_too_long():
-    assert not is_valid_candidate("https://example.com/jobs/123", "Go")
-    assert not is_valid_candidate("https://example.com/jobs/123", "X" * 201)
-
-def test_rejects_known_nav_and_policy_links():
-    assert not is_valid_candidate("https://example.com/login", "Sign In")
-    assert not is_valid_candidate("https://example.com/privacy", "Privacy Policy")
-    assert not is_valid_candidate("https://example.com/about", "About Us")
-
-def test_rejects_by_title_pattern_even_with_job_like_url():
-    # A URL that looks job-ish but a title that's clearly chrome, not a posting.
-    assert not is_valid_candidate("https://example.com/jobs/apply", "Apply Now")
-
-def test_accepts_plain_job_link_without_strict_hints():
-    assert is_valid_candidate("https://example.com/careers/software-engineer", "Software Engineer")
-
-def test_strict_hints_requires_a_hint_digit_or_deep_path():
-    # No hint keyword, no digits, shallow path -> rejected under strict_hints.
-    assert not is_valid_candidate("https://example.com/careers", "Software Engineer", strict_hints=True)
-    # Hint keyword present ("/jobs/") -> accepted.
-    assert is_valid_candidate("https://example.com/jobs/backend-dev", "Backend Developer", strict_hints=True)
-    # No hint keyword, but a trailing job-ID number -> accepted.
-    assert is_valid_candidate("https://example.com/careers/12345", "Backend Developer", strict_hints=True)
-    # No hint keyword, no digits, but deeply nested path -> accepted.
-    assert is_valid_candidate("https://example.com/a/b/c/d/backend-developer", "Backend Developer", strict_hints=True)
 
 
 # ── check_keywords_and_location ─────────────────────────────────────────────
