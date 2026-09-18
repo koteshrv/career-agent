@@ -19,8 +19,12 @@ def process_universal_api(db: Session, user_id: int, target: dict, keywords: Lis
     # Build a career-ops-style PortalEntry: `target` already carries whatever
     # explicit `provider`/`api`/vendor-config keys (e.g. `amazon: {...}`,
     # `ibm: {...}`) this company needs — passed through opaque to bridge.mjs,
-    # same as career-ops's own portals.yml entries.
-    entry = {**target, "name": company, "careers_url": url}
+    # same as career-ops's own portals.yml entries. `keywords` is this user's
+    # own (Settings -> keywords.json -> DEFAULT_KEYWORDS, see
+    # common.load_keywords) — keyword-required providers (api-post,
+    # tech-mahindra, zwayam, and career-ops's own vdab/mycareersfuture/
+    # jobbankca) read it directly; providers that don't care simply ignore it.
+    entry = {**target, "name": company, "careers_url": url, "keywords": keywords}
 
     try:
         result = subprocess.run(
