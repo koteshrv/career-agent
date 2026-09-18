@@ -8,7 +8,7 @@ import asyncio
 from .. import schemas, crud, auth, models
 from ..database import get_db
 from ..scraper_core import fetch_job_description
-from ..ai import ai_agent
+from ..ai import agent
 
 router = APIRouter(prefix="/api/jobs", tags=["Jobs"])
 
@@ -66,10 +66,10 @@ async def fetch_jd(job_id: int, db: Session = Depends(get_db), current_user: mod
 
     settings = crud.get_settings(db, current_user.id)
     api_key = settings.gemini_api_key if settings else None
-    clean_desc = ai_agent.sanitize_job_description(description, api_key, current_user.id)
+    
 
-    db_job = crud.update_job_status(db, current_user.id, job_id, schemas.JobUpdate(description=clean_desc))
-    return {"description": clean_desc}
+    db_job = crud.update_job_status(db, current_user.id, job_id, schemas.JobUpdate(description=description))
+    return {"description": description}
 
 from ..sources import global_scanner
 
@@ -114,7 +114,7 @@ Web Page Text:
 {compact_text}
 ---
 """
-    response = await asyncio.to_thread(ai_agent._generate, prompt, api_key, model_name, current_user.id)
+    response = await asyncio.to_thread(agent._generate, prompt, api_key, model_name, current_user.id)
     
     import re
     cleaned_text = response.strip()

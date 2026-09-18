@@ -11,7 +11,7 @@ from starlette.background import BackgroundTask
 from sqlalchemy.orm import Session
 
 from .. import crud, schemas, auth, models
-from ..ai import ai_agent
+from ..ai import agent
 from ..database import get_db
 from ..tasks import task_manager
 
@@ -30,7 +30,7 @@ def generate_application_materials_for_job(job_id: int, req: schemas.GenerationR
     user_id = current_user.id
 
     async def stream_and_save():
-        gen = ai_agent.generate_application_materials(
+        gen = agent.generate_application_materials(
             db_job.title, db_job.company, db_job.location or "", db_job.description or "",
             api_key=settings.gemini_api_key, model_name=settings.ai_mode if (settings and settings.ai_mode and settings.ai_mode.startswith("cli_")) else settings.gemini_model, resume_name=req.resume,
             generation_mode=req.generation_mode, user_id=user_id
@@ -57,10 +57,10 @@ def generate_on_demand(req: schemas.OnDemandRequest, db: Session = Depends(get_d
     api_key = settings.gemini_api_key if settings else None
     model_name = (settings.ai_mode if settings.ai_mode.startswith("cli_") else settings.gemini_model) if settings else None
 
-    clean_desc = ai_agent.sanitize_job_description(req.description, api_key, current_user.id)
+    
 
-    gen = ai_agent.generate_application_materials(
-        req.title, req.company, "", clean_desc,
+    gen = agent.generate_application_materials(
+        req.title, req.company, "", req.description,
         api_key=api_key, model_name=model_name, resume_name=req.resume,
         generation_mode=req.generation_mode, user_id=current_user.id
     )
@@ -76,7 +76,7 @@ def _compile_latex_to_pdf(latex_content: str, download_name: str) -> FileRespons
     if not latex_content or not latex_content.strip():
         raise HTTPException(status_code=400, detail="No LaTeX content provided")
 
-    clean_tex = ai_agent.strip_code_fences(latex_content)
+    clean_tex = agent.strip_code_fences(latex_content)
 
     import re
     with tempfile.TemporaryDirectory() as tmpdir:

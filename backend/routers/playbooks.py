@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from .. import crud, auth, models
-from ..ai import ai_agent, rag_engine
+from ..ai import agent
 from ..database import get_db
 
 logger = logging.getLogger(__name__)
@@ -30,11 +30,11 @@ def generate_playbook(job_id: int, playbook_name: str, db: Session = Depends(get
     playbook_content = playbook_path.read_text(encoding="utf-8")
 
     async def stream_playbook():
-        yield json.dumps({"status": "progress", "message": "Loading Playbook and RAG Context..."}) + "\n"
+        yield json.dumps({"status": "progress", "message": "Loading Playbook and Knowledge Base..."}) + "\n"
         await asyncio.sleep(0)
         
         try:
-            relevant_experience = await asyncio.to_thread(rag_engine.retrieve_relevant_experience, user_id, db_job.description or "", 6, settings.gemini_api_key)
+            relevant_experience = crud.get_knowledge_text(db, user_id)
         except Exception as e:
             yield json.dumps({"status": "error", "message": f"Error accessing Knowledge Base: {str(e)}"}) + "\n"
             return
@@ -60,7 +60,7 @@ def generate_playbook(job_id: int, playbook_name: str, db: Session = Depends(get
         try:
             # We use the sync _generate function in a thread to stream. Actually, _generate isn't streaming, it blocks and returns the full string.
             # We'll just run it in a thread and yield the final result.
-            result = await asyncio.to_thread(ai_agent._generate, prompt, settings.gemini_api_key, settings.gemini_model, user_id)
+            result = await asyncio.to_thread(agent._generate, prompt, settings.gemini_api_key, settings.gemini_model, user_id)
             yield json.dumps({"status": "success", "data": result}) + "\n"
         except Exception as e:
             yield json.dumps({"status": "error", "message": f"Playbook execution failed: {str(e)}"}) + "\n"

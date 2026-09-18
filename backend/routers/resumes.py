@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 import logging
 
 from .. import crud, schemas, auth, models
-from ..ai import ai_agent
+from ..ai import agent
 from ..database import get_db
 
 logger = logging.getLogger(__name__)
@@ -14,41 +14,41 @@ router = APIRouter(prefix="/api/resumes", tags=["Resumes"])
 
 @router.get("")
 def get_resumes(current_user: models.User = Depends(auth.get_current_user)):
-    return {"resumes": ai_agent.list_resumes(current_user.id)}
+    return {"resumes": agent.list_resumes(current_user.id)}
 
 @router.delete("/{name}")
 def remove_resume(name: str, current_user: models.User = Depends(auth.get_current_user)):
-    if not ai_agent.delete_resume(current_user.id, name):
+    if not agent.delete_resume(current_user.id, name):
         raise HTTPException(status_code=404, detail="Resume not found")
-    return {"deleted": name, "resumes": ai_agent.list_resumes(current_user.id)}
+    return {"deleted": name, "resumes": agent.list_resumes(current_user.id)}
 
 # Needs to be handled slightly differently due to the path (originally /api/upload-resume)
 # I will map it to /api/resumes/upload
 @router.post("/upload")
 async def upload_resume(file: UploadFile = File(...), name: str = Form(None), db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    orig = ai_agent.safe_resume_name(file.filename or "")
+    orig = agent.safe_resume_name(file.filename or "")
     ext = Path(orig).suffix.lower()
-    if ext not in ai_agent.ALLOWED_RESUME_EXT:
+    if ext not in agent.ALLOWED_RESUME_EXT:
         raise HTTPException(status_code=400, detail="Only .pdf and .tex files are supported.")
 
     if name and name.strip():
-        target = ai_agent.safe_resume_name(name.strip())
-        if not target.lower().endswith(ai_agent.ALLOWED_RESUME_EXT):
+        target = agent.safe_resume_name(name.strip())
+        if not target.lower().endswith(agent.ALLOWED_RESUME_EXT):
             target += ext
     else:
         target = orig
 
-    file_path = ai_agent._user_resumes_dir(current_user.id) / target
+    file_path = agent._user_resumes_dir(current_user.id) / target
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     settings = crud.get_settings(db, current_user.id)
-    resume_text = ai_agent.extract_resume_text(current_user.id, target)
+    resume_text = agent.extract_resume_text(current_user.id, target)
     if resume_text and settings:
         try:
             import json
             model_to_use = settings.ai_mode if (settings.ai_mode and settings.ai_mode.startswith("cli_")) else settings.gemini_model
-            onboard_data = ai_agent.onboard_resume(
+            onboard_data = agent.onboard_resume(
                 resume_text,
                 api_key=settings.gemini_api_key,
                 model_name=model_to_use,
@@ -64,4 +64,4 @@ async def upload_resume(file: UploadFile = File(...), name: str = Form(None), db
         except Exception as e:
             logger.error(f"Failed to extract keywords: {e}")
 
-    return {"message": "Resume uploaded successfully", "resumes": ai_agent.list_resumes(current_user.id)}
+    return {"message": "Resume uploaded successfully", "resumes": agent.list_resumes(current_user.id)}

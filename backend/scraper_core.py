@@ -13,7 +13,7 @@ from .tasks import task_manager
 from typing import List
 from sqlalchemy.orm import Session
 
-from .ai import ai_agent
+from .ai import agent
 from .sources.common import (
     LOCATIONS, DEFAULT_KEYWORDS,
     is_valid_candidate, check_keywords_and_location,
@@ -124,9 +124,9 @@ def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
 
     settings = db.query(models.Settings).filter(models.Settings.user_id == user_id).first()
     api_key = settings.gemini_api_key if settings else None
-    model_name = settings.gemini_model if settings else ai_agent.DEFAULT_MODEL_CHAIN
+    model_name = settings.gemini_model if settings else None
 
-    resume_text = ai_agent.extract_resume_text(user_id) # Gets this user's default resume
+    resume_text = agent.extract_resume_text(user_id) # Gets this user's default resume
     if not resume_text:
         logger.info("No resume found. Skipping AI evaluation.")
         return
@@ -217,7 +217,7 @@ def bulk_evaluate_jobs(db: Session, user_id: int, jobs: list):
         eval_results = []
 
         def eval_chunk(chunk):
-            return ai_agent.batch_evaluate_jobs(chunk, resume_text, api_key, model_name, user_id)
+            return agent.batch_evaluate_jobs(chunk, resume_text, api_key, model_name, user_id)
 
         chunks = [ai_payload[i:i + batch_size] for i in range(0, len(ai_payload), batch_size)]
 

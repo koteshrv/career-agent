@@ -101,6 +101,14 @@ class Settings(Base):
     career_agent_account_email = Column(String, nullable=True)
     crowdsourcing_enabled = Column(Boolean, default=True)
 
+class Knowledge(Base):
+    __tablename__ = "knowledge"
+
+    id = Column(String, primary_key=True, index=True) # UUID string
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    text = Column(Text, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
 class ScraperLog(Base):
     __tablename__ = "scraper_logs"
 

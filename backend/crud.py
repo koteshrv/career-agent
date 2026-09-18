@@ -297,3 +297,23 @@ def get_target_health(db: Session, user_id: int, run_limit: int = 20) -> list:
     # then lowest success rate.
     results.sort(key=lambda r: (-r["consecutive_failures"], not r["possibly_silent_failure"], r["success_rate"]))
     return results
+
+def list_knowledge(db: Session, user_id: int):
+    return db.query(models.Knowledge).filter(models.Knowledge.user_id == user_id).order_by(models.Knowledge.created_at.desc()).all()
+
+def add_knowledge(db: Session, user_id: int, doc_id: str, text: str):
+    k = models.Knowledge(id=doc_id, user_id=user_id, text=text)
+    db.add(k)
+    db.commit()
+    db.refresh(k)
+    return k
+
+def delete_knowledge(db: Session, user_id: int, doc_id: str):
+    db.query(models.Knowledge).filter(models.Knowledge.user_id == user_id, models.Knowledge.id == doc_id).delete()
+    db.commit()
+
+def get_knowledge_text(db: Session, user_id: int) -> str:
+    chunks = list_knowledge(db, user_id)
+    if not chunks:
+        return ""
+    return "\n\n".join([chunk.text for chunk in chunks])
