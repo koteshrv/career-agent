@@ -642,5 +642,10 @@
     "url": "https://careers.cognizant.com/global-en/jobs/?keyword={keyword}&location=India&radius=100&lat=&lng=&cname=India&ccode=IN&pagesize=10#results",
     "domain": "it-services",
     "provider": "cognizant"
+  },
+  {
+    "company": "Capgemini",
+    "url": "https://careers.capgemini.com/",
+    "provider": "capgemini"
   }
 ]

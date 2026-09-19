@@ -10,11 +10,6 @@
     "domain": "fintech-payments"
   },
   {
-    "company": "Capgemini",
-    "url": "https://www.capgemini.com/in-en/careers/join-capgemini/job-search/?page=1&size=11&country_code=in-en&keyword={keyword}",
-    "domain": "it-services"
-  },
-  {
     "company": "LTIMindtree",
     "url": "https://careers.ltimindtree.com/search/?createNewAlert=false&q={keyword}&locationsearch=india",
     "domain": "it-services"
