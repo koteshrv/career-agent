@@ -1,18 +1,27 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search, Sparkles, Filter, ChevronDown, Rocket, X, Zap } from "lucide-react"
 
 export function ExplorePage() {
-  const [roles, setRoles] = useState<string[]>([
-    "AI", "ML", "LLM", "Agent", "Agentic", "GenAI", "Generative AI", "NLP", "LLMOps", "MLOps", "Voice AI",
-    "Conversational AI", "Speech", "Backend Engineer", "Backend Developer", "Cloud Engineer", "DevOps Engineer",
-    "Infrastructure Engineer", "Solutions Architect", "Solutions Engineer", "Integration Engineer", "AI Platform",
-    "AI Engineer"
-  ])
-  const [excludes, setExcludes] = useState<string[]>([
-    "Junior", "word:Intern", "word:Interns", "Internship", ".NET", "Java", "iOS", "Android",
-    "PHP", "Ruby", "Embedded", "Firmware", "FPGA", "ASIC", "Blockchain", "Web3", "Crypto",
-    "Salesforce Admin", "SAP", "Oracle EBS", "Mainframe", "COBOL", "Werkstudent"
-  ])
+  const [roles, setRoles] = useState<string[]>([])
+  const [excludes, setExcludes] = useState<string[]>([])
+  
+  
+  
+  useEffect(() => {
+    fetch("/api/onboarding/me", {
+        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data && data.target_roles) {
+            setRoles(data.target_roles);
+        }
+        if (data && data.excludes) {
+            setExcludes(data.excludes);
+        }
+    })
+    .catch(console.error)
+  }, [])
   
   const [timeFilter, setTimeFilter] = useState("7d")
   const [sources, setSources] = useState<string[]>(["Greenhouse", "Lever", "Ashby", "Workday"])

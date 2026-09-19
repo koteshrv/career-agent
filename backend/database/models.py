@@ -14,6 +14,10 @@ class User(Base):
     status = Column(String, default="PENDING")      # "PENDING" | "ACTIVE" | "REJECTED"
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     approved_at = Column(DateTime(timezone=True), nullable=True)
+    resume_text = Column(Text, nullable=True)
+    target_roles = Column(String, nullable=True) # JSON array of roles
+    excludes = Column(String, nullable=True)     # JSON array of excludes
+    onboarding_completed = Column(Boolean, default=False)
 
 class Job(Base):
     __tablename__ = "jobs"

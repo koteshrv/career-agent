@@ -278,6 +278,7 @@ app.include_router(playbooks.router)
 app.include_router(history.router)
 app.include_router(resumes.router)
 app.include_router(extension.router)
+app.include_router(onboarding.router)
 app.include_router(knowledge.router)
 from backend.routers import health
 app.include_router(health.router)

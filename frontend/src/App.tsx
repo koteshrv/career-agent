@@ -4,6 +4,7 @@ import { JobsBoard } from "./components/JobsBoard"
 import { HomePage } from "./components/HomePage"
 import { SettingsPage } from "./components/SettingsPage"
 import { ExplorePage } from "./components/ExplorePage"
+import { OnboardingPage } from "./components/OnboardingPage"
 import { HistoryPage } from "./components/HistoryPage"
 import { AnalyticsPage } from "./components/AnalyticsPage"
 import Login from "./components/Login"
@@ -136,7 +137,7 @@ function Layout() {
           <nav className="flex-1 px-4 py-6 space-y-1">
             <NavItems />
           </nav>
-          </aside>
+          </aside>)}
 
         {/* Mobile nav drawer */}
         {mobileNavOpen && (
@@ -156,7 +157,7 @@ function Layout() {
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col h-screen relative min-w-0">
           {/* Top Header */}
-          <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-8 z-[60] sticky top-0 gap-4">
+          {location.pathname !== "/app/onboarding" && (<header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 md:px-8 z-[60] sticky top-0 gap-4">
             <div className="flex items-center gap-3 min-w-0">
               <button
                 onClick={() => setMobileNavOpen(true)}
@@ -220,7 +221,7 @@ function Layout() {
                 </div>
               )}
             </div>
-          </header>
+          </header>)}
 
           {/* Routed Content */}
           <Outlet />
@@ -261,13 +262,58 @@ function Layout() {
   )
 }
 
+
+
+import { useLocation } from "react-router-dom";
+
+function OnboardingGuard({ children }: { children: ReactNode }) {
+  const [loading, setLoading] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (IS_DEMO) {
+      setLoading(false);
+      return;
+    }
+    fetch("/api/onboarding/me", {
+      headers: { "Authorization": `Bearer ${getToken()}` }
+    })
+    .then(res => {
+        if (!res.ok) throw new Error("Failed");
+        return res.json();
+    })
+    .then(data => {
+        if (!data.onboarding_completed) {
+            setNeedsOnboarding(true);
+        } else {
+            setNeedsOnboarding(false);
+        }
+    })
+    .catch(() => {})
+    .finally(() => setLoading(false));
+  }, [location.pathname]);
+
+  if (loading) return null;
+  if (needsOnboarding && location.pathname !== "/app/onboarding") {
+      return <Navigate to="/app/onboarding" replace />;
+  }
+  if (!needsOnboarding && location.pathname === "/app/onboarding") {
+      return <Navigate to="/app/explore" replace />;
+  }
+  
+  return <>{children}</>;
+}
+
+
 function App() {
   return (
     <Routes>
       <Route path="/" element={IS_DEMO ? <LandingPage /> : <Navigate to="/app/home" replace />} />
       <Route path="/login" element={<RedirectIfAuthed><Login /></RedirectIfAuthed>} />
-      <Route path="/app" element={<RequireAuth><Layout /></RequireAuth>}>
+      <Route path="/app" element={<RequireAuth><OnboardingGuard><Layout /></OnboardingGuard></RequireAuth>}>
         <Route index element={<Navigate to="/app/home" replace />} />
+        <Route path="onboarding" element={<OnboardingPage />} />
         <Route path="home" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><HomePage /></div>} />
         <Route path="applications" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><ErrorBoundary><JobsBoard /></ErrorBoundary></div>} />
         <Route path="followups" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><FollowUpsPage /></div>} />
