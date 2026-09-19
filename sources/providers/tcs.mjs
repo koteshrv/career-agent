@@ -1,7 +1,7 @@
 // @ts-check
-/** @typedef {import('../sources/providers/_types.js').Provider} Provider */
+/** @typedef {import('./_types.js').Provider} Provider */
 
-import { fetchJsonWithRetry, sleep } from '../sources/providers/_http.mjs';
+import { fetchJsonWithRetry, sleep } from './_http.mjs';
 
 const DEFAULT_MAX_PAGES = 100;
 const MAX_PAGES_CAP = 1500;
