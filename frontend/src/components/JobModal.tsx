@@ -32,6 +32,7 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [reportModalOpen, setReportModalOpen] = useState(false)
   const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [activeTab, setActiveTab] = useState<"overview" | "cover_letter" | "cold_email" | "tailored_resume">("overview")
   
   const [logs, setLogs] = useState<string[]>([])
   const logsEndRef = useRef<HTMLDivElement>(null)
@@ -275,6 +276,34 @@ export function JobModal({ job, onClose, onUpdate, onDelete }: JobModalProps) {
               <X className="w-5 h-5" />
             </button>
           </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-border bg-card/50">
+          <button 
+            onClick={() => setActiveTab("overview")}
+            className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === "overview" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Overview
+          </button>
+          <button 
+            onClick={() => setActiveTab("cover_letter")}
+            className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === "cover_letter" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Cover Letter
+          </button>
+          <button 
+            onClick={() => setActiveTab("cold_email")}
+            className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === "cold_email" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Cold Email
+          </button>
+          <button 
+            onClick={() => setActiveTab("tailored_resume")}
+            className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${activeTab === "tailored_resume" ? "border-b-2 border-primary text-primary" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Tailored Resume
+          </button>
         </div>
 
         {/* Content */}

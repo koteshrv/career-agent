@@ -73,3 +73,49 @@ There is no separate GitHub-code-exchange endpoint in this backend (removed — 
 Run the `/security-review` skill before merging any change touching `backend/auth.py`, `backend/crowdsourcing.py`, `backend/crypto.py`, `backend/routers/crowdsourcing.py`, or `frontend/src/components/Login.tsx` — an earlier version of the SSO flow minted a local session for any Google/GitHub account holder with no allowlist (see `docs/agents/DEVELOPER_GUIDE.md` §5), and a later version leaked the local bearer token to `career-agent-api` and auto-logged in with hardcoded default credentials — so this boundary has broken twice and is worth re-checking on every touch.
 
 **Crowdsourcing sync (`backend/crowdsourcing.py`):** once the frontend has a real local session, `setCloudToken()` in `api.ts` calls `POST /api/crowdsource/connect` to persist *that user's* career-agent-api JWT server-side (encrypted `Settings.career_agent_cloud_token`, one per user), so `push_jobs(db, user_id)`/`pull_jobs(db, user_id)` can run headless from `scheduler.py`'s per-user 10-minute jobs, independent of any open browser tab. `push_jobs()` only sends that user's jobs where `Job.crowdsource_pushed_at IS NULL` and marks them pushed only on a confirmed 200, so a failed cycle retries instead of losing jobs from the backlog. Each user's JWT is a snapshot with no refresh — their pushes/pulls start failing 401 a week after connecting until they personally reconnect. `POST /api/crowdsource/push`/`/pull` are on-demand triggers for the same functions, currently wired to temporary test buttons on the Job Applications page (`KanbanBoard.tsx`) — remove those once the schedule is confirmed working.
+
+<!-- code-review-graph MCP tools -->
+## MCP Tools: code-review-graph
+
+**This project has a knowledge graph. Start with the code-review-graph
+MCP tools to narrow scope, then read the source.** The graph is cheaper than scanning files and
+gives you structural context (callers, dependents, test coverage) that file search cannot.
+
+### When to use graph tools FIRST
+
+- **Exploring code**: `semantic_search_nodes_tool` or `query_graph_tool` instead of Grep
+- **Understanding impact**: `get_impact_radius_tool` instead of manually tracing imports
+- **Code review**: `detect_changes_tool` + `get_review_context_tool` instead of reading entire files
+- **Finding relationships**: `query_graph_tool` with callers_of/callees_of/imports_of/tests_for
+- **Architecture questions**: `get_architecture_overview_tool` + `list_communities_tool`
+
+### Verify in the source
+
+- Narrow scope with the graph, then read the source. Do not change code from graph output alone.
+- For any non-trivial change, read the implementation and the relevant tests before concluding.
+- Verify the exact source when touching behavior, database logic, migrations, retries, fallbacks,
+  recovery, or compatibility code.
+- When the graph and the source disagree, the source wins. The graph may be stale or may not
+  model that relationship.
+- An empty graph result can mean "not indexed" or "not statically visible", not "does not exist".
+
+### Key Tools
+
+| Tool | Use when |
+| ------ | ---------- |
+| `detect_changes_tool` | Reviewing code changes — gives risk-scored analysis |
+| `get_review_context_tool` | Need source snippets for review — token-efficient |
+| `get_impact_radius_tool` | Understanding blast radius of a change |
+| `get_affected_flows_tool` | Finding which execution paths are impacted |
+| `query_graph_tool` | Tracing callers, callees, imports, tests, dependencies |
+| `semantic_search_nodes_tool` | Finding functions/classes by name or keyword |
+| `get_architecture_overview_tool` | Understanding high-level codebase structure |
+| `refactor_tool` | Planning renames, finding dead code |
+
+### Workflow
+
+1. The graph auto-updates on file changes (via hooks).
+2. Use `detect_changes_tool` for code review.
+3. Use `get_affected_flows_tool` to understand impact.
+4. Use `query_graph_tool` pattern="tests_for" to check coverage.
+<!-- /code-review-graph MCP tools -->
