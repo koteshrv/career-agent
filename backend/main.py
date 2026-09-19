@@ -270,7 +270,7 @@ async def websocket_logs(websocket: WebSocket, token: str = ""):
         manager.disconnect(websocket)
 
 # Include Modular Routers
-from backend.routers import jobs, settings, generation, playbooks, history, resumes, extension, knowledge
+from backend.routers import onboarding, jobs, settings, generation, playbooks, history, resumes, extension, knowledge
 app.include_router(jobs.router)
 app.include_router(settings.router)
 app.include_router(generation.router)
