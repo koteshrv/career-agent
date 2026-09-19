@@ -10,11 +10,6 @@
     "domain": "fintech-payments"
   },
   {
-    "company": "Infosys",
-    "url": "https://career.infosys.com/jobs?companyhiringtype=IL&countrycode=IN",
-    "domain": "it-services"
-  },
-  {
     "company": "Cognizant",
     "url": "https://careers.cognizant.com/global-en/jobs/?keyword={keyword}&location=India&radius=100&lat=&lng=&cname=India&ccode=IN&pagesize=10#results",
     "domain": "it-services"

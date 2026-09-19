@@ -630,5 +630,11 @@
     "url": "https://ibegin.tcsapps.com/candidate/next/en-IN/jobs/search?page=1&size=10&regular=true&walkin=true&sort=relevance%20desc",
     "domain": "it-services",
     "provider": "tcs"
+  },
+  {
+    "company": "Infosys",
+    "url": "https://career.infosys.com/jobs?companyhiringtype=IL&countrycode=IN",
+    "domain": "it-services",
+    "provider": "infosys"
   }
 ]
