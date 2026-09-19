@@ -60,11 +60,6 @@
     "domain": "it-services"
   },
   {
-    "company": "TCS",
-    "url": "https://ibegin.tcsapps.com/candidate/next/en-IN/jobs/search?page=1&size=10&regular=true&walkin=true&sort=relevance%20desc",
-    "domain": "it-services"
-  },
-  {
     "company": "Google",
     "url": "https://www.google.com/about/careers/applications/jobs/results/?q={keyword}&location=India",
     "domain": "big-tech"

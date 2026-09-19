@@ -83,7 +83,6 @@ export default {
         const jid = match[1];
         const title = match[2].trim();
         const location = match[3].trim();
-        const href = url; // Tech Mahindra does not support deep-linking; JobDetails.aspx relies entirely on ASP.NET session state.
         // Use CurrentOpportunity.aspx instead of JobDetails.aspx. 
         // JobDetails.aspx throws a 500 error if accessed directly without an ASP.NET session.
         // CurrentOpportunity.aspx will return a 200 OK (landing on the search page) 

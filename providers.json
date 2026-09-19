@@ -624,5 +624,11 @@
     "url": "https://job-boards.greenhouse.io/planetscale",
     "api": "https://boards-api.greenhouse.io/v1/boards/planetscale/jobs",
     "notes": "Serverless MySQL platform. Customer Engineering, Engineering, Sales."
+  },
+  {
+    "company": "TCS",
+    "url": "https://ibegin.tcsapps.com/candidate/next/en-IN/jobs/search?page=1&size=10&regular=true&walkin=true&sort=relevance%20desc",
+    "domain": "it-services",
+    "provider": "tcs"
   }
 ]
