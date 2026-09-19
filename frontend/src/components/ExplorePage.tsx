@@ -160,11 +160,7 @@ if (data && data.excludes) {
               onKeyDown={addRole}
               placeholder="+ Add role..." 
               className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none border-b border-transparent focus:border-primary px-1 w-24 focus:w-32 transition-all"
-            /> className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity">
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
+            />
           </div>
           <p className="text-xs text-muted-foreground italic">Seeded from your profile — edit freely.</p>
         </div>
@@ -188,11 +184,7 @@ if (data && data.excludes) {
               onKeyDown={addExclude}
               placeholder="+ Add exclude..." 
               className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none border-b border-transparent focus:border-border px-1 w-24 focus:w-32 transition-all"
-            /> className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity">
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            ))}
+            />
           </div>
         </div>
 
