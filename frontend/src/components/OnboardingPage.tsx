@@ -31,7 +31,7 @@ export function OnboardingPage() {
       const res = await fetch("/api/onboarding/upload-resume", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
+          "Authorization": `Bearer ${getToken()}`
         },
         body: formData
       })
@@ -57,15 +57,19 @@ export function OnboardingPage() {
   const handleSkip = async () => {
     setLoading(true)
     try {
-      await fetch("/api/onboarding/skip", {
+      const res = await fetch("/api/onboarding/skip", {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${localStorage.getItem("token")}`
+          "Authorization": `Bearer ${getToken()}`
         }
       })
+      if (!res.ok) {
+         throw new Error("Failed to skip onboarding");
+      }
       window.location.href = "/app/explore"
-    } catch (err) {
-      window.location.href = "/app/explore"
+    } catch (err: any) {
+      setError(err.message)
+      setLoading(false)
     }
   }
 

@@ -9,7 +9,7 @@ export function ExplorePage() {
   
   useEffect(() => {
     fetch("/api/onboarding/me", {
-        headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+        headers: { "Authorization": `Bearer ${getToken()}` }
     })
     .then(res => res.json())
     .then(data => {
