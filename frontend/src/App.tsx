@@ -13,7 +13,7 @@ import { QuickGeneratePage } from "./components/QuickGeneratePage"
 import { KnowledgeBasePage } from "./components/KnowledgeBasePage"
 import { NotificationTray } from "./components/NotificationTray"
 import { FollowUpsPage } from "./components/FollowUpsPage"
-import { Home, Briefcase, Zap, Settings, History, LogOut, LineChart, Database, User, Menu, Sun, Moon, CalendarClock } from "lucide-react"
+import { Rocket, Home, Briefcase, Zap, Settings, History, LogOut, LineChart, Database, User, Menu, Sun, Moon, CalendarClock }  from "lucide-react"
 import { useState, useEffect } from "react"
 import type { ReactNode } from "react"
 
