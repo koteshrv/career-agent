@@ -431,13 +431,14 @@ export function JobsBoard() {
     <div className="flex flex-col h-full relative">
 
 
-      {/* Title */}
-      <div className="mb-8">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">Pipeline</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          <span className="tabular-nums">{jobs.filter(j => j.status === 'NEW').length}</span> in inbox -{" "}
-          <span className="tabular-nums">{jobs.filter(j => j.status !== 'NEW' && j.status !== 'TRASH').length}</span> tracked
-        </p>
+      {/* Inbox Stats */}
+      <div className="mb-5 flex items-center gap-3">
+        <span className="text-sm font-medium bg-primary/10 text-primary px-2.5 py-1 rounded-md">
+          <span className="tabular-nums font-bold">{jobs.filter(j => j.status === 'NEW').length}</span> in inbox
+        </span>
+        <span className="text-sm font-medium bg-secondary text-muted-foreground px-2.5 py-1 rounded-md">
+          <span className="tabular-nums font-bold">{jobs.filter(j => j.status !== 'NEW' && j.status !== 'TRASH').length}</span> tracked
+        </span>
       </div>
 
       {/* Filter & Search Bar */}

@@ -26,22 +26,7 @@ export function ExplorePage() {
   return (
     <div className="flex flex-col max-w-5xl mx-auto h-full w-full pt-4">
       
-      {/* Header Area */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="font-display text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-              <Rocket className="w-6 h-6 text-primary" /> Explore
-            </h1>
-            <span className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">NEW</span>
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground max-w-2xl leading-relaxed">
-            Scan the public ATS network — Greenhouse, Lever, Ashby, Workday. Fresh postings matched
-            to you, zero tokens. You only spend when you choose to evaluate one.
-          </p>
-        </div>
-
-        </div>
+      
 
       {/* Main Form Card */}
       <div className="bg-card border border-border rounded-xl p-6 shadow-sm mb-6">
