@@ -1,5 +1,6 @@
 import { getToken } from "@/lib/api";
 import { useState, useEffect } from "react"
+import { Link } from "react-router-dom"
 import { Search, Sparkles, Filter, ChevronDown, Rocket, X, Zap } from "lucide-react"
 
 export function ExplorePage() {
@@ -41,6 +42,19 @@ export function ExplorePage() {
       {/* Main Form Card */}
       <div className="bg-card border border-border rounded-xl p-6 shadow-sm mb-6">
         
+        
+        {roles.length === 0 && excludes.length === 0 && (
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-6 mb-8 text-center">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Filters not seeded yet</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              It looks like you haven't configured your ATS target roles or exclusions. Uploading your resume allows our AI to automatically extract and seed these filters.
+            </p>
+            <Link to="/app/onboarding" className="inline-flex items-center justify-center bg-primary text-primary-foreground px-4 py-2 rounded-md text-sm font-medium hover:bg-primary/90 transition-colors">
+              Run Onboarding Setup
+            </Link>
+          </div>
+        )}
+
         {/* Roles */}
         <div className="mb-8">
           <h3 className="text-sm font-bold text-foreground mb-3">Roles to find</h3>

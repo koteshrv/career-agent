@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams, Link } from "react-router-dom"
 import { api } from "@/lib/api"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -284,6 +284,17 @@ export function SettingsPage() {
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">Leave the name blank to keep the original filename. The extension is added automatically.</p>
+              </div>
+            </div>
+
+            
+            <div className="bg-card rounded-lg border border-border p-6 space-y-4">
+              <div>
+                <h4 className="text-base font-semibold text-foreground mb-1">ATS Network Onboarding</h4>
+                <p className="text-sm text-muted-foreground mb-4">You can re-run the initial AI onboarding wizard to automatically extract and seed your Explore filters from a resume.</p>
+                <Link to="/app/onboarding" className="inline-flex items-center justify-center bg-secondary text-secondary-foreground border border-border px-4 py-2 rounded-md text-sm font-medium hover:bg-secondary/80 transition-colors">
+                  Open Onboarding Setup
+                </Link>
               </div>
             </div>
 
