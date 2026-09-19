@@ -63,14 +63,14 @@ export function OnboardingPage() {
           "Authorization": `Bearer ${localStorage.getItem("token")}`
         }
       })
-      navigate("/app/explore")
+      window.location.href = "/app/explore"
     } catch (err) {
-      navigate("/app/explore")
+      window.location.href = "/app/explore"
     }
   }
 
   const handleContinue = () => {
-    navigate("/app/explore")
+    window.location.href = "/app/explore"
   }
 
   return (

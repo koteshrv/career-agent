@@ -291,7 +291,7 @@ function OnboardingGuard({ children }: { children: ReactNode }) {
     })
     .catch(() => {})
     .finally(() => setLoading(false));
-  }, [location.pathname]);
+  }, []);
 
   if (loading) return null;
   if (needsOnboarding && location.pathname !== "/app/onboarding") {
