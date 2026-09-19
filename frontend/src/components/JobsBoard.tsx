@@ -520,37 +520,52 @@ export function JobsBoard() {
         {/* Pipeline Filter Chips */}
         <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 mt-1">
           <div className="flex items-center gap-1.5 border-r border-border pr-3">
-            {["24h", "3d", "7d"].map(f => (
+            {["24h", "3d", "7d"].map(f => {
+            const isActive = timeFilter === f;
+            return (
               <button
                 key={f}
-                onClick={() => setTimeFilter(timeFilter === f ? null : f)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${timeFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
+                role="switch"
+                aria-checked={isActive}
+                onClick={() => setTimeFilter(isActive ? null : f)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${isActive ? 'bg-primary/20 text-primary border-primary/30' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
               >
                 {f}
               </button>
-            ))}
+            );
+          })}
           </div>
           <div className="flex items-center gap-1.5 border-r border-border px-3">
-            {["Intern", "Junior", "Mid", "Senior", "Lead"].map(f => (
+            {["Intern", "Junior", "Mid", "Senior", "Lead"].map(f => {
+            const isActive = levelFilter === f;
+            return (
               <button
                 key={f}
-                onClick={() => setLevelFilter(levelFilter === f ? null : f)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${levelFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
+                role="switch"
+                aria-checked={isActive}
+                onClick={() => setLevelFilter(isActive ? null : f)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${isActive ? 'bg-primary/20 text-primary border-primary/30' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
               >
                 {f}
               </button>
-            ))}
+            );
+          })}
           </div>
           <div className="flex items-center gap-1.5 pl-3">
-            {["Remote", "On-site"].map(f => (
+            {["Remote", "On-site"].map(f => {
+            const isActive = locationFilter === f;
+            return (
               <button
                 key={f}
-                onClick={() => setLocationFilter(locationFilter === f ? null : f)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${locationFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
+                role="switch"
+                aria-checked={isActive}
+                onClick={() => setLocationFilter(isActive ? null : f)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${isActive ? 'bg-primary/20 text-primary border-primary/30' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
               >
                 {f}
               </button>
-            ))}
+            );
+          })}
           </div>
         </div>
       </div>
@@ -588,13 +603,37 @@ export function JobsBoard() {
       {/* List */}
       <div className={`custom-scrollbar bg-card rounded-lg border border-border ${tabJobs.length === 0 ? 'shrink-0' : 'flex-1 overflow-y-auto'}`}>
         {tabJobs.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-10 text-center px-6">
-            <Inbox className="w-5 h-5 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground max-w-sm">{TAB_EMPTY[activeTab]}</p>
-            {jobs.length === 0 && (
-              <button onClick={handleSync} className="mt-1 text-xs font-semibold text-primary hover:underline">
-                Sync Jobs now
-              </button>
+          <div className="flex flex-col items-center justify-center gap-3 py-16 text-center px-6">
+            <Inbox className="w-8 h-8 text-muted-foreground/50 mb-2" />
+            
+            {(searchQuery || timeFilter || levelFilter || locationFilter) ? (
+              <>
+                <p className="text-base font-semibold text-foreground">No matches found</p>
+                <p className="text-sm text-muted-foreground max-w-sm mb-4">
+                  We couldn't find any jobs matching your current search and filters.
+                </p>
+                <button 
+                  onClick={() => {
+                    setSearchQuery("");
+                    setTimeFilter(null);
+                    setLevelFilter(null);
+                    setLocationFilter(null);
+                  }}
+                  className="px-4 py-2 bg-secondary text-foreground text-sm font-medium rounded-md hover:bg-accent transition-colors"
+                >
+                  Clear all filters
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-base font-semibold text-foreground">Your pipeline is empty</p>
+                <p className="text-sm text-muted-foreground max-w-sm">{TAB_EMPTY[activeTab]}</p>
+                {jobs.length === 0 && (
+                  <button onClick={handleSync} className="mt-4 text-sm font-semibold text-primary hover:underline flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4" /> Sync Jobs now
+                  </button>
+                )}
+              </>
             )}
           </div>
         ) : groupByCompany ? (
