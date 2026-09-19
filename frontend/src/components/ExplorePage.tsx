@@ -2,7 +2,6 @@ import { useState } from "react"
 import { Search, Sparkles, Filter, ChevronDown, Rocket, X, Zap } from "lucide-react"
 
 export function ExplorePage() {
-  const [activeTab, setActiveTab] = useState<"scan" | "ai">("scan")
   const [roles, setRoles] = useState<string[]>([
     "AI", "ML", "LLM", "Agent", "Agentic", "GenAI", "Generative AI", "NLP", "LLMOps", "MLOps", "Voice AI",
     "Conversational AI", "Speech", "Backend Engineer", "Backend Developer", "Cloud Engineer", "DevOps Engineer",
@@ -42,27 +41,7 @@ export function ExplorePage() {
           </p>
         </div>
 
-        <div className="flex bg-secondary/50 rounded-lg p-1 border border-border">
-          <button
-            onClick={() => setActiveTab("scan")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === "scan" ? "bg-card text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            <Search className="w-4 h-4" />
-            Scan <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded ml-1 uppercase">Free</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("ai")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-              activeTab === "ai" ? "bg-card text-foreground shadow-sm border border-border" : "text-muted-foreground hover:text-foreground hover:bg-accent"
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            AI search <span className="text-[10px] font-bold text-muted-foreground bg-accent px-1.5 py-0.5 rounded ml-1 uppercase">Uses Tokens</span>
-          </button>
         </div>
-      </div>
 
       {/* Main Form Card */}
       <div className="bg-card border border-border rounded-xl p-6 shadow-sm mb-6">

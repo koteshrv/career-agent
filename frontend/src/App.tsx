@@ -19,11 +19,11 @@ import type { ReactNode } from "react"
 
 const NAV = [
   { to: "/app/home", label: "Home", title: "Home", subtitle: "What's happening, and what to do next.", icon: Home },
+  { to: "/app/explore", label: "Explore", title: "Explore", subtitle: "Scan the public ATS network for fresh postings.", icon: Rocket },
   { to: "/app/applications", label: "Pipeline", title: "Pipeline", subtitle: "Every job you're tracking, in one list.", icon: Briefcase },
   { to: "/app/followups", label: "Follow-ups", title: "Follow-ups", subtitle: "Applications waiting on a nudge.", icon: CalendarClock },
   { to: "/app/quick-generate", label: "Quick Generate", title: "Quick Generate", subtitle: "Instantly generate a tailored resume or cover letter without tracking the job in your pipeline.", icon: Zap },
   { to: "/app/analytics", label: "Analytics", title: "Analytics", subtitle: "Insights and metrics on your job search progress.", icon: LineChart },
-  { to: "/app/explore", label: "Explore", title: "Explore", subtitle: "Scan the public ATS network for fresh postings.", icon: Rocket },
   { to: "/app/history", label: "Run History", title: "Run History", subtitle: "View the status and logs of your background scraping tasks.", icon: History },
   { to: "/app/settings", label: "Settings", title: "Settings", subtitle: "Manage your API keys, resume templates, integrations, and preferences.", icon: Settings },
 ]
