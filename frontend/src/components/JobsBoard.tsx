@@ -105,26 +105,7 @@ export function JobsBoard() {
   const [isSyncing, setIsSyncing] = useState(false)
   const [stats, setStats] = useState<any>(null)
   
-  const flattenedItems = useMemo(() => {
-    if (!groupByCompany) return tabJobs.map(job => ({ type: 'job', job }));
-    const items: any[] = [];
-    const companies = Array.from(new Set(tabJobs.map(j => j.company)));
-    companies.forEach(company => {
-      items.push({ type: 'header', company });
-      if (expandedCompanies[company] ?? true) {
-        items.push(...tabJobs.filter(j => j.company === company).map(job => ({ type: 'job', job })));
-      }
-    });
-    return items;
-  }, [tabJobs, groupByCompany, expandedCompanies]);
 
-  const parentRef = useRef<HTMLDivElement>(null);
-  const rowVirtualizer = useVirtualizer({
-    count: flattenedItems.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: (i) => flattenedItems[i].type === 'header' ? 45 : 72,
-    overscan: 10,
-  });
   const [showFilters, setShowFilters] = useState(false)
   const filtersRef = useRef<HTMLDivElement>(null)
 
@@ -392,39 +373,6 @@ export function JobsBoard() {
       if (levelFilter === "Junior") return t.includes("junior") || t.includes("jr") || t.includes("associate")
       if (levelFilter === "Mid") return t.includes("mid") || (!t.includes("senior") && !t.includes("lead") && !t.includes("junior") && !t.includes("intern"))
       if (levelFilter === "Senior") return t.includes("senior") || t.includes("sr") || t.includes("principal")
-      if (levelFilter === "Lead") return t.includes("lead") || t.includes("manager") || t.includes("director")
-      return true;
-    })
-  }
-
-  if (locationFilter) {
-    tabJobs = tabJobs.filter(j => {
-      const loc = (j.location || "").toLowerCase()
-      if (locationFilter === "Remote") return loc.includes("remote") || loc.includes("anywhere")
-      if (locationFilter === "On-site") return !loc.includes("remote") && !loc.includes("anywhere") && loc.trim().length > 0
-      return true;
-    })
-  }
-
-
-  if (timeFilter) {
-    const now = Date.now()
-    tabJobs = tabJobs.filter(j => {
-      const created = new Date(j.created_at).getTime()
-      if (timeFilter === "24h") return now - created <= 24 * 60 * 60 * 1000;
-      if (timeFilter === "3d") return now - created <= 3 * 24 * 60 * 60 * 1000;
-      if (timeFilter === "7d") return now - created <= 7 * 24 * 60 * 60 * 1000;
-      return true;
-    })
-  }
-
-  if (levelFilter) {
-    tabJobs = tabJobs.filter(j => {
-      const t = j.title.toLowerCase()
-      if (levelFilter === "Intern") return t.includes("intern")
-      if (levelFilter === "Junior") return t.includes("junior") || t.includes("jr") || t.includes("associate")
-      if (levelFilter === "Mid") return t.includes("mid") || (!t.includes("senior") && !t.includes("lead") && !t.includes("junior") && !t.includes("intern"))
-      if (levelFilter === "Senior") return t.includes("senior") || t.includes("sr") || t.includes("principal")
       if (levelFilter === "Lead") return t.includes("lead") || t.includes("manager") || t.includes("director") || t.includes("staff")
       return true;
     })
@@ -454,6 +402,28 @@ export function JobsBoard() {
       return sortOrder === "desc" ? timeB - timeA : timeA - timeB
     }
   })
+
+  
+  const flattenedItems = useMemo(() => {
+    if (!groupByCompany) return tabJobs.map(job => ({ type: 'job', job }));
+    const items: any[] = [];
+    const companies = Array.from(new Set(tabJobs.map(j => j.company)));
+    companies.forEach(company => {
+      items.push({ type: 'header', company });
+      if (expandedCompanies[company] ?? true) {
+        items.push(...tabJobs.filter(j => j.company === company).map(job => ({ type: 'job', job })));
+      }
+    });
+    return items;
+  }, [tabJobs, groupByCompany, expandedCompanies]);
+
+  const parentRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: flattenedItems.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: (i) => flattenedItems[i].type === 'header' ? 45 : 72,
+    overscan: 10,
+  });
 
   const showStatusBadge = activeTab === "ALL" || activeTab === "CLOSED"
 
