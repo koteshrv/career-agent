@@ -1,5 +1,5 @@
 import { getToken } from "@/lib/api";
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Link } from "react-router-dom"
 import { Search, Sparkles, Filter, ChevronDown, Rocket, X, Zap } from "lucide-react"
 
@@ -98,6 +98,10 @@ if (data && data.excludes) {
   const [newRole, setNewRole] = useState("")
   const [newExclude, setNewExclude] = useState("")
 
+  const roleInputRef = useRef<HTMLInputElement>(null)
+  const excludeInputRef = useRef<HTMLInputElement>(null)
+
+
   const addRole = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && newRole.trim()) {
       const next = [...roles, newRole.trim()]
@@ -144,22 +148,26 @@ if (data && data.excludes) {
         {/* Roles */}
         <div className="mb-8">
           <h3 className="text-sm font-bold text-foreground mb-3">Roles to find</h3>
-          <div className="flex flex-wrap gap-2 mb-2">
+          <div 
+            onClick={() => roleInputRef.current?.focus()}
+            className="flex flex-wrap items-center gap-2 mb-2 p-3 bg-transparent border border-border rounded-lg cursor-text focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all"
+          >
             {roles.map(role => (
               <div key={role} className="flex items-center gap-1.5 bg-primary/10 text-primary border border-primary/20 px-2.5 py-1 rounded-md text-xs font-medium group">
                 {role}
-                <button onClick={() => removeRole(role)} className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity">
+                <button onClick={(e) => { e.stopPropagation(); removeRole(role); }} className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity">
                   <X className="w-3 h-3" />
                 </button>
               </div>
             ))}
             <input 
+              ref={roleInputRef}
               type="text" 
               value={newRole}
               onChange={e => setNewRole(e.target.value)}
               onKeyDown={addRole}
-              placeholder="+ Add role..." 
-              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none border-b border-transparent focus:border-primary px-1 w-24 focus:w-32 transition-all"
+              placeholder={roles.length === 0 ? "Add roles..." : ""} 
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none border-none focus:ring-0 flex-1 min-w-[120px] py-1"
             />
           </div>
           <p className="text-xs text-muted-foreground italic">Seeded from your profile — edit freely.</p>
@@ -168,22 +176,26 @@ if (data && data.excludes) {
         {/* Excludes */}
         <div className="mb-8">
           <h3 className="text-sm font-bold text-foreground mb-3">Exclude</h3>
-          <div className="flex flex-wrap gap-2">
+          <div 
+            onClick={() => excludeInputRef.current?.focus()}
+            className="flex flex-wrap items-center gap-2 p-3 bg-transparent border border-border rounded-lg cursor-text focus-within:border-foreground/30 focus-within:ring-1 focus-within:ring-foreground/30 transition-all"
+          >
             {excludes.map(ex => (
               <div key={ex} className="flex items-center gap-1.5 bg-secondary/80 text-muted-foreground border border-border px-2.5 py-1 rounded-md text-xs font-medium group hover:bg-secondary">
                 {ex}
-                <button onClick={() => removeExclude(ex)} className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity">
+                <button onClick={(e) => { e.stopPropagation(); removeExclude(ex); }} className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity">
                   <X className="w-3 h-3" />
                 </button>
               </div>
             ))}
             <input 
+              ref={excludeInputRef}
               type="text" 
               value={newExclude}
               onChange={e => setNewExclude(e.target.value)}
               onKeyDown={addExclude}
-              placeholder="+ Add exclude..." 
-              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none border-b border-transparent focus:border-border px-1 w-24 focus:w-32 transition-all"
+              placeholder={excludes.length === 0 ? "Add excludes..." : ""} 
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none border-none focus:ring-0 flex-1 min-w-[120px] py-1"
             />
           </div>
         </div>
