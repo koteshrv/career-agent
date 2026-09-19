@@ -10,11 +10,6 @@
     "domain": "fintech-payments"
   },
   {
-    "company": "Cognizant",
-    "url": "https://careers.cognizant.com/global-en/jobs/?keyword={keyword}&location=India&radius=100&lat=&lng=&cname=India&ccode=IN&pagesize=10#results",
-    "domain": "it-services"
-  },
-  {
     "company": "Capgemini",
     "url": "https://www.capgemini.com/in-en/careers/join-capgemini/job-search/?page=1&size=11&country_code=in-en&keyword={keyword}",
     "domain": "it-services"
