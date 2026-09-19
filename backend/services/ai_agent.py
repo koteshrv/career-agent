@@ -386,7 +386,7 @@ async def generate_application_materials(job_title: str, company: str, location:
 
     from pathlib import Path
     try:
-        with open(Path(__file__).parent.parent / "prompts" / "apply_legacy.md", "r") as f:
+        with open(Path(__file__).parent.parent.parent / "prompts" / "apply_legacy.md", "r") as f:
             prompt_template = f.read()
     except Exception:
         prompt_template = ""
@@ -425,7 +425,7 @@ async def generate_application_materials(job_title: str, company: str, location:
     yield json.dumps({"status": "progress", "message": "Phase 2: Critic is reviewing drafts for hallucinations and formatting..."}) + "\n"
     await asyncio.sleep(0)
     try:
-        with open(Path(__file__).parent.parent / "prompts" / "review.md", "r") as f:
+        with open(Path(__file__).parent.parent.parent / "prompts" / "review.md", "r") as f:
             reviewer_template = f.read()
     except Exception:
         reviewer_template = ""
@@ -448,7 +448,7 @@ async def generate_application_materials(job_title: str, company: str, location:
         yield json.dumps({"status": "progress", "message": "Phase 3: Refinement pass fixing Critic issues..."}) + "\n"
         await asyncio.sleep(0)
         try:
-            with open(Path(__file__).parent.parent / "prompts" / "fix.md", "r") as f:
+            with open(Path(__file__).parent.parent.parent / "prompts" / "fix.md", "r") as f:
                 fix_template = f.read()
         except Exception:
             fix_template = ""
@@ -491,7 +491,7 @@ def onboard_resume(resume_text: str, api_key: str = None, model_name: str = None
         
     try:
         from pathlib import Path
-        rubric_path = Path(__file__).parent.parent / "prompts" / "intake.md"
+        rubric_path = Path(__file__).parent.parent.parent / "prompts" / "intake.md"
         with open(rubric_path, "r") as f:
             interview_prompt = f.read()
     except Exception as e:
@@ -523,7 +523,7 @@ def batch_evaluate_jobs(jobs_data: list, resume_text: str, api_key: str = None, 
         return []
     try:
         from pathlib import Path
-        rubric_path = Path(__file__).parent.parent / "prompts" / "oferta.md"
+        rubric_path = Path(__file__).parent.parent.parent / "prompts" / "oferta.md"
         with open(rubric_path, "r") as f:
             rubric_text = f.read()
     except Exception:
