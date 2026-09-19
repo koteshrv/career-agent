@@ -1,3 +1,4 @@
+import { getToken } from "@/lib/api";
 import { useState, useEffect } from "react"
 import { Search, Sparkles, Filter, ChevronDown, Rocket, X, Zap } from "lucide-react"
 
