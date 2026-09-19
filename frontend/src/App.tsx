@@ -1,7 +1,9 @@
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Routes, Route, Navigate, NavLink, Outlet, useLocation, useNavigate, Link } from "react-router-dom"
 import { JobsBoard } from "./components/JobsBoard"
 import { HomePage } from "./components/HomePage"
 import { SettingsPage } from "./components/SettingsPage"
+import { ExplorePage } from "./components/ExplorePage"
 import { HistoryPage } from "./components/HistoryPage"
 import { AnalyticsPage } from "./components/AnalyticsPage"
 import Login from "./components/Login"
@@ -21,7 +23,7 @@ const NAV = [
   { to: "/app/followups", label: "Follow-ups", title: "Follow-ups", subtitle: "Applications waiting on a nudge.", icon: CalendarClock },
   { to: "/app/quick-generate", label: "Quick Generate", title: "Quick Generate", subtitle: "Instantly generate a tailored resume or cover letter without tracking the job in your pipeline.", icon: Zap },
   { to: "/app/analytics", label: "Analytics", title: "Analytics", subtitle: "Insights and metrics on your job search progress.", icon: LineChart },
-  { to: "/app/knowledge", label: "Knowledge Base", title: "Career Knowledge Base", subtitle: "Manage your career history for RAG generation.", icon: Database },
+  { to: "/app/explore", label: "Explore", title: "Explore", subtitle: "Scan the public ATS network for fresh postings.", icon: Rocket },
   { to: "/app/history", label: "Run History", title: "Run History", subtitle: "View the status and logs of your background scraping tasks.", icon: History },
   { to: "/app/settings", label: "Settings", title: "Settings", subtitle: "Manage your API keys, resume templates, integrations, and preferences.", icon: Settings },
 ]
@@ -267,13 +269,13 @@ function App() {
       <Route path="/app" element={<RequireAuth><Layout /></RequireAuth>}>
         <Route index element={<Navigate to="/app/home" replace />} />
         <Route path="home" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><HomePage /></div>} />
-        <Route path="applications" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><JobsBoard /></div>} />
+        <Route path="applications" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><ErrorBoundary><JobsBoard /></ErrorBoundary></div>} />
         <Route path="followups" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><FollowUpsPage /></div>} />
         <Route path="analytics" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><AnalyticsPage /></div>} />
         <Route path="history" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><HistoryPage /></div>} />
         <Route path="quick-generate" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><QuickGeneratePage /></div>} />
         <Route path="integrations" element={<Navigate to="/app/settings?tab=health" replace />} />
-        <Route path="knowledge" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar p-6 md:p-8"><KnowledgeBasePage /></div>} />
+        <Route path="explore" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar px-6 md:px-8 pb-6 md:pb-8"><ExplorePage /></div>} />
         <Route path="settings" element={<div className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden custom-scrollbar px-6 md:px-8 pb-6 md:pb-8"><SettingsPage /></div>} />
         <Route path="*" element={<Navigate to="/app/home" replace />} />
       </Route>
