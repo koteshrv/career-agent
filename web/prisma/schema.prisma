@@ -1,0 +1,156 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite" // or "postgresql", based on current deployment
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String?   @unique
+  username     String?   @unique
+  auth_method  String    @default("local")
+  sso_provider String?
+  role         String    @default("USER")
+  status       String    @default("PENDING")
+  created_at   DateTime  @default(now())
+  approved_at  DateTime?
+
+  jobs          Job[]
+  settings      Settings?
+  knowledge     Knowledge[]
+  scraper_logs  ScraperLog[]
+  scraper_health ScraperHealth[]
+
+  @@map("users")
+}
+
+model Job {
+  id               Int       @id @default(autoincrement())
+  user_id          Int
+  company          String?
+  title            String?
+  url              String?
+  location         String?
+  description      String?
+  status           String    @default("NEW")
+  notes            String?
+  cover_letter     String?
+  tailored_resume  String?
+  cold_email       String?
+  match_score      Int?
+  match_reason     String?
+  external_id      String?
+  yoe              String?
+
+  score_match       String?
+  score_north_star  String?
+  score_comp        String?
+  score_culture     String?
+  score_red_flags   String?
+  legitimacy_tier   String?
+  fingerprint       String?
+  score_tech_stack  String?
+  score_experience  String?
+  score_domain      String?
+
+  created_at        DateTime  @default(now())
+  updated_at        DateTime? @updatedAt
+  applied_at        DateTime?
+  last_follow_up_at DateTime?
+  follow_up_count   Int       @default(0)
+  follow_up_snoozed_until DateTime?
+  crowdsource_pushed_at   DateTime?
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, url])
+  @@map("jobs")
+}
+
+model Settings {
+  id                       Int     @id @default(autoincrement())
+  user_id                  Int     @unique
+  telegram_chat_id         String?
+  telegram_bot_token       String?
+  telegram_alerts_enabled  Boolean @default(true)
+  healthcheck_ping_url     String?
+  gemini_api_key           String?
+  gemini_model             String  @default("gemini-2.5-flash, gemini-flash-latest, gemini-2.5-pro")
+  cron_schedule            String  @default("0 */12 * * *")
+  trash_retention_days     Int     @default(30)
+  active_companies         String?
+  search_keywords          String?
+  extracted_keywords       String?
+  target_roles             String?
+  base_salary_expectations String?
+  profile_narrative        String?
+  debug_logging_enabled    Boolean @default(false)
+  min_match_score          Int     @default(50)
+  total_prompt_tokens      Int     @default(0)
+  total_candidate_tokens   Int     @default(0)
+  custom_guidelines        String?
+  model_telemetry          String?
+  api_key_tag              String?
+  max_pages                Int     @default(3)
+
+  ai_mode                  String  @default("gemini")
+  openai_api_key           String?
+  anthropic_api_key        String?
+  grok_api_key             String?
+  ollama_url               String  @default("http://localhost:11434")
+  ollama_model             String  @default("llama3")
+
+  career_agent_cloud_token String?
+  career_agent_account_email String?
+  crowdsourcing_enabled      Boolean @default(true)
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("settings")
+}
+
+model Knowledge {
+  id         String   @id // UUID
+  user_id    Int
+  text       String
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("knowledge")
+}
+
+model ScraperLog {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  timestamp      DateTime @default(now())
+  jobs_found     Int      @default(0)
+  status         String?
+  error_message  String?
+  trigger_source String   @default("MANUAL")
+  detailed_logs  String?
+  raw_logs       String?
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("scraper_logs")
+}
+
+model ScraperHealth {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int
+  provider_name        String?
+  status               String    @default("OPERATIONAL")
+  error_message        String?
+  last_run_at          DateTime?
+  last_success_at      DateTime?
+  consecutive_failures Int       @default(0)
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@unique([user_id, provider_name])
+  @@map("scraper_health")
+}
