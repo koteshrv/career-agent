@@ -30,39 +30,41 @@ async def upload_resume(
     else:
         raise HTTPException(status_code=400, detail="Only PDF, TXT, MD, and TEX files are supported for onboarding")
 
-    # Fast heuristic extraction for demo / real use without expensive LLM call first
-    # In a real app we might call Gemini/OpenAI here. For now, let's do a basic keyword match
-    # to populate 'roles' and 'excludes'.
-    # If the user has "Settings", we could also pull their LLM token and use it.
-    # To keep it robust without blocking on API key existence, we'll do an LLM call if possible,
-    # or fallback to regex.
-    
     settings = db.query(models.Settings).filter(models.Settings.user_id == current_user.id).first()
     
-    # We will just write a small pseudo-extraction logic here.
-    # We look for common keywords in text.
-    text_lower = text.lower()
+    # We will call the AI model to perform the extraction
+    from backend.services.ai_agent import _route_generation, strip_code_fences
     
+    prompt = """
+    Analyze the following resume and extract the core job titles the candidate is best suited for, as well as strict exclusionary keywords (e.g., if they are Senior, exclude "Junior", "Intern". Also exclude tech stacks they clearly don't use if they are highly specialized, like excluding "Java" if they only use Python).
+    
+    Return EXACTLY a JSON object with this structure, and absolutely nothing else:
+    {
+      "roles": ["Role 1", "Role 2"],
+      "excludes": ["Exclude 1", "Exclude 2"]
+    }
+    
+    Resume:
+    """ + text[:4000]
+
     extracted_roles = []
-    if "backend" in text_lower or "api" in text_lower or "python" in text_lower:
-        extracted_roles.append("Backend Engineer")
-    if "frontend" in text_lower or "react" in text_lower:
-        extracted_roles.append("Frontend Engineer")
-    if "machine learning" in text_lower or "ai" in text_lower or "llm" in text_lower:
-        extracted_roles.append("AI Engineer")
-    if "data" in text_lower and "pipeline" in text_lower:
-        extracted_roles.append("Data Engineer")
-        
-    if not extracted_roles:
-        extracted_roles = ["Software Engineer"]
-        
     extracted_excludes = []
-    if "senior" in text_lower or "lead" in text_lower or "staff" in text_lower:
-        extracted_excludes.extend(["Junior", "Intern", "Internship", "word:Intern"])
-    if "java" not in text_lower:
-        extracted_excludes.append("Java")
-    if ".net" not in text_lower and "c#" not in text_lower:
-        extracted_excludes.append(".NET")
+    try:
+        model_to_use = settings.ai_mode if (settings and settings.ai_mode and settings.ai_mode.startswith("cli_")) else (settings.gemini_model if settings else None)
+        api_key = settings.gemini_api_key if settings else None
+        
+        result_str = _route_generation(prompt, model_to_use or "gemini", settings, is_tex=False, is_cl=False, user_id=current_user.id)
+        
+        if not result_str.startswith("Error"):
+            clean_json = strip_code_fences(result_str)
+            parsed = json.loads(clean_json)
+            extracted_roles = parsed.get("roles", [])
+            extracted_excludes = parsed.get("excludes", [])
+    except Exception as e:
+        print(f"AI parsing failed: {e}")
+        # fallback to basic
+        if not extracted_roles:
+            extracted_roles = ["Software Engineer"]
 
     current_user.resume_text = text
     current_user.target_roles = json.dumps(list(set(extracted_roles)))
