@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from backend.database import models
 from backend.services import ai_agent as agent
 from backend.services.common import (
-    LOCATIONS, DEFAULT_KEYWORDS,
+    load_locations, load_scan_depth, DEFAULT_KEYWORDS,
     check_keywords_and_location,
     load_keywords, load_targets, has_been_notified, record_job,
     get_active_companies, commit_jobs, process_jobs,
@@ -180,6 +180,8 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
     logger.info("Starting Backend Scraper Engine...")
     targets = load_targets()
     keywords = load_keywords(db, user_id)
+    locations = load_locations(db, user_id)
+    scan_depth = load_scan_depth(db, user_id)
     logger.info(f"Keywords: {keywords}")
     logger.debug(f"Loaded {len(targets)} total targets from providers.json")
     all_new_jobs = []
@@ -197,7 +199,8 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
             targets = [t for t in targets if t.get("company") in active]
             logger.info(f"Scraping {len(targets)} selected companies: {active}")
         else:
-            logger.info(f"Scraping all {len(targets)} companies (no filter set)")
+            targets = targets[:scan_depth]
+            logger.info(f"Scraping {len(targets)} companies (capped by scan_depth)")
 
     # Filter out BLOCKED targets for cooldown
     from backend.core.health_manager import is_provider_blocked, update_health
@@ -217,7 +220,7 @@ def run_scraper(db: Session, user_id: int, target_name: str = None, ignore_activ
     for target in targets:
         company = target.get("company", "Unknown")
         logger.info(f"[{company}] Scraping via {target.get('provider') or 'auto-detect'}...")
-        process_universal_api(db, user_id, target, keywords, LOCATIONS, new_jobs, company_logs)
+        process_universal_api(db, user_id, target, keywords, locations, new_jobs, company_logs)
 
         if company_logs and company_logs[-1].get("company") == company:
             status = company_logs[-1].get("status")

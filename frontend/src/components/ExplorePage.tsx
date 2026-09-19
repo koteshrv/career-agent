@@ -57,7 +57,7 @@ if (data && data.excludes) {
   }
 
   const [timeFilter, setTimeFilter] = useState("7d")
-  const [sources, setSources] = useState<string[]>(["Greenhouse", "Lever", "Ashby", "Workday"])
+
 
 
   const syncProfile = async (newRoles: string[], newExcludes: string[]) => {
@@ -120,9 +120,6 @@ if (data && data.excludes) {
     }
   }
 
-  const toggleSource = (source: string) => {
-    setSources(prev => prev.includes(source) ? prev.filter(s => s !== source) : [...prev, source])
-  }
 
   return (
     <div className="flex flex-col max-w-5xl mx-auto h-full w-full pt-4">
@@ -222,23 +219,7 @@ if (data && data.excludes) {
             </div>
           </div>
 
-          {/* Sources */}
-          <div>
-            <h3 className="text-sm font-bold text-foreground mb-3">Sources</h3>
-            <div className="flex gap-2">
-              {["Greenhouse", "Lever", "Ashby", "Workday"].map(s => (
-                <button
-                  key={s}
-                  onClick={() => toggleSource(s)}
-                  className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                    sources.includes(s) ? "bg-primary/20 text-primary border border-primary/30" : "bg-secondary text-muted-foreground hover:bg-accent border border-border"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
+
         </div>
 
         {/* Location & Scope */}
@@ -270,7 +251,7 @@ if (data && data.excludes) {
                   <div className="flex justify-between items-center">
                     <label className="text-xs font-bold text-foreground">Never in</label>
                   </div>
-                  <input type="text" value={locExclude} onChange={e => setLocExclude(e.target.value)} onBlur={handleLocBlur} placeholder="India..." className="w-full bg-secondary/50 border border-border rounded-md px-3 py-1.5 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50" />
+                  <input type="text" value={locExclude} onChange={e => setLocExclude(e.target.value)} onBlur={handleLocBlur} placeholder="" className="w-full bg-secondary/50 border border-border rounded-md px-3 py-1.5 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50" />
                 </div>
               </div>
               

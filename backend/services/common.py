@@ -15,7 +15,28 @@ from backend.database import models
 
 logger = logging.getLogger(__name__)
 
-LOCATIONS = ["india", "bangalore", "hyderabad", "pune", "gurgaon", "noida", "remote"]
+
+def load_locations(db: Session, user_id: int) -> List[str]:
+    default_locs = ["remote"]
+    if db is not None:
+        from backend.database import models
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user and user.location_prefs:
+            try:
+                import json
+                prefs = json.loads(user.location_prefs)
+                inc = prefs.get("include", "")
+                only = prefs.get("only", "")
+                # We can construct a list of allowed locs
+                combined = []
+                if inc: combined.extend([x.strip().lower() for x in inc.split(",")])
+                if only: combined.extend([x.strip().lower() for x in only.split(",")])
+                if combined:
+                    return combined
+            except Exception:
+                pass
+    return default_locs
+
 
 DEFAULT_KEYWORDS = ["software", "engineer", "developer", "backend", "frontend", "python"]
 
@@ -153,3 +174,21 @@ def commit_jobs(db: Session, user_id: int, jobs: list) -> bool:
         db.rollback()
         logger.error(f"Failed to commit jobs: {e}")
         return False
+
+
+def load_scan_depth(db: Session, user_id: int) -> int:
+    default_depth = 500
+    if db is not None:
+        from backend.database import models
+        user = db.query(models.User).filter(models.User.id == user_id).first()
+        if user and user.location_prefs:
+            try:
+                import json
+                prefs = json.loads(user.location_prefs)
+                depth = prefs.get("scanDepth")
+                if depth and isinstance(depth, int) and depth > 0:
+                    return depth
+            except Exception:
+                pass
+    return default_depth
+
