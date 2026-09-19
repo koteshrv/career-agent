@@ -18,13 +18,44 @@ export function ExplorePage() {
         if (data && data.target_roles) {
             setRoles(data.target_roles);
         }
-        if (data && data.excludes) {
+if (data && data.excludes) {
             setExcludes(data.excludes);
+        }
+        if (data && data.location_prefs) {
+            try {
+                const lp = JSON.parse(data.location_prefs)
+                if (lp.include) setLocInclude(lp.include)
+                if (lp.only) setLocOnly(lp.only)
+                if (lp.exclude) setLocExclude(lp.exclude)
+                if (lp.hardExclude) setLocHardExclude(lp.hardExclude)
+                if (lp.scanDepth) setScanDepth(lp.scanDepth)
+            } catch (e) {}
         }
     })
     .catch(console.error)
   }, [])
   
+
+  const [isLocExpanded, setIsLocExpanded] = useState(false)
+  const [locInclude, setLocInclude] = useState("")
+  const [locOnly, setLocOnly] = useState("")
+  const [locExclude, setLocExclude] = useState("")
+  const [locHardExclude, setLocHardExclude] = useState("")
+  const [scanDepth, setScanDepth] = useState(500)
+
+  const syncLocPrefs = async (prefs: any) => {
+    try {
+      await fetch("/api/onboarding/me", {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${getToken()}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ location_prefs: JSON.stringify(prefs) })
+      })
+    } catch (e) {}
+  }
+
   const [timeFilter, setTimeFilter] = useState("7d")
   const [sources, setSources] = useState<string[]>(["Greenhouse", "Lever", "Ashby", "Workday"])
 
@@ -47,6 +78,17 @@ export function ExplorePage() {
     setRoles(next)
     syncProfile(next, excludes)
   }
+
+  const handleLocBlur = () => {
+    syncLocPrefs({
+      include: locInclude,
+      only: locOnly,
+      exclude: locExclude,
+      hardExclude: locHardExclude,
+      scanDepth: scanDepth
+    })
+  }
+
   const removeExclude = (ex: string) => {
     const next = excludes.filter(e => e !== ex)
     setExcludes(next)
@@ -197,9 +239,62 @@ export function ExplorePage() {
 
         {/* Location & Scope */}
         <div className="mb-8">
-          <button className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors">
-            <Filter className="w-4 h-4" /> Location & scope <ChevronDown className="w-4 h-4" />
+          <button 
+            onClick={() => setIsLocExpanded(!isLocExpanded)}
+            className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-4"
+          >
+            <Filter className="w-4 h-4" /> Location & scope <ChevronDown className={`w-4 h-4 transition-transform ${isLocExpanded ? 'rotate-180' : ''}`} />
           </button>
+          
+          {isLocExpanded && (
+            <div className="border border-border rounded-lg p-6 space-y-6 bg-card/50">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-foreground">Always include</label>
+                    <span className="text-[10px] text-muted-foreground italic">rescues multi-loc posts</span>
+                  </div>
+                  <input type="text" value={locInclude} onChange={e => setLocInclude(e.target.value)} onBlur={handleLocBlur} placeholder="London..." className="w-full bg-secondary/50 border border-border rounded-md px-3 py-1.5 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-foreground">Only in</label>
+                  </div>
+                  <input type="text" value={locOnly} onChange={e => setLocOnly(e.target.value)} onBlur={handleLocBlur} placeholder="Remote, EMEA..." className="w-full bg-secondary/50 border border-border rounded-md px-3 py-1.5 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50" />
+                </div>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <label className="text-xs font-bold text-foreground">Never in</label>
+                  </div>
+                  <input type="text" value={locExclude} onChange={e => setLocExclude(e.target.value)} onBlur={handleLocBlur} placeholder="India..." className="w-full bg-secondary/50 border border-border rounded-md px-3 py-1.5 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50" />
+                </div>
+              </div>
+              
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-foreground">Never in (hard)</label>
+                  <span className="text-[10px] text-muted-foreground italic">hard reject — overrides Always include</span>
+                </div>
+                <input type="text" value={locHardExclude} onChange={e => setLocHardExclude(e.target.value)} onBlur={handleLocBlur} placeholder="USA, Brazil..." className="w-full bg-secondary/50 border border-border rounded-md px-3 py-1.5 text-sm outline-none focus:border-primary transition-colors placeholder:text-muted-foreground/50" />
+              </div>
+              
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-bold text-foreground">Scan depth</label>
+                  <span className="text-[10px] text-muted-foreground">{scanDepth} companies / source</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="100" max="2000" step="100" 
+                  value={scanDepth} 
+                  onChange={e => setScanDepth(parseInt(e.target.value))} 
+                  onMouseUp={handleLocBlur}
+                  onTouchEnd={handleLocBlur}
+                  className="w-full accent-primary h-1.5 bg-secondary rounded-lg appearance-none cursor-pointer"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions */}

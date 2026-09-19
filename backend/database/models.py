@@ -17,6 +17,7 @@ class User(Base):
     resume_text = Column(Text, nullable=True)
     target_roles = Column(String, nullable=True) # JSON array of roles
     excludes = Column(String, nullable=True)     # JSON array of excludes
+    location_prefs = Column(String, nullable=True)
     onboarding_completed = Column(Boolean, default=False)
 
 class Job(Base):

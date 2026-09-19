@@ -75,6 +75,7 @@ from pydantic import BaseModel
 class ProfileUpdate(BaseModel):
     target_roles: list[str] = None
     excludes: list[str] = None
+    location_prefs: str = None
 
 @router.put("/me")
 def update_me(update: ProfileUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
@@ -82,6 +83,8 @@ def update_me(update: ProfileUpdate, db: Session = Depends(get_db), current_user
         current_user.target_roles = json.dumps(update.target_roles)
     if update.excludes is not None:
         current_user.excludes = json.dumps(update.excludes)
+    if update.location_prefs is not None:
+        current_user.location_prefs = update.location_prefs
     db.commit()
     return {"status": "success"}
 
@@ -92,5 +95,6 @@ def get_me(current_user: models.User = Depends(get_current_user)):
         "email": current_user.email,
         "onboarding_completed": current_user.onboarding_completed,
         "target_roles": json.loads(current_user.target_roles) if current_user.target_roles else [],
-        "excludes": json.loads(current_user.excludes) if current_user.excludes else []
+        "excludes": json.loads(current_user.excludes) if current_user.excludes else [],
+        "location_prefs": current_user.location_prefs
     }
