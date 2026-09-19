@@ -69,6 +69,22 @@ def skip_onboarding(db: Session = Depends(get_db), current_user: models.User = D
     db.commit()
     return {"status": "success"}
 
+
+from pydantic import BaseModel
+
+class ProfileUpdate(BaseModel):
+    target_roles: list[str] = None
+    excludes: list[str] = None
+
+@router.put("/me")
+def update_me(update: ProfileUpdate, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    if update.target_roles is not None:
+        current_user.target_roles = json.dumps(update.target_roles)
+    if update.excludes is not None:
+        current_user.excludes = json.dumps(update.excludes)
+    db.commit()
+    return {"status": "success"}
+
 @router.get("/me")
 def get_me(current_user: models.User = Depends(get_current_user)):
     return {

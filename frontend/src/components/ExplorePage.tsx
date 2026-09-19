@@ -28,8 +28,52 @@ export function ExplorePage() {
   const [timeFilter, setTimeFilter] = useState("7d")
   const [sources, setSources] = useState<string[]>(["Greenhouse", "Lever", "Ashby", "Workday"])
 
-  const removeRole = (role: string) => setRoles(roles.filter(r => r !== role))
-  const removeExclude = (ex: string) => setExcludes(excludes.filter(e => e !== ex))
+
+  const syncProfile = async (newRoles: string[], newExcludes: string[]) => {
+    try {
+      await fetch("/api/onboarding/me", {
+        method: "PUT",
+        headers: {
+          "Authorization": `Bearer ${getToken()}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ target_roles: newRoles, excludes: newExcludes })
+      })
+    } catch (e) { console.error(e) }
+  }
+
+  const removeRole = (role: string) => {
+    const next = roles.filter(r => r !== role)
+    setRoles(next)
+    syncProfile(next, excludes)
+  }
+  const removeExclude = (ex: string) => {
+    const next = excludes.filter(e => e !== ex)
+    setExcludes(next)
+    syncProfile(roles, next)
+  }
+
+  const [newRole, setNewRole] = useState("")
+  const [newExclude, setNewExclude] = useState("")
+
+  const addRole = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && newRole.trim()) {
+      const next = [...roles, newRole.trim()]
+      setRoles(next)
+      syncProfile(next, excludes)
+      setNewRole("")
+    }
+  }
+
+  const addExclude = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && newExclude.trim()) {
+      const next = [...excludes, newExclude.trim()]
+      setExcludes(next)
+      syncProfile(roles, next)
+      setNewExclude("")
+    }
+  }
+
   const toggleSource = (source: string) => {
     setSources(prev => prev.includes(source) ? prev.filter(s => s !== source) : [...prev, source])
   }
@@ -67,6 +111,18 @@ export function ExplorePage() {
                 </button>
               </div>
             ))}
+            <input 
+              type="text" 
+              value={newRole}
+              onChange={e => setNewRole(e.target.value)}
+              onKeyDown={addRole}
+              placeholder="+ Add role..." 
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none border-b border-transparent focus:border-primary px-1 w-24 focus:w-32 transition-all"
+            /> className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
           </div>
           <p className="text-xs text-muted-foreground italic">Seeded from your profile — edit freely.</p>
         </div>
@@ -79,6 +135,18 @@ export function ExplorePage() {
               <div key={ex} className="flex items-center gap-1.5 bg-secondary/80 text-muted-foreground border border-border px-2.5 py-1 rounded-md text-xs font-medium group hover:bg-secondary">
                 {ex}
                 <button onClick={() => removeExclude(ex)} className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity">
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+            <input 
+              type="text" 
+              value={newExclude}
+              onChange={e => setNewExclude(e.target.value)}
+              onKeyDown={addExclude}
+              placeholder="+ Add exclude..." 
+              className="bg-transparent text-sm text-foreground placeholder:text-muted-foreground outline-none border-b border-transparent focus:border-border px-1 w-24 focus:w-32 transition-all"
+            /> className="opacity-50 group-hover:opacity-100 hover:text-foreground transition-opacity">
                   <X className="w-3 h-3" />
                 </button>
               </div>
