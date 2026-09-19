@@ -53,6 +53,22 @@ export function OnboardingPage() {
     }
   }
 
+
+  const handleSkip = async () => {
+    setLoading(true)
+    try {
+      await fetch("/api/onboarding/skip", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${localStorage.getItem("token")}`
+        }
+      })
+      navigate("/app/explore")
+    } catch (err) {
+      navigate("/app/explore")
+    }
+  }
+
   const handleContinue = () => {
     navigate("/app/explore")
   }
@@ -86,7 +102,7 @@ export function OnboardingPage() {
                 type="file" 
                 ref={fileInputRef} 
                 onChange={handleFileChange} 
-                accept=".pdf,.txt,.md" 
+                accept=".pdf,.txt,.md,.tex" 
                 className="hidden" 
               />
               
@@ -106,7 +122,7 @@ export function OnboardingPage() {
                   <Upload className="w-8 h-8 text-muted-foreground" />
                   <div>
                     <p className="text-sm font-medium text-foreground">Drag & drop your resume</p>
-                    <p className="text-xs text-muted-foreground mt-1">PDF, TXT, or MD</p>
+                    <p className="text-xs text-muted-foreground mt-1">PDF, TXT, MD, or TEX</p>
                   </div>
                   <button 
                     onClick={() => fileInputRef.current?.click()}
@@ -120,6 +136,7 @@ export function OnboardingPage() {
 
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
+            
             <button
               onClick={handleUpload}
               disabled={!file || loading}
@@ -127,6 +144,16 @@ export function OnboardingPage() {
             >
               {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</> : "Analyze Profile"}
             </button>
+            <div className="pt-2 text-center">
+              <button 
+                onClick={handleSkip}
+                disabled={loading}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+              >
+                Skip for now
+              </button>
+            </div>
+
           </div>
         ) : (
           <div className="space-y-6 text-center animate-in fade-in zoom-in duration-300">

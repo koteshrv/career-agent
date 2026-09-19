@@ -24,11 +24,11 @@ async def upload_resume(
                 text += page.extract_text() + "\n"
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Failed to parse PDF: {str(e)}")
-    elif file.filename.endswith(".txt") or file.filename.endswith(".md"):
+    elif file.filename.endswith(".txt") or file.filename.endswith(".md") or file.filename.endswith(".tex"):
         content = await file.read()
         text = content.decode("utf-8")
     else:
-        raise HTTPException(status_code=400, detail="Only PDF and TXT files are supported for onboarding")
+        raise HTTPException(status_code=400, detail="Only PDF, TXT, MD, and TEX files are supported for onboarding")
 
     # Fast heuristic extraction for demo / real use without expensive LLM call first
     # In a real app we might call Gemini/OpenAI here. For now, let's do a basic keyword match
@@ -75,6 +75,13 @@ async def upload_resume(
         "target_roles": extracted_roles,
         "excludes": extracted_excludes
     }
+
+
+@router.post("/skip")
+def skip_onboarding(db: Session = Depends(get_db), current_user: models.User = Depends(get_current_user)):
+    current_user.onboarding_completed = True
+    db.commit()
+    return {"status": "success"}
 
 @router.get("/me")
 def get_me(current_user: models.User = Depends(get_current_user)):
