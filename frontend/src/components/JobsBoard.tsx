@@ -86,7 +86,12 @@ export function JobsBoard() {
   const [closedFilter, setClosedFilter] = useState<string>("ALL")
   const [groupByCompany, setGroupByCompany] = useState(false)
   
+  
   const [searchQuery, setSearchQuery] = useState("")
+  const [timeFilter, setTimeFilter] = useState<string | null>(null)
+  const [levelFilter, setLevelFilter] = useState<string | null>(null)
+  const [locationFilter, setLocationFilter] = useState<string | null>(null)
+  
   const [timeFilter, setTimeFilter] = useState<string | null>(null)
   const [levelFilter, setLevelFilter] = useState<string | null>(null)
   const [locationFilter, setLocationFilter] = useState<string | null>(null)
@@ -372,6 +377,39 @@ export function JobsBoard() {
     })
   }
 
+
+  if (timeFilter) {
+    const now = Date.now()
+    tabJobs = tabJobs.filter(j => {
+      const created = new Date(j.created_at).getTime()
+      if (timeFilter === "24h") return now - created <= 24 * 60 * 60 * 1000;
+      if (timeFilter === "3d") return now - created <= 3 * 24 * 60 * 60 * 1000;
+      if (timeFilter === "7d") return now - created <= 7 * 24 * 60 * 60 * 1000;
+      return true;
+    })
+  }
+
+  if (levelFilter) {
+    tabJobs = tabJobs.filter(j => {
+      const t = j.title.toLowerCase()
+      if (levelFilter === "Intern") return t.includes("intern")
+      if (levelFilter === "Junior") return t.includes("junior") || t.includes("jr") || t.includes("associate")
+      if (levelFilter === "Mid") return t.includes("mid") || (!t.includes("senior") && !t.includes("lead") && !t.includes("junior") && !t.includes("intern"))
+      if (levelFilter === "Senior") return t.includes("senior") || t.includes("sr") || t.includes("principal")
+      if (levelFilter === "Lead") return t.includes("lead") || t.includes("manager") || t.includes("director") || t.includes("staff")
+      return true;
+    })
+  }
+
+  if (locationFilter) {
+    tabJobs = tabJobs.filter(j => {
+      const loc = (j.location || "").toLowerCase()
+      if (locationFilter === "Remote") return loc.includes("remote") || loc.includes("anywhere")
+      if (locationFilter === "On-site") return !loc.includes("remote") && !loc.includes("anywhere") && loc.trim().length > 0
+      return true;
+    })
+  }
+
   if (tab.statuses) tabJobs = tabJobs.filter(j => tab.statuses!.includes(j.status))
 
   if (activeTab === "CLOSED" && closedFilter !== "ALL") tabJobs = tabJobs.filter(j => j.status === closedFilter)
@@ -403,104 +441,124 @@ export function JobsBoard() {
         </p>
       </div>
 
-      {/* Controls Bar */}
-
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
-        <div className="relative max-w-md w-full sm:flex-1 sm:min-w-[240px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search roles, companies..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-secondary border border-border rounded-md pl-10 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring transition-colors"
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center justify-end gap-3">
-
-          <button
-            onClick={() => setConfirmClearOpen(true)}
-            disabled={clearing || jobs.length === 0}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-semibold bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors disabled:opacity-40"
-            title="Clear All Jobs"
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-
-          <div className="relative z-50" ref={filtersRef}>
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold border transition-colors ${showFilters ? 'bg-accent text-foreground border-border' : 'bg-secondary text-muted-foreground border-border hover:bg-accent'}`}
-            >
-              <Filter className="w-3.5 h-3.5" /> View Options
-            </button>
-
-            {showFilters && (
-              <div className="absolute top-full right-0 mt-2 w-[300px] bg-popover border border-border rounded-md shadow-lg p-5 z-50 flex flex-col gap-5">
-
-                <div className="flex items-center justify-between gap-4 text-sm text-foreground">
-                  <span className="font-medium whitespace-nowrap w-16">Group By</span>
-                  <select
-                    value={groupByCompany.toString()}
-                    onChange={(e) => setGroupByCompany(e.target.value === "true")}
-                    className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none w-full"
-                  >
-                    <option value="false">None</option>
-                    <option value="true">Company</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between gap-4 text-sm text-foreground">
-                  <span className="font-medium whitespace-nowrap w-16">Sort By</span>
-                  <select
-                    value={`${sortBy}-${sortOrder}`}
-                    onChange={(e) => {
-                      const [s, o] = e.target.value.split("-")
-                      setSortBy(s as any)
-                      setSortOrder(o as any)
-                    }}
-                    className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none w-full"
-                  >
-                    <option value="priority-desc">Priority (High &rarr; Low)</option>
-                    <option value="priority-asc">Priority (Low &rarr; High)</option>
-                    <option value="date-desc">Newest First</option>
-                    <option value="date-asc">Oldest First</option>
-                  </select>
-                </div>
-              </div>
-            )}
+      {/* Filter & Search Bar */}
+      <div className="flex flex-col gap-4 mb-4">
+        {/* Search & Action Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="relative max-w-2xl w-full flex items-center bg-secondary/30 rounded-md border border-border">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Filter by company or role..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-transparent border-0 rounded-md pl-10 pr-16 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-colors placeholder:text-muted-foreground"
+            />
+            <span className="absolute right-4 text-xs font-mono text-muted-foreground">
+              {tabJobs.length}/{jobs.length}
+            </span>
           </div>
 
-          {stats && (
-            <div className="flex items-center bg-secondary border border-border rounded-md px-4 py-2 text-xs font-semibold gap-3">
-              <span className="flex items-center gap-1.5 text-primary" title="Community Credits">
-                <Database className="w-3.5 h-3.5" /> <span className="text-foreground">{stats.current_credits} Credits</span>
-              </span>
-              {stats.current_credits === 0 && (
-                <>
-                  <span className="w-px h-3 bg-border" />
-                  <span className="flex items-center gap-1.5 text-muted-foreground" title="Free Daily Quota">
-                    <DownloadCloud className="w-3.5 h-3.5" /> <span className="text-foreground">{stats.daily_quota_remaining} Free Pulls</span>
-                  </span>
-                </>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setConfirmClearOpen(true)}
+              disabled={clearing || jobs.length === 0}
+              className="flex items-center justify-center w-9 h-9 rounded-md bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors disabled:opacity-40"
+              title="Clear All Jobs"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+            <div className="relative" ref={filtersRef}>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold border transition-colors ${showFilters ? 'bg-accent text-foreground border-border' : 'bg-secondary text-muted-foreground border-border hover:bg-accent'}`}
+              >
+                <Filter className="w-3.5 h-3.5" /> View Options
+              </button>
+              {showFilters && (
+                <div className="absolute top-full right-0 mt-2 w-[300px] bg-popover border border-border rounded-md shadow-lg p-5 z-50 flex flex-col gap-5">
+                  <div className="flex items-center justify-between gap-4 text-sm text-foreground">
+                    <span className="font-medium whitespace-nowrap w-16">Group By</span>
+                    <select
+                      value={groupByCompany.toString()}
+                      onChange={(e) => setGroupByCompany(e.target.value === "true")}
+                      className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none w-full"
+                    >
+                      <option value="false">None</option>
+                      <option value="true">Company</option>
+                    </select>
+                  </div>
+                  <div className="flex items-center justify-between gap-4 text-sm text-foreground">
+                    <span className="font-medium whitespace-nowrap w-16">Sort By</span>
+                    <select
+                      value={`${sortBy}-${sortOrder}`}
+                      onChange={(e) => {
+                        const [s, o] = e.target.value.split("-")
+                        setSortBy(s as any)
+                        setSortOrder(o as any)
+                      }}
+                      className="bg-secondary border border-border rounded-md px-3 py-1.5 text-xs text-foreground focus:outline-none w-full"
+                    >
+                      <option value="priority-desc">Priority (High &rarr; Low)</option>
+                      <option value="priority-asc">Priority (Low &rarr; High)</option>
+                      <option value="date-desc">Newest First</option>
+                      <option value="date-asc">Oldest First</option>
+                    </select>
+                  </div>
+                </div>
               )}
             </div>
-          )}
+            <button
+              onClick={handleSync}
+              disabled={isSyncing}
+              className="flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 transition-colors disabled:opacity-40"
+            >
+              {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              {isSyncing ? 'Syncing...' : 'Sync Jobs'}
+            </button>
+          </div>
+        </div>
 
-          <button
-            onClick={handleSync}
-            disabled={isSyncing}
-            className="flex items-center gap-2 px-4 py-2 rounded-md text-xs font-semibold bg-primary/10 text-primary border border-primary/25 hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            {isSyncing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            {isSyncing ? 'Syncing...' : 'Sync Jobs'}
-          </button>
+        {/* Pipeline Filter Chips */}
+        <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 mt-1">
+          <div className="flex items-center gap-1.5 border-r border-border pr-3">
+            {["24h", "3d", "7d"].map(f => (
+              <button
+                key={f}
+                onClick={() => setTimeFilter(timeFilter === f ? null : f)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${timeFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 border-r border-border px-3">
+            {["Intern", "Junior", "Mid", "Senior", "Lead"].map(f => (
+              <button
+                key={f}
+                onClick={() => setLevelFilter(levelFilter === f ? null : f)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${levelFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 pl-3">
+            {["Remote", "On-site"].map(f => (
+              <button
+                key={f}
+                onClick={() => setLocationFilter(locationFilter === f ? null : f)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${locationFilter === f ? 'bg-primary/20 text-primary border-primary/30' : 'bg-transparent text-muted-foreground border-border hover:bg-accent'}`}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Status Tabs */}
-      <div className="flex items-center gap-1 border-b border-border mb-4 overflow-x-auto custom-scrollbar">
+      <div className="flex items-center gap-1 border-b border-border mb-4 overflow-x-auto custom-scrollbar mt-4">
         {TABS.map(t => (
           <button
             key={t.id}
