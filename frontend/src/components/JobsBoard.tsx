@@ -92,9 +92,7 @@ export function JobsBoard() {
   const [levelFilter, setLevelFilter] = useState<string | null>(null)
   const [locationFilter, setLocationFilter] = useState<string | null>(null)
   
-  const [timeFilter, setTimeFilter] = useState<string | null>(null)
-  const [levelFilter, setLevelFilter] = useState<string | null>(null)
-  const [locationFilter, setLocationFilter] = useState<string | null>(null)
+
 
   const [sortBy, setSortBy] = useState<"date" | "priority">("priority")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
