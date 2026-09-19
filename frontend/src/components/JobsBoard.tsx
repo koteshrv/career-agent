@@ -85,7 +85,12 @@ export function JobsBoard() {
   }, [activeTab, setSearchParams])
   const [closedFilter, setClosedFilter] = useState<string>("ALL")
   const [groupByCompany, setGroupByCompany] = useState(false)
+  
   const [searchQuery, setSearchQuery] = useState("")
+  const [timeFilter, setTimeFilter] = useState<string | null>(null)
+  const [levelFilter, setLevelFilter] = useState<string | null>(null)
+  const [locationFilter, setLocationFilter] = useState<string | null>(null)
+
   const [sortBy, setSortBy] = useState<"date" | "priority">("priority")
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc")
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
@@ -267,11 +272,17 @@ export function JobsBoard() {
           fallbackIcon={job.external_id ? <Globe className="w-2.5 h-2.5 text-primary" /> : null} 
         />
 
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-foreground truncate" title={job.title}>{job.title}</p>
-          <p className="text-xs text-muted-foreground truncate">
-            {job.company}{loc ? ` · ${loc}` : ""}
-          </p>
+        <div className="min-w-0 flex-1 flex flex-col justify-center">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-bold text-foreground truncate">
+              {job.company} <span className="text-muted-foreground font-normal">·</span> {job.title}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mt-0.5">
+            {loc && <span className="truncate max-w-[200px]">{loc}</span>}
+            <span className="shrink-0">{formatISTDate(job.created_at).split(' ')[0]}</span>
+            <span className="shrink-0 italic">{job.match_score ? `Score ${job.match_score}` : "not scored"}</span>
+          </div>
         </div>
 
         {job.match_score !== undefined && job.match_score !== null && (
@@ -322,11 +333,47 @@ export function JobsBoard() {
     CLOSED: jobs.filter(j => CLOSED_STATUSES.includes(j.status)).length,
   }
 
+
   let tabJobs = jobs.filter(j => {
     const q = searchQuery.toLowerCase()
     return j.title.toLowerCase().includes(q) || j.company.toLowerCase().includes(q)
   })
+
+  // Apply new pipeline chips filters
+  if (timeFilter) {
+    const now = Date.now()
+    tabJobs = tabJobs.filter(j => {
+      const created = new Date(j.created_at).getTime()
+      if (timeFilter === "24h") return now - created <= 24 * 60 * 60 * 1000;
+      if (timeFilter === "3d") return now - created <= 3 * 24 * 60 * 60 * 1000;
+      if (timeFilter === "7d") return now - created <= 7 * 24 * 60 * 60 * 1000;
+      return true;
+    })
+  }
+
+  if (levelFilter) {
+    tabJobs = tabJobs.filter(j => {
+      const t = j.title.toLowerCase()
+      if (levelFilter === "Intern") return t.includes("intern")
+      if (levelFilter === "Junior") return t.includes("junior") || t.includes("jr") || t.includes("associate")
+      if (levelFilter === "Mid") return t.includes("mid") || (!t.includes("senior") && !t.includes("lead") && !t.includes("junior") && !t.includes("intern"))
+      if (levelFilter === "Senior") return t.includes("senior") || t.includes("sr") || t.includes("principal")
+      if (levelFilter === "Lead") return t.includes("lead") || t.includes("manager") || t.includes("director")
+      return true;
+    })
+  }
+
+  if (locationFilter) {
+    tabJobs = tabJobs.filter(j => {
+      const loc = (j.location || "").toLowerCase()
+      if (locationFilter === "Remote") return loc.includes("remote") || loc.includes("anywhere")
+      if (locationFilter === "On-site") return !loc.includes("remote") && !loc.includes("anywhere") && loc.trim().length > 0
+      return true;
+    })
+  }
+
   if (tab.statuses) tabJobs = tabJobs.filter(j => tab.statuses!.includes(j.status))
+
   if (activeTab === "CLOSED" && closedFilter !== "ALL") tabJobs = tabJobs.filter(j => j.status === closedFilter)
 
   tabJobs = [...tabJobs].sort((a, b) => {
@@ -346,7 +393,18 @@ export function JobsBoard() {
   return (
     <div className="flex flex-col h-full relative">
 
+
+      {/* Title */}
+      <div className="mb-8">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-foreground">Pipeline</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          <span className="tabular-nums">{jobs.filter(j => j.status === 'NEW').length}</span> in inbox -{" "}
+          <span className="tabular-nums">{jobs.filter(j => j.status !== 'NEW' && j.status !== 'TRASH').length}</span> tracked
+        </p>
+      </div>
+
       {/* Controls Bar */}
+
       <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
         <div className="relative max-w-md w-full sm:flex-1 sm:min-w-[240px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
