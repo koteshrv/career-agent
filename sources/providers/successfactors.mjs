@@ -1,6 +1,7 @@
 // @ts-check
 /** @typedef {import('./_types.js').Provider} Provider */
 import { decodeEntities } from './_html-entities.mjs';
+import { sleep } from './_http.mjs';
 
 // SAP SuccessFactors provider — Recruiting Marketing (RMK, ex-jobs2web) career
 // sites (Career Site Builder's branded job boards). These are the portals big
@@ -53,12 +54,12 @@ import { decodeEntities } from './_html-entities.mjs';
 // otherwise the RMK tile path runs first and, only if it yields zero postings
 // (the empty-shell signature), we fall back to CSB automatically.
 
-const MAX_PAGES = 40; // safety cap on request count (RMK tile pagination)
-const MAX_JOBS = 1000; // cap total postings pulled per site (both strategies)
+const MAX_PAGES = 200; // safety cap on request count (RMK tile pagination)
+const MAX_JOBS = 20000; // cap total postings pulled per site (both strategies)
 
 // CSB knobs.
 const CSB_PAGE_SIZE = 10; // fixed by the /services/recruiting/v1/jobs API
-const CSB_MAX_PAGES_PER_LOCALE = 100; // safety cap per locale (100*10 = 1000 postings)
+const CSB_MAX_PAGES_PER_LOCALE = 2000; // safety cap per locale (100*10 = 1000 postings)
 const CSB_MAX_LOCALES = 16; // guard against a tenant advertising an absurd locale list
 // Locales tried when /search/ discovery yields nothing (fetch failed / markup
 // changed). de_DE + en_US cover the DACH targets this provider is aimed at.
@@ -300,7 +301,7 @@ function resolveCsbMaxPages(entry) {
 // board is reachable, just empty of tiles), so an all-locales CSB failure must
 // NOT read as a dead board — return [] instead of throwing.
 /** @param {import('./_types.js').PortalEntry} entry @param {any} cfg @param {import('./_types.js').Context} ctx @param {{probe?: boolean}} [opts] */
-async function fetchCsb(entry, cfg, ctx, { probe = false } = {}) {
+async function fetchCsb(entry, cfg, ctx, keyword, { probe = false } = {}) {
   let locales = CSB_DEFAULT_LOCALES;
   try {
     const html = await ctx.fetchText(cfg.searchPage, { redirect: 'error', headers: { accept: 'text/html' } });
@@ -325,13 +326,14 @@ async function fetchCsb(entry, cfg, ctx, { probe = false } = {}) {
     if (jobs.length >= MAX_JOBS) break;
     let total = null;
     for (let page = 0; page < maxPages; page++) {
+      if (page > 0) await sleep(250, ctx);
       let json;
       try {
         json = await ctx.fetchJson(cfg.jobsApi, {
           method: 'POST',
           redirect: 'error',
           headers: { 'content-type': 'application/json', accept: 'application/json' },
-          body: JSON.stringify({ keywords: '', locale, location: '', pageNumber: page, sortBy: 'recent' }),
+          body: JSON.stringify({ keywords: keyword || '', locale, location: '', pageNumber: page, sortBy: 'recent' }),
         });
       } catch (err) {
         firstErr ??= err;
@@ -369,12 +371,13 @@ async function fetchCsb(entry, cfg, ctx, { probe = false } = {}) {
 
 // RMK strategy: the original /tile-search-results/ HTML-fragment scraper.
 /** @param {import('./_types.js').PortalEntry} entry @param {any} cfg @param {import('./_types.js').Context} ctx */
-async function fetchRmk(entry, cfg, ctx) {
+async function fetchRmk(entry, cfg, ctx, keyword) {
   const jobs = [];
   const seen = new Set();
   let startrow = 0;
   for (let page = 0; page < MAX_PAGES; page++) {
-    const htmlText = await ctx.fetchText(`${cfg.tileApi}?startrow=${startrow}`, {
+    if (page > 0) await sleep(250, ctx);
+    const htmlText = await ctx.fetchText(`${cfg.tileApi}?startrow=${startrow}${keyword ? "&q=" + encodeURIComponent(keyword) : ""}`, {
       redirect: 'error',
       headers: { accept: 'text/html' },
     });
@@ -416,18 +419,29 @@ export default {
     const cfg = resolveConfig(entry);
     if (!cfg) throw new Error(`successfactors: cannot resolve origin for ${entry.name}`);
 
-    // Explicit opt-in goes straight to CSB. RMK tenants (the majority) run the
-    // tile scraper; only when it comes back empty — the CSB empty-shell
-    // signature — do we auto-fall back to the JSON API, so an unflagged CSB
-    // tenant still works and a genuinely-empty RMK board costs one extra probe.
-    if (String(entry.sfVariant || '').toLowerCase() === 'csb') {
-      return fetchCsb(entry, cfg, ctx);
+    const keywords = Array.isArray(entry.keywords) && entry.keywords.length ? entry.keywords : [''];
+    const allJobs = [];
+    const seenUrls = new Set();
+    const isCsb = String(entry.sfVariant || '').toLowerCase() === 'csb';
+
+    for (const keyword of keywords) {
+      if (allJobs.length >= MAX_JOBS) break;
+      let jobs = [];
+      if (isCsb) {
+        jobs = await fetchCsb(entry, cfg, ctx, keyword);
+      } else {
+        jobs = await fetchRmk(entry, cfg, ctx, keyword);
+        if (jobs.length === 0) {
+          jobs = await fetchCsb(entry, cfg, ctx, keyword, { probe: true });
+        }
+      }
+      for (const job of jobs) {
+        if (!seenUrls.has(job.url)) {
+          seenUrls.add(job.url);
+          allJobs.push(job);
+        }
+      }
     }
-    const rmkJobs = await fetchRmk(entry, cfg, ctx);
-    if (rmkJobs.length > 0) return rmkJobs;
-    // RMK answered (healthy, possibly legitimately empty) — the CSB call here
-    // is only a probe for the empty-shell signature, so it must not turn a
-    // failing/absent CSB endpoint into a dead-board throw.
-    return fetchCsb(entry, cfg, ctx, { probe: true });
-  },
+    return allJobs.slice(0, MAX_JOBS);
+  }
 };

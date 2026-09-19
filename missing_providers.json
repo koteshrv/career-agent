@@ -25,26 +25,6 @@
     "domain": "banking-finance"
   },
   {
-    "company": "Wipro",
-    "url": "https://careers.wipro.com/search/?q={keyword}&locationsearch=India&searchResultView=LIST",
-    "domain": "it-services"
-  },
-  {
-    "company": "HCLTech",
-    "url": "https://careers.hcltech.com/search/?q={keyword}&locationsearch=&searchResultView=LIST&markerViewed=&carouselIndex=&facetFilters=%7B%22custCountryRegion%22%3A%5B%22India%22%5D%7D&pageNumber=0",
-    "domain": "it-services"
-  },
-  {
-    "company": "Accenture",
-    "url": "https://www.accenture.com/in-en/careers/jobsearch?jk={keyword}&sb=0",
-    "domain": "it-services"
-  },
-  {
-    "company": "Deloitte",
-    "url": "https://southasiacareers.deloitte.com/search/?createNewAlert=false&q={keyword}&locationsearch=India&optionsFacetsDD_city=&optionsFacetsDD_customfield2=",
-    "domain": "it-services"
-  },
-  {
     "company": "Google",
     "url": "https://www.google.com/about/careers/applications/jobs/results/?q={keyword}&location=India",
     "domain": "big-tech"

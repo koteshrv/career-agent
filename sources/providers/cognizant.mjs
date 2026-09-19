@@ -8,6 +8,8 @@
 // URLs from the sitemap, we accurately discover the entire live job inventory
 // (2,000+ jobs) in a single request, completely bypassing Cloudflare's JS challenges.
 
+import { fetchTextWithRetry } from './_http.mjs'
+
 const SITEMAP_URL = 'https://careers.cognizant.com/sitemap.xml'
 
 // Helper to convert a slug like "senior-software-engineer" to "Senior Software Engineer"
@@ -25,7 +27,7 @@ export default {
 
   async fetch (entry, ctx) {
     // 1. Fetch the giant XML sitemap text
-    const text = await ctx.fetchText(SITEMAP_URL)
+    const text = await fetchTextWithRetry(ctx, SITEMAP_URL)
 
     const jobs = []
 
