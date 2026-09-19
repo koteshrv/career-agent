@@ -129,7 +129,7 @@ function Layout() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar Navigation */}
-        <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col z-40">
+        {location.pathname !== "/app/onboarding" && (<aside className="w-64 border-r border-border bg-card hidden md:flex flex-col z-40">
           <Link to="/app/home" className="h-16 flex items-center px-6 border-b border-border hover:bg-accent/40 transition-colors">
             <div className="flex items-center gap-2"><img src="/favicon.svg" alt="Career Agent" className="w-6 h-6" /><span className="text-lg font-bold tracking-tight text-foreground">Career Agent</span></div>
           </Link>
