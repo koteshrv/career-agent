@@ -292,7 +292,7 @@ def _generate(prompt: str, api_key: str = None, model_name: str = None, user_id:
     Hardcoded generation function using the agy CLI for testing.
     Normally this would invoke Gemini or other cloud models.
     """
-    return _generate_cli("agy", prompt)
+    return _generate_cli(prompt, "agy")
 
 def _route_generation(prompt: str, mode: str, settings: any, is_tex: bool = False, is_cl: bool = False, user_id: int = None) -> str:
     """
