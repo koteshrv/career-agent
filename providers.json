@@ -629,19 +629,26 @@
     "company": "TCS",
     "url": "https://ibegin.tcsapps.com/candidate/next/en-IN/jobs/search?page=1&size=10&regular=true&walkin=true&sort=relevance%20desc",
     "domain": "it-services",
-    "provider": "tcs"
+    "provider": "tcs",
+    "careers_url": "https://ibegin.tcsapps.com",
+    "tcs": {
+      "region": "en-IN"
+    }
   },
   {
     "company": "Infosys",
-    "url": "https://career.infosys.com/jobs?companyhiringtype=IL&countrycode=IN",
     "domain": "it-services",
-    "provider": "infosys"
+    "provider": "infosys",
+    "careers_url": "https://career.infosys.com",
+    "infosys": {
+      "countryCode": "IN"
+    }
   },
   {
     "company": "Cognizant",
-    "url": "https://careers.cognizant.com/global-en/jobs/?keyword={keyword}&location=India&radius=100&lat=&lng=&cname=India&ccode=IN&pagesize=10#results",
     "domain": "it-services",
-    "provider": "cognizant"
+    "provider": "cognizant",
+    "careers_url": "https://careers.cognizant.com"
   },
   {
     "company": "Capgemini",
@@ -650,30 +657,80 @@
   },
   {
     "company": "Deloitte",
-    "url": "https://southasiacareers.deloitte.com/search/?createNewAlert=false&q={keyword}&locationsearch=India&optionsFacetsDD_city=&optionsFacetsDD_customfield2=",
     "domain": "it-services",
     "provider": "successfactors",
-    "careers_url": "https://southasiacareers.deloitte.com/search/"
+    "careers_url": "https://southasiacareers.deloitte.com"
   },
   {
     "company": "HCLTech",
-    "url": "https://careers.hcltech.com/search/?q={keyword}&locationsearch=&searchResultView=LIST&markerViewed=&carouselIndex=&facetFilters=%7B%22custCountryRegion%22%3A%5B%22India%22%5D%7D&pageNumber=0",
     "domain": "it-services",
     "provider": "successfactors",
-    "careers_url": "https://careers.hcltech.com/search/"
+    "careers_url": "https://careers.hcltech.com"
   },
   {
     "company": "Wipro",
-    "url": "https://careers.wipro.com/search/?q={keyword}&locationsearch=India&searchResultView=LIST",
     "domain": "it-services",
     "provider": "successfactors",
-    "careers_url": "https://careers.wipro.com/search/"
+    "careers_url": "https://careers.wipro.com"
   },
   {
     "company": "Accenture",
-    "url": "https://www.accenture.com/in-en/careers/jobsearch?jk={keyword}&sb=0",
     "domain": "it-services",
     "provider": "accenture",
-    "careers_url": "https://www.accenture.com/in-en/careers/jobsearch"
+    "careers_url": "https://www.accenture.com",
+    "accenture": {
+      "siteLang": "in-en"
+    }
+  },
+  {
+    "company": "LTIMindtree",
+    "domain": "it-services",
+    "provider": "ripplehire",
+    "careers_url": "https://ltimindtree.ripplehire.com",
+    "ripplehire": {
+      "token": "xviyQvbnyYZdGtozXoNm"
+    }
+  },
+  {
+    "company": "Mphasis",
+    "domain": "it-services",
+    "provider": "ripplehire",
+    "careers_url": "https://mphasis.ripplehire.com",
+    "ripplehire": {
+      "token": "ty4DfyWddnOrtpclQeia"
+    }
+  },
+  {
+    "company": "Hexaware Technologies",
+    "domain": "it-services",
+    "provider": "oraclecloud",
+    "api": "https://fa-etqo-saasfaprod1.fa.ocs.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions",
+    "careers_url": "https://jobs.hexaware.com"
+  },
+  {
+    "company": "Mastercard",
+    "domain": "fintech-payments",
+    "provider": "phenom",
+    "careers_url": "https://careers.mastercard.com",
+    "phenom": {
+      "urlPrefix": "us/en",
+      "lang": "en_us",
+      "country": "us"
+    }
+  },
+  {
+    "company": "Google",
+    "domain": "tech",
+    "provider": "google",
+    "careers_url": "https://www.google.com/about/careers/applications"
+  },
+  {
+    "company": "Apple",
+    "domain": "big-tech",
+    "provider": "apple",
+    "careers_url": "https://jobs.apple.com",
+    "apple": {
+      "location": "india-IND"
+    }
   }
 ]

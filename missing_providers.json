@@ -5,16 +5,6 @@
     "domain": "banking-finance"
   },
   {
-    "company": "Mastercard",
-    "url": "https://careers.mastercard.com/us/en/search-results?keywords={keyword}&location=India&country=India",
-    "domain": "fintech-payments"
-  },
-  {
-    "company": "LTIMindtree",
-    "url": "https://careers.ltimindtree.com/search/?createNewAlert=false&q={keyword}&locationsearch=india",
-    "domain": "it-services"
-  },
-  {
     "company": "Barclays",
     "url": "https://search.jobs.barclays/search-jobs?k={keyword}&l=Telangana%2C+IN&orgIds=13015",
     "domain": "banking-finance"
@@ -25,18 +15,8 @@
     "domain": "banking-finance"
   },
   {
-    "company": "Google",
-    "url": "https://www.google.com/about/careers/applications/jobs/results/?q={keyword}&location=India",
-    "domain": "big-tech"
-  },
-  {
     "company": "Microsoft",
     "url": "https://apply.careers.microsoft.com/careers?query={keyword}&start=0&location=India&sort_by=relevance&filter_include_remote=1",
-    "domain": "big-tech"
-  },
-  {
-    "company": "Apple",
-    "url": "https://jobs.apple.com/en-in/search?search={keyword}&location=india-IND",
     "domain": "big-tech"
   },
   {
@@ -78,16 +58,6 @@
     "company": "Zoho",
     "url": "https://careers.zohocorp.com/jobs/Careers",
     "domain": "enterprise-saas"
-  },
-  {
-    "company": "Mphasis",
-    "url": "https://mphasis.ripplehire.com/candidate/?token=ty4DfyWddnOrtpclQeia&source=CAREERSITE#list/search={keyword}",
-    "domain": "it-services"
-  },
-  {
-    "company": "Hexaware Technologies",
-    "url": "https://jobs.hexaware.com/#en/sites/CX_1/jobs?keyword={keyword}&location=India&locationId=300000000446279&locationLevel=country&mode=location",
-    "domain": "it-services"
   },
   {
     "company": "OpenAI",

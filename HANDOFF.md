@@ -23,3 +23,13 @@
 1. **Continue Missing Providers**: Check `missing_providers.json` and grab the next unassigned company HAR file or requirement from the user. Move completed providers to `providers.json`.
 
 *Note to new agent: Once you have read and understood this, delete this `HANDOFF.md` file and let the user know you are ready!*
+
+6. **RippleHire Integration (`ripplehire.mjs`)**: Discovered the backend API endpoint (`/candidate/candidatejobsearch`) via `cURL` requests extracted from DevTools. RippleHire accepts form-urlencoded payloads containing JSON in `careerSiteUrlParams`. It handles pagination beautifully and properly filters jobs if `entry.keywords` is provided by sending `"search": "keyword"`. Tested with LTI Mindtree and Mphasis and they share this exact structure perfectly.
+
+7. **Hexaware Technologies (Oracle Cloud)**: Checked the HAR file, discovered they use Oracle Cloud HCM behind a vanity domain (`jobs.hexaware.com`). Hooked it up to the existing robust `oraclecloud` provider by specifying the native API endpoint (`https://fa-etqo-saasfaprod1.fa.ocs.oraclecloud.com/...`) in `providers.json`.
+
+8. **Mastercard (Phenom)**: Checked the HAR file, discovered it's a Server-Side Rendered SPA operating exactly like Phenom People ("CareerConnect" via `POST /widgets`). Hooked it up to the existing `phenom` provider by specifying the `careers_url` and `phenom` config overrides (`urlPrefix: "us/en"`) in `providers.json`.
+
+9. **Google**: Created a new `google` provider (`sources/providers/google.mjs`). Analyzed the `batchexecute` RPC payload provided in the cURL request. Replicated the URL-encoded POST format, extracting the deeply nested stringified JSON arrays. Handled dynamic pagination (using page index increments and extracting `totalCount`) and location parsing. Added robust unit tests simulating the `batchexecute` response. Successfully pulled 3000+ jobs.
+
+10. **Apple**: Created a new `apple` provider (`sources/providers/apple.mjs`). Analyzed the single HTML GET request from the provided HAR file. Discovered that Apple server-side renders their initial job payload (hydration state) safely embedded as an escaped string literal inside `JSON.parse("...")`. Built a parser that securely unescapes and parses this JSON object, supporting full keyword filtering (via URL query manipulation) and pagination. Passed all tests.

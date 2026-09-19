@@ -40,7 +40,7 @@ export default {
     const ctxCap = ctxMaxPages > 0 ? ctxMaxPages : Infinity;
     const pagesToFetch = Math.min(resolveMaxPages(entry), ctxCap);
 
-    let siteLang = 'us-en';
+    let siteLang = entry.accenture?.siteLang || 'us-en';
     if (entry?.careers_url) {
       try {
         const u = new URL(entry.careers_url);

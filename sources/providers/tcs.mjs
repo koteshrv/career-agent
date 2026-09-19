@@ -17,6 +17,8 @@ export default {
   id: 'tcs',
 
   async fetch(entry, ctx) {
+    const config = entry.tcs || {};
+    const region = config.region || 'en-IN';
     const keywords = Array.isArray(entry.keywords) && entry.keywords.length ? entry.keywords : [''];
     
     // 1. Hit the CSRF endpoint to initialize the session and get the tokens
@@ -24,7 +26,7 @@ export default {
     // If ctx.fetchResponse throws on 401, we use native fetch to get the raw headers.
     let initRes;
     try {
-      initRes = await fetch('https://ibegin.tcsapps.com/candidate/next/api/en-IN/csrf', {
+      initRes = await fetch('https://ibegin.tcsapps.com/candidate/next/api/${region}/csrf', {
         headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' },
         redirect: 'error'
       });
